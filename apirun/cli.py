@@ -121,9 +121,9 @@ Examples:
     parser.add_argument(
         "--format",
         type=str,
-        choices=["text", "json"],
+        choices=["text", "json", "csv"],
         default="text",
-        help="Output format: text (default) or json",
+        help="Output format: text (default), json, or csv",
     )
 
     parser.add_argument(
@@ -228,6 +228,35 @@ Examples:
 
                 print(json.dumps(compact_result, ensure_ascii=False, indent=2))
 
+        elif args.format == "csv":
+            # CSV output
+            from apirun.result.collector import ResultCollector
+            from apirun.core.models import TestCaseResult
+            from datetime import datetime
+
+            # Reconstruct TestCaseResult from dict
+            start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
+            end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+
+            test_case_result = TestCaseResult(
+                name=result["test_case"]["name"],
+                status=result["test_case"]["status"],
+                start_time=start_time,
+                end_time=end_time,
+                duration=result["test_case"]["duration"],
+                total_steps=result["statistics"]["total_steps"],
+                passed_steps=result["statistics"]["passed_steps"],
+                failed_steps=result["statistics"]["failed_steps"],
+                skipped_steps=result["statistics"]["skipped_steps"],
+                step_results=[],  # CSV doesn't need full step results
+                final_variables={},
+                error_info=None,
+            )
+
+            collector = ResultCollector()
+            csv_output = collector.to_csv(test_case_result)
+            print(csv_output, end="")
+
         # Save result if output path specified (either in YAML or CLI)
         output_path = args.output
         if not output_path and result.get("test_case", {}).get("config", {}).get("output", {}).get("path"):
@@ -237,7 +266,7 @@ Examples:
         if output_path:
             save_result(result, output_path)
             # Only print save message in text mode
-            if args.format == "text" and (args.verbose or result.get("test_case", {}).get("config", {}).get("verbose")):
+            if args.format in ["text"] and (args.verbose or result.get("test_case", {}).get("config", {}).get("verbose")):
                 print(f"\nResults saved to: {output_path}")
 
         return 0
@@ -390,6 +419,8 @@ def execute_test_case(
     debug: bool = False,
     output: Optional[str] = None,
     format_type: str = "text",
+    allure: bool = False,
+    allure_dir: str = "allure-results",
 ) -> dict:
     """Execute test case and return results.
 
@@ -405,6 +436,8 @@ def execute_test_case(
         debug: Enable debug mode (overrides YAML config)
         output: Output file path (overrides YAML config)
         format_type: Output format (text/json, overrides YAML config)
+        allure: Generate Allure report (overrides YAML config)
+        allure_dir: Allure results directory (overrides YAML config)
 
     Returns:
         Execution result as dictionary
@@ -446,7 +479,7 @@ def execute_test_case(
     if test_case.config and test_case.config.output:
         yaml_format = test_case.config.output.get("format", "text")
         # Only use YAML config if CLI is default value
-        if format_type == "text" and yaml_format in ["text", "json"]:
+        if format_type == "text" and yaml_format in ["text", "json", "csv"]:
             output_format = yaml_format
 
     # Store format in config for later use
@@ -493,15 +526,37 @@ def execute_test_case(
             test_case, verbose, ws_config_host, ws_config_port, yaml_ws_config=test_case.config.websocket if test_case.config else None
         )
 
+    # Determine Allure configuration
+    # Priority: CLI args > YAML config > defaults (disabled)
+    allure_enabled = allure
+    allure_output_dir = allure_dir
+
+    # Read from YAML config if available
+    if test_case.config and test_case.config.output:
+        yaml_output = test_case.config.output
+        # Only use YAML config if CLI args are not explicitly set
+        if not allure and yaml_output.get("allure", False):
+            allure_enabled = True
+        if allure_dir == "allure-results":  # Default value, check if YAML has custom value
+            custom_dir = yaml_output.get("allure_dir")
+            if custom_dir:
+                allure_output_dir = custom_dir
+
     # Check if data-driven testing is enabled
     if (
         test_case.config
         and test_case.config.data_iterations
         and test_case.config.data_source
     ):
-        return _execute_data_driven_test(test_case, verbose)
+        result = _execute_data_driven_test(test_case, verbose)
     else:
-        return _execute_single_test(test_case, verbose)
+        result = _execute_single_test(test_case, verbose)
+
+    # Generate Allure report if enabled
+    if allure_enabled:
+        _generate_allure_report(test_case, result, allure_output_dir)
+
+    return result
 
 
 def _execute_with_websocket(
@@ -649,15 +704,15 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
     Returns:
         Execution result as dictionary
     """
-    # Check if output format is JSON
-    is_json_output = (
+    # Check if output format is text (JSON/CSV modes suppress text output)
+    is_text_output = not (
         test_case.config
         and test_case.config.output
-        and test_case.config.output.get("format") == "json"
+        and test_case.config.output.get("format") in ["json", "csv"]
     )
 
     # Only print in text mode
-    if not is_json_output:
+    if is_text_output:
         # Print test case info
         print(f"Executing: {test_case.name}")
         print(f"Description: {test_case.description}")
@@ -668,7 +723,7 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
     result = executor.execute()
 
     # Only print summary in text mode
-    if not is_json_output:
+    if is_text_output:
         # Print summary
         print(f"\n{'='*60}")
         print(f"Status: {result['test_case']['status'].upper()}")
@@ -741,14 +796,164 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
 
 
 def save_result(result: dict, output_path: str) -> None:
-    """Save result to JSON file.
+    """Save result to file (format based on extension or config).
 
     Args:
         result: Result dictionary
         output_path: Output file path
     """
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+    # Determine format from file extension or config
+    format_from_config = "json"
+    if result.get("test_case", {}).get("config", {}).get("output", {}).get("format"):
+        format_from_config = result["test_case"]["config"]["output"]["format"]
+
+    # Check file extension
+    if output_path.endswith(".csv"):
+        output_format = "csv"
+    elif output_path.endswith(".json"):
+        output_format = "json"
+    else:
+        # Use format from config
+        output_format = format_from_config
+
+    # Save based on format
+    if output_format == "csv":
+        from apirun.result.collector import ResultCollector
+        from apirun.core.models import TestCaseResult
+        from datetime import datetime
+
+        # Reconstruct TestCaseResult from dict
+        start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
+        end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+
+        test_case_result = TestCaseResult(
+            name=result["test_case"]["name"],
+            status=result["test_case"]["status"],
+            start_time=start_time,
+            end_time=end_time,
+            duration=result["test_case"]["duration"],
+            total_steps=result["statistics"]["total_steps"],
+            passed_steps=result["statistics"]["passed_steps"],
+            failed_steps=result["statistics"]["failed_steps"],
+            skipped_steps=result["statistics"]["skipped_steps"],
+            step_results=[],  # CSV doesn't need full step results
+            final_variables={},
+            error_info=None,
+        )
+
+        collector = ResultCollector()
+        collector.save_csv(test_case_result, output_path)
+    else:
+        # Default to JSON
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+
+
+def _generate_allure_report(test_case, result: dict, allure_dir: str):
+    """Generate Allure report from test result.
+
+    Args:
+        test_case: Test case object
+        result: Test execution result dictionary
+        allure_dir: Allure results directory
+    """
+    from apirun.result.allure_collector import AllureResultCollector
+    from apirun.result.collector import ResultCollector
+    from apirun.core.models import TestCaseResult
+
+    # Create Allure collector
+    collector = AllureResultCollector(output_dir=allure_dir)
+
+    # Reconstruct TestCaseResult from dict
+    # This is a simplified reconstruction
+    from datetime import datetime
+    from apirun.core.models import StepResult, PerformanceMetrics, ErrorInfo
+
+    step_results = []
+    for step_data in result.get("steps", []):
+        # Reconstruct StepResult
+        step_result = StepResult(
+            name=step_data["name"],
+            status=step_data["status"],
+            response=step_data.get("response"),
+            extracted_vars=step_data.get("extracted_vars", {}),
+            validation_results=step_data.get("validations", []),
+            performance=None,
+            error_info=None,
+        )
+
+        # Add performance if available
+        if step_data.get("performance"):
+            perf_data = step_data["performance"]
+            step_result.performance = PerformanceMetrics(
+                total_time=perf_data.get("total_time", 0),
+                dns_time=perf_data.get("dns_time", 0),
+                tcp_time=perf_data.get("tcp_time", 0),
+                tls_time=perf_data.get("tls_time", 0),
+                server_time=perf_data.get("server_time", 0),
+                download_time=perf_data.get("download_time", 0),
+                upload_time=perf_data.get("upload_time", 0),
+                size=perf_data.get("size", 0),
+            )
+
+        # Add error info if available
+        if step_data.get("error_info"):
+            err_data = step_data["error_info"]
+            from apirun.core.models import ErrorCategory
+            # Map category string to enum
+            category_map = {
+                "assertion": ErrorCategory.ASSERTION,
+                "network": ErrorCategory.NETWORK,
+                "timeout": ErrorCategory.TIMEOUT,
+                "parsing": ErrorCategory.PARSING,
+                "business": ErrorCategory.BUSINESS,
+                "system": ErrorCategory.SYSTEM,
+            }
+            category = category_map.get(err_data.get("category", ""), ErrorCategory.SYSTEM)
+
+            step_result.error_info = ErrorInfo(
+                type=err_data.get("type", "UnknownError"),
+                category=category,
+                message=err_data.get("message", ""),
+                suggestion=err_data.get("suggestion", ""),
+            )
+
+        # Parse timestamps
+        if step_data.get("start_time"):
+            step_result.start_time = datetime.fromisoformat(step_data["start_time"])
+        if step_data.get("end_time"):
+            step_result.end_time = datetime.fromisoformat(step_data["end_time"])
+
+        step_result.retry_count = step_data.get("retry_count", 0)
+        step_results.append(step_result)
+
+    # Reconstruct TestCaseResult
+    test_result = TestCaseResult(
+        name=result["test_case"]["name"],
+        status=result["test_case"]["status"],
+        start_time=datetime.fromisoformat(result["test_case"]["start_time"]),
+        end_time=datetime.fromisoformat(result["test_case"]["end_time"]),
+        duration=result["test_case"]["duration"],
+        total_steps=result["statistics"]["total_steps"],
+        passed_steps=result["statistics"]["passed_steps"],
+        failed_steps=result["statistics"]["failed_steps"],
+        skipped_steps=result["statistics"]["skipped_steps"],
+        step_results=step_results,
+        final_variables=result.get("final_variables", {}),
+        error_info=None,
+    )
+
+    # Generate Allure result file
+    result_file = collector.collect(test_case, test_result)
+
+    # Generate supporting files
+    collector.generate_environment_file()
+    collector.generate_categories_file()
+
+    # Print message
+    print(f"\n✓ Allure report generated: {result_file}")
+    print(f"  Results directory: {allure_dir}")
+    print(f"  View report: allure open {allure_dir}")
 
 
 if __name__ == "__main__":

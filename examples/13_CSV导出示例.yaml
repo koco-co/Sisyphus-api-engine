@@ -1,0 +1,126 @@
+name: "CSV导出示例"
+description: "演示如何将测试结果导出为CSV格式，方便数据分析和Excel导入"
+
+config:
+  # === 输出配置 ===
+  output:
+    path: "./results/${test_name}_result.csv"  # 支持变量替换
+    format: "csv"  # 输出格式为 CSV
+    include_request: true
+    include_response: true
+    include_performance: true
+
+  # === 详细输出模式 ===
+  verbose: true
+
+  # === 超时和重试配置 ===
+  timeout: 30
+  retry_times: 2
+
+# === 测试步骤 ===
+steps:
+  - name: "1. 获取用户信息"
+    type: request
+    method: GET
+    url: "https://jsonplaceholder.typicode.com/users/1"
+    description: "测试获取单个用户信息"
+    validations:
+      - type: eq
+        path: "$.id"
+        expect: 1
+        description: "验证用户ID"
+      - type: eq
+        path: "$.name"
+        expect: "Leanne Graham"
+        description: "验证用户名"
+    extractors:
+      - name: user_email
+        type: jsonpath
+        path: "$.email"
+        description: "提取用户邮箱"
+      - name: user_city
+        type: jsonpath
+        path: "$.address.city"
+        description: "提取用户城市"
+
+  - name: "2. 获取待办事项"
+    type: request
+    method: GET
+    url: "https://jsonplaceholder.typicode.com/todos/1"
+    description: "测试获取待办事项"
+    validations:
+      - type: eq
+        path: "$.userId"
+        expect: 1
+        description: "验证用户ID"
+      - type: eq
+        path: "$.completed"
+        expect: false
+        description: "验证未完成状态"
+
+  - name: "3. 获取用户帖子"
+    type: request
+    method: GET
+    url: "https://jsonplaceholder.typicode.com/posts?userId=1"
+    description: "测试获取用户的所有帖子"
+    validations:
+      - type: type
+        path: "$"
+        expect: "array"
+        description: "验证返回数组"
+
+  - name: "4. 创建新帖子"
+    type: request
+    method: POST
+    url: "https://jsonplaceholder.typicode.com/posts"
+    body:
+      title: "测试帖子"
+      body: "这是一个测试帖子内容"
+      userId: 1
+    description: "测试创建新帖子"
+    validations:
+      - type: eq
+        path: "$.id"
+        expect: 101
+        description: "验证新创建的帖子ID"
+
+# === 说明 ===
+# CSV 输出格式包含以下列：
+# 1. Test Name - 测试用例名称
+# 2. Step Name - 步骤名称
+# 3. Step Index - 步骤索引
+# 4. Status - 状态（SUCCESS/FAILURE/SKIPPED）
+# 5. Start Time - 开始时间
+# 6. End Time - 结束时间
+# 7. Duration (s) - 持续时间（秒）
+# 8. HTTP Status Code - HTTP状态码
+# 9. Response Size (bytes) - 响应大小（字节）
+# 10. Total Time (ms) - 总时间（毫秒）
+# 11. DNS Time (ms) - DNS查询时间
+# 12. TCP Time (ms) - TCP连接时间
+# 13. TLS Time (ms) - TLS握手时间
+# 14. Server Time (ms) - 服务器处理时间
+# 15. Download Time (ms) - 下载时间
+# 16. Error Type - 错误类型
+# 17. Error Message - 错误消息
+#
+# CSV 输出还包含一个 SUMMARY 行，显示测试用例的总体统计信息。
+#
+# 运行方式：
+#   # 方式1：通过 YAML 配置文件指定 CSV 格式
+#   sisyphus-api-engine --cases examples/13_CSV导出示例.yaml
+#
+#   # 方式2：通过 CLI 参数指定 CSV 格式
+#   sisyphus-api-engine --cases examples/13_CSV导出示例.yaml --format csv
+#
+#   # 方式3：同时输出到 CSV 文件
+#   sisyphus-api-engine --cases examples/13_CSV导出示例.yaml -o result.csv
+#
+#   # 方式4：直接在终端查看 CSV 输出
+#   sisyphus-api-engine --cases examples/13_CSV导出示例.yaml --format csv | less
+#
+# CSV 文件可以：
+# - 在 Excel 中打开进行数据分析
+# - 导入数据库进行进一步处理
+# - 使用 pandas、Python 等工具进行数据分析
+# - 生成图表和报告

@@ -4,9 +4,11 @@ This module implements collection and formatting of test execution results.
 Following Google Python Style Guide.
 """
 
+import csv
 import json
 from typing import Any, Dict, List
 from datetime import datetime
+from io import StringIO
 
 from apirun.core.models import TestCase, TestCaseResult, StepResult
 
@@ -352,3 +354,141 @@ class ResultCollector:
                 compact_data["api_responses"].append(response_data)
 
         return compact_data
+
+    def to_csv(self, result: TestCaseResult) -> str:
+        """Convert result to CSV format.
+
+        This format generates a CSV with step-by-step details,
+        suitable for data analysis in Excel or other tools.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            CSV formatted string
+        """
+        output = StringIO()
+        writer = csv.writer(output)
+
+        # Write header
+        header = [
+            "Test Name",
+            "Step Name",
+            "Step Index",
+            "Status",
+            "Start Time",
+            "End Time",
+            "Duration (s)",
+            "HTTP Status Code",
+            "Response Size (bytes)",
+            "Total Time (ms)",
+            "DNS Time (ms)",
+            "TCP Time (ms)",
+            "TLS Time (ms)",
+            "Server Time (ms)",
+            "Download Time (ms)",
+            "Error Type",
+            "Error Message",
+        ]
+        writer.writerow(header)
+
+        # Write summary row
+        pass_rate = (
+            result.passed_steps / result.total_steps * 100
+            if result.total_steps > 0
+            else 0
+        )
+        writer.writerow([
+            result.name,
+            "SUMMARY",
+            "",
+            result.status.upper(),
+            result.start_time.isoformat() if result.start_time else "",
+            result.end_time.isoformat() if result.end_time else "",
+            round(result.duration, 3),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            f"Passed: {result.passed_steps}/{result.total_steps} ({pass_rate:.1f}%)",
+        ])
+
+        # Write step rows
+        for idx, step_result in enumerate(result.step_results, start=1):
+            duration = 0.0
+            if step_result.start_time and step_result.end_time:
+                duration = (step_result.end_time - step_result.start_time).total_seconds()
+
+            # Get HTTP status code from response
+            status_code = ""
+            if step_result.response and isinstance(step_result.response, dict):
+                status_code = step_result.response.get("status_code", "")
+
+            # Get response size
+            size = ""
+            if step_result.performance:
+                size = str(step_result.performance.size) if step_result.performance.size > 0 else ""
+
+            # Get performance metrics
+            total_time = ""
+            dns_time = ""
+            tcp_time = ""
+            tls_time = ""
+            server_time = ""
+            download_time = ""
+
+            if step_result.performance:
+                total_time = f"{step_result.performance.total_time:.2f}"
+                dns_time = f"{step_result.performance.dns_time:.2f}"
+                tcp_time = f"{step_result.performance.tcp_time:.2f}"
+                tls_time = f"{step_result.performance.tls_time:.2f}"
+                server_time = f"{step_result.performance.server_time:.2f}"
+                download_time = f"{step_result.performance.download_time:.2f}"
+
+            # Get error info
+            error_type = ""
+            error_message = ""
+            if step_result.error_info:
+                error_type = step_result.error_info.type
+                error_message = step_result.error_info.message
+
+            row = [
+                result.name,
+                step_result.name,
+                idx,
+                step_result.status.upper(),
+                step_result.start_time.isoformat() if step_result.start_time else "",
+                step_result.end_time.isoformat() if step_result.end_time else "",
+                round(duration, 3),
+                status_code,
+                size,
+                total_time,
+                dns_time,
+                tcp_time,
+                tls_time,
+                server_time,
+                download_time,
+                error_type,
+                error_message,
+            ]
+
+            writer.writerow(row)
+
+        return output.getvalue()
+
+    def save_csv(self, result: TestCaseResult, output_path: str) -> None:
+        """Save result as CSV file.
+
+        Args:
+            result: Test case result
+            output_path: Output file path
+        """
+        csv_data = self.to_csv(result)
+
+        with open(output_path, "w", encoding="utf-8", newline="") as f:
+            f.write(csv_data)
