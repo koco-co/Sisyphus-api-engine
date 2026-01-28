@@ -168,6 +168,8 @@ class TestCaseExecutor:
                         "variables": profile.variables,
                         "timeout": profile.timeout,
                         "verify_ssl": profile.verify_ssl,
+                        "overrides": profile.overrides,
+                        "priority": profile.priority,
                     }
 
             # Add other global variables
@@ -175,6 +177,32 @@ class TestCaseExecutor:
                 self.variable_manager.global_vars.update(
                     self.test_case.config.variables
                 )
+
+        # Apply debug configuration
+        if self.test_case.config and self.test_case.config.debug:
+            debug_config = self.test_case.config.debug
+            if debug_config.get("enabled", False):
+                self.variable_manager.enable_tracking = True
+
+        # Apply environment variables configuration
+        if self.test_case.config and self.test_case.config.env_vars:
+            env_config = self.test_case.config.env_vars
+            prefix = env_config.get("prefix")
+            if prefix:
+                self.variable_manager.env_vars_prefix = prefix
+
+            # Load from OS if enabled
+            if env_config.get("load_from_os", False):
+                self.variable_manager.load_environment_variables(
+                    prefix=prefix,
+                    override=False
+                )
+
+            # Apply environment variable overrides
+            overrides = env_config.get("overrides", {})
+            if overrides:
+                for key, value in overrides.items():
+                    self.variable_manager.set_profile_override(key, value)
 
     def _setup_profile(self) -> None:
         """Set up active profile variables."""
@@ -189,7 +217,13 @@ class TestCaseExecutor:
         profile = self.test_case.config.profiles.get(profile_name)
 
         if profile:
+            # Set profile variables
             self.variable_manager.set_profile(profile.variables)
+
+            # Apply profile overrides
+            if profile.overrides:
+                for key, value in profile.overrides.items():
+                    self.variable_manager.set_profile_override(key, value)
 
     def _execute_global_setup(self) -> None:
         """Execute global setup hooks."""

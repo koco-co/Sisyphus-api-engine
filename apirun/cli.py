@@ -135,12 +135,19 @@ Examples:
             args.env_prefix,
             args.override,
             args.debug,
+            args.output,
         )
 
-        if args.output:
-            save_result(result, args.output)
-            if args.verbose:
-                print(f"\nResults saved to: {args.output}")
+        # Save result if output path specified (either in YAML or CLI)
+        output_path = args.output
+        if not output_path and result.get("test_case", {}).get("config", {}).get("output", {}).get("path"):
+            # Use output path from YAML config
+            output_path = result["test_case"]["config"]["output"]["path"]
+
+        if output_path:
+            save_result(result, output_path)
+            if args.verbose or result.get("test_case", {}).get("config", {}).get("verbose"):
+                print(f"\nResults saved to: {output_path}")
 
         return 0
 
@@ -290,19 +297,21 @@ def execute_test_case(
     env_prefix: Optional[str] = None,
     overrides: Optional[list] = None,
     debug: bool = False,
+    output: Optional[str] = None,
 ) -> dict:
     """Execute test case and return results.
 
     Args:
         case_path: Path to YAML file
-        verbose: Enable verbose output
+        verbose: Enable verbose output (overrides YAML config)
         profile: Active profile name (overrides config)
         ws_server: Enable WebSocket server for real-time updates
         ws_host: WebSocket server host
         ws_port: WebSocket server port
-        env_prefix: Environment variable prefix
+        env_prefix: Environment variable prefix (overrides YAML config)
         overrides: Configuration overrides (list of "key=value" strings)
-        debug: Enable debug mode
+        debug: Enable debug mode (overrides YAML config)
+        output: Output file path (overrides YAML config)
 
     Returns:
         Execution result as dictionary
@@ -311,11 +320,34 @@ def execute_test_case(
     parser = V2YamlParser()
     test_case = parser.parse(case_path)
 
-    # Override profile if specified
+    # Initialize config if not exists
+    if not test_case.config:
+        from apirun.core.models import GlobalConfig
+        test_case.config = GlobalConfig(name=test_case.name)
+
+    # Apply CLI overrides to config (CLI has higher priority)
+    if verbose is not False:  # Only override if explicitly set
+        test_case.config.verbose = verbose
+
     if profile and test_case.config:
         test_case.config.active_profile = profile
 
-    # Parse overrides
+    if debug:
+        if test_case.config.debug is None:
+            test_case.config.debug = {}
+        test_case.config.debug["enabled"] = True
+
+    if env_prefix:
+        if test_case.config.env_vars is None:
+            test_case.config.env_vars = {}
+        test_case.config.env_vars["prefix"] = env_prefix
+
+    if output:
+        if test_case.config.output is None:
+            test_case.config.output = {}
+        test_case.config.output["path"] = output
+
+    # Parse key=value overrides
     override_dict = {}
     if overrides:
         for override in overrides:

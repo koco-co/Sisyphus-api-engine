@@ -194,6 +194,8 @@ class V2YamlParser:
                 variables=profile_config.get("variables", {}),
                 timeout=profile_config.get("timeout", 30),
                 verify_ssl=profile_config.get("verify_ssl", True),
+                overrides=profile_config.get("overrides", {}),
+                priority=profile_config.get("priority", 0),
             )
 
         active_profile = config_data.get("active_profile")
@@ -215,6 +217,18 @@ class V2YamlParser:
         # Parse WebSocket configuration
         websocket = config_data.get("websocket")
 
+        # Parse output configuration
+        output = config_data.get("output")
+
+        # Parse debug configuration
+        debug = config_data.get("debug")
+
+        # Parse environment variables configuration
+        env_vars = config_data.get("env_vars")
+
+        # Parse verbose flag
+        verbose = config_data.get("verbose", False)
+
         return GlobalConfig(
             name=name,
             description=description,
@@ -229,6 +243,10 @@ class V2YamlParser:
             data_iterations=data_iterations,
             variable_prefix=variable_prefix,
             websocket=websocket,
+            output=output,
+            debug=debug,
+            env_vars=env_vars,
+            verbose=verbose,
         )
 
     def _parse_step(self, step_data: Dict[str, Any]) -> Optional[TestStep]:

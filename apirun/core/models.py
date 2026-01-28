@@ -87,6 +87,25 @@ class GlobalConfig:
             - send_progress: Whether to send progress events (default: true)
             - send_logs: Whether to send log events (default: true)
             - send_variables: Whether to send variable update events (default: false)
+        output: Output configuration for test results
+            - path: Output file path (supports variables like ${timestamp})
+            - format: Output format (json/html/xml)
+            - include_request: Include request details in output
+            - include_response: Include response details in output
+            - include_performance: Include performance metrics in output
+            - include_variables: Include variable snapshots in output
+            - sensitive_data_mask: Mask sensitive data (passwords, tokens)
+        debug: Debug mode configuration
+            - enabled: Enable debug mode
+            - variable_tracking: Track variable changes
+            - show_request: Show request details
+            - show_response: Show response details
+            - log_level: Log level (DEBUG/INFO/WARN/ERROR)
+        env_vars: Environment variable configuration
+            - prefix: Environment variable prefix (e.g., "API_")
+            - load_from_os: Whether to load variables from OS environment
+            - overrides: Environment variable overrides
+        verbose: Enable verbose output (console)
     """
 
     name: str
@@ -102,6 +121,10 @@ class GlobalConfig:
     data_iterations: bool = False
     variable_prefix: str = ""
     websocket: Optional[Dict[str, Any]] = None
+    output: Optional[Dict[str, Any]] = None
+    debug: Optional[Dict[str, Any]] = None
+    env_vars: Optional[Dict[str, Any]] = None
+    verbose: bool = False
 
 
 @dataclass
