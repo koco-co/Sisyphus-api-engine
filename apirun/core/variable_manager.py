@@ -40,8 +40,12 @@ class VariableManager:
         self.profile_vars: Dict[str, Any] = {}
         self.extracted_vars: Dict[str, Any] = {}
 
-        # Initialize Jinja2 environment
-        self._jinja_env = Environment(loader=BaseLoader())
+        # Initialize Jinja2 environment with custom delimiters
+        self._jinja_env = Environment(
+            loader=BaseLoader(),
+            variable_start_string="${",
+            variable_end_string="}"
+        )
 
     def set_profile(self, profile_vars: Dict[str, Any]) -> None:
         """Set active profile variables.
@@ -94,7 +98,7 @@ class VariableManager:
     def render_string(self, template_str: str) -> str:
         """Render a template string with current variables.
 
-        Supports Jinja2 syntax: {{variable_name}}
+        Supports Jinja2 syntax: ${variable_name}
 
         Args:
             template_str: Template string to render
@@ -109,7 +113,7 @@ class VariableManager:
             return template_str
 
         # Quick check for template syntax
-        if "{{" not in template_str and "{%" not in template_str:
+        if "${" not in template_str and "{%" not in template_str:
             return template_str
 
         try:
