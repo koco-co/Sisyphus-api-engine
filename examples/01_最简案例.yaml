@@ -1,0 +1,28 @@
+# Simple test for debugging
+
+name: "简单测试"
+description: "测试基本功能"
+
+config:
+  name: "测试配置"
+  active_profile: "prod"
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+steps:
+  - 测试GET:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      validations:
+        - type: eq
+          path: "$.url"
+          expect: "https://httpbin.org/get"
+          description: "验证URL"
+
+tags:
+  - "smoke"
+
+enabled: true

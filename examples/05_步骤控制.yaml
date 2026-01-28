@@ -1,0 +1,60 @@
+name: "步骤控制功能测试"
+description: "测试skip_if、only_if和depends_on功能"
+
+config:
+  timeout: 30
+  retry_times: 0
+  variables:
+    run_step3: "true"
+    run_step4: "false"
+
+steps:
+  - 步骤1_基础步骤:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  - 步骤2_总是执行:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  - 步骤3_条件执行:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      only_if: "{{run_step3}}"
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  - 步骤4_条件跳过:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      skip_if: "{{run_step4}}"
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  - 步骤5_依赖步骤1和2:
+      type: request
+      url: "https://httpbin.org/get"
+      method: GET
+      depends_on:
+        - 步骤1_基础步骤
+        - 步骤2_总是执行
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"

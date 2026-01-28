@@ -1,0 +1,60 @@
+# Sisyphus API Engine - Real API Test Example
+# Using httpbin.org for testing
+
+name: "HTTP API 测试"
+description: "使用 httpbin.org 测试 HTTP 功能"
+
+config:
+  name: "测试配置"
+  active_profile: "prod"
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+variables:
+  api_version: ""
+
+steps:
+  # 测试1: GET 请求
+  - 测试GET请求:
+      type: request
+      url: "{{config.profiles.prod.base_url}}/get"
+      method: GET
+      headers:
+        User-Agent: "Sisyphus-Test-Runner"
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+          description: "检查状态码为200"
+      extractors:
+        - name: response_url
+          type: jsonpath
+          path: "$.url"
+
+  # 测试2: POST 请求
+  - 测试POST请求:
+      type: request
+      url: "{{config.profiles.prod.base_url}}/post"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      body:
+        username: "testuser"
+        password: "testpass"
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+          description: "检查状态码为200"
+        - type: eq
+          path: "$.json.username"
+          expect: "testuser"
+          description: "验证用户名"
+
+tags:
+  - "smoke"
+  - "http"
+
+enabled: true
