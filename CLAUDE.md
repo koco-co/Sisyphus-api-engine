@@ -87,7 +87,7 @@ apirun/
 2. **环境变量** (profile_vars): 当前激活的 profile 变量
 3. **全局变量** (global_vars): config.variables 定义的变量
 
-变量渲染使用 Jinja2 语法：`{{variable_name}}`
+变量渲染使用 Jinja2 语法：`${variable_name}`
 
 ## YAML 协议规范
 
@@ -151,8 +151,8 @@ extractors:
 ### 模板渲染
 
 所有字符串字段在执行前都会经过 `VariableManager.render_string()` 处理，支持：
-- 变量引用：`{{variable_name}}`
-- 嵌套对象：`{{config.profiles.dev.base_url}}`
+- 变量引用：`${variable_name}`
+- 嵌套对象：`${config.profiles.dev.base_url}`
 - 条件表达式：Jinja2 的 `{% if %}` 语法
 
 ### 错误分类
@@ -255,4 +255,4 @@ config:
   variable_prefix: "data_"
 ```
 
-CSV 中的列将作为变量可用（如 `{{data_username}}`）。
+CSV 中的列将作为变量可用（如 `${data_username}`）。

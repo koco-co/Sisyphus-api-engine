@@ -31,7 +31,7 @@ steps:
       type: request
       url: "https://httpbin.org/get"
       method: GET
-      only_if: "{{run_step3}}"
+      only_if: "{{run_step3}"
       validations:
         - type: status_code
           path: "$.status_code"
@@ -41,7 +41,7 @@ steps:
       type: request
       url: "https://httpbin.org/get"
       method: GET
-      skip_if: "{{run_step4}}"
+      skip_if: "{{run_step4}"
       validations:
         - type: status_code
           path: "$.status_code"

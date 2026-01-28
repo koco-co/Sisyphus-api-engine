@@ -54,7 +54,7 @@ steps:
   # 步骤1: 用户登录成功
   - 用户登录成功:
       type: request
-      url: "{{config.profiles[config.active_profile].base_url}}/{{config.variables.api_version}}/user/login"
+      url: "${config.profiles[config.active_profile].base_url}/${config.variables.api_version}/user/login"
       method: POST
       headers:
         Content-Type: "application/json"
@@ -84,10 +84,10 @@ steps:
   # 步骤2: 获取用户信息
   - 获取用户信息:
       type: request
-      url: "{{config.profiles[config.active_profile].base_url}}/{{config.variables.api_version}}/user/info"
+      url: "${config.profiles[config.active_profile].base_url}/${config.variables.api_version}/user/info"
       method: GET
       headers:
-        Authorization: "Bearer {{token}}"
+        Authorization: "Bearer ${token}"
         Content-Type: "application/json"
       validations:
         - type: eq
@@ -104,10 +104,10 @@ steps:
   # 步骤3: 退出登录
   - 退出登录:
       type: request
-      url: "{{config.profiles[config.active_profile].base_url}}/{{config.variables.api_version}}/user/logout"
+      url: "${config.profiles[config.active_profile].base_url}/${config.variables.api_version}/user/logout"
       method: POST
       headers:
-        Authorization: "Bearer {{token}}"
+        Authorization: "Bearer ${token}"
         Content-Type: "application/json"
       validations:
         - type: eq

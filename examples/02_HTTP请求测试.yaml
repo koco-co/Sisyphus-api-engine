@@ -19,7 +19,7 @@ steps:
   # 测试1: GET 请求
   - 测试GET请求:
       type: request
-      url: "{{config.profiles.prod.base_url}}/get"
+      url: "${config.profiles.prod.base_url}/get"
       method: GET
       headers:
         User-Agent: "Sisyphus-Test-Runner"
@@ -36,7 +36,7 @@ steps:
   # 测试2: POST 请求
   - 测试POST请求:
       type: request
-      url: "{{config.profiles.prod.base_url}}/post"
+      url: "${config.profiles.prod.base_url}/post"
       method: POST
       headers:
         Content-Type: "application/json"

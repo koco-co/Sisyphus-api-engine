@@ -31,6 +31,8 @@ class TemplateRenderer:
             undefined=StrictUndefined if strict else None,
             trim_blocks=True,
             lstrip_blocks=True,
+            variable_start_string="${",
+            variable_end_string="}",
         )
         self._register_custom_filters()
 
@@ -51,7 +53,7 @@ class TemplateRenderer:
             return template_str
 
         # Quick return if no template syntax
-        if "{{" not in template_str and "{%" not in template_str:
+        if "${" not in template_str and "{%" not in template_str:
             return template_str
 
         try:

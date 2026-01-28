@@ -12,7 +12,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: script
       sql: |
         CREATE TABLE IF NOT EXISTS users (
@@ -27,7 +27,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: exec
       sql: "INSERT INTO users (username, email, age) VALUES (:username, :email, :age)"
       params:
@@ -39,7 +39,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: executemany
       sql: "INSERT INTO users (username, email, age) VALUES (:username, :email, :age)"
       params:
@@ -54,7 +54,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: query
       sql: "SELECT * FROM users WHERE age > :min_age"
       params:
@@ -77,7 +77,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: exec
       sql: "UPDATE users SET age = :new_age WHERE username = :username"
       params:
@@ -93,7 +93,7 @@ steps:
       type: database
       database:
         type: sqlite
-        path: "{{db_path}}"
+        path: "${db_path}"
       operation: exec
       sql: "DELETE FROM users WHERE username = :username"
       params:

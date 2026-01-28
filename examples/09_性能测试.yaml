@@ -16,7 +16,7 @@ steps:
   # 测试1: 简单 GET 请求的性能指标
   - 测试GET请求性能:
       type: request
-      url: "{{config.profiles.prod.base_url}}/get?test=performance"
+      url: "${config.profiles.prod.base_url}/get?test=performance"
       method: GET
       headers:
         User-Agent: "Sisyphus-Performance-Test"
@@ -29,7 +29,7 @@ steps:
   # 测试2: POST 请求的性能指标
   - 测试POST请求性能:
       type: request
-      url: "{{config.profiles.prod.base_url}}/post"
+      url: "${config.profiles.prod.base_url}/post"
       method: POST
       headers:
         Content-Type: "application/json"
@@ -49,7 +49,7 @@ steps:
   # 测试3: 带延迟的请求测试
   - 测试带延迟请求性能:
       type: request
-      url: "{{config.profiles.prod.base_url}}/delay/1"
+      url: "${config.profiles.prod.base_url}/delay/1"
       method: GET
       validations:
         - type: status_code
@@ -60,7 +60,7 @@ steps:
   # 测试4: 大响应数据测试
   - 测试大响应性能:
       type: request
-      url: "{{config.profiles.prod.base_url}}/bytes/10240"
+      url: "${config.profiles.prod.base_url}/bytes/10240"
       method: GET
       validations:
         - type: status_code
@@ -71,7 +71,7 @@ steps:
   # 测试5: HTTPS 请求测试 TLS 指标
   - 测试HTTPS请求性能:
       type: request
-      url: "{{config.profiles.prod.base_url}}/get"
+      url: "${config.profiles.prod.base_url}/get"
       method: GET
       validations:
         - type: status_code

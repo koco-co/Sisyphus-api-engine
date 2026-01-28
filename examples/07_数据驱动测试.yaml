@@ -19,9 +19,9 @@ steps:
       url: "https://httpbin.org/post"
       method: POST
       body:
-        username: "{{user_username}}"
-        email: "{{user_email}}"
-        age: "{{user_age}}"
+        username: "${user_username}"
+        email: "${user_email}"
+        age: "${user_age}"
       validations:
         - type: status_code
           path: "$.status_code"

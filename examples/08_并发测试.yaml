@@ -20,7 +20,7 @@ steps:
       concurrent_steps:
         - name: "并发请求1"
           type: request
-          url: "{{config.profiles.prod.base_url}}/get?test=1"
+          url: "${config.profiles.prod.base_url}/get?test=1"
           method: GET
           validations:
             - type: status_code
@@ -30,7 +30,7 @@ steps:
 
         - name: "并发请求2"
           type: request
-          url: "{{config.profiles.prod.base_url}}/get?test=2"
+          url: "${config.profiles.prod.base_url}/get?test=2"
           method: GET
           validations:
             - type: status_code
@@ -40,7 +40,7 @@ steps:
 
         - name: "并发请求3"
           type: request
-          url: "{{config.profiles.prod.base_url}}/get?test=3"
+          url: "${config.profiles.prod.base_url}/get?test=3"
           method: GET
           validations:
             - type: status_code
@@ -50,7 +50,7 @@ steps:
 
         - name: "并发请求4"
           type: request
-          url: "{{config.profiles.prod.base_url}}/get?test=4"
+          url: "${config.profiles.prod.base_url}/get?test=4"
           method: GET
           validations:
             - type: status_code
@@ -60,7 +60,7 @@ steps:
 
         - name: "并发请求5"
           type: request
-          url: "{{config.profiles.prod.base_url}}/get?test=5"
+          url: "${config.profiles.prod.base_url}/get?test=5"
           method: GET
           validations:
             - type: status_code
@@ -75,7 +75,7 @@ steps:
       concurrent_steps:
         - name: "POST请求"
           type: request
-          url: "{{config.profiles.prod.base_url}}/post"
+          url: "${config.profiles.prod.base_url}/post"
           method: POST
           headers:
             Content-Type: "application/json"
@@ -90,7 +90,7 @@ steps:
 
         - name: "PUT请求"
           type: request
-          url: "{{config.profiles.prod.base_url}}/put"
+          url: "${config.profiles.prod.base_url}/put"
           method: PUT
           headers:
             Content-Type: "application/json"
@@ -105,7 +105,7 @@ steps:
 
         - name: "DELETE请求"
           type: request
-          url: "{{config.profiles.prod.base_url}}/delete"
+          url: "${config.profiles.prod.base_url}/delete"
           method: DELETE
           validations:
             - type: status_code

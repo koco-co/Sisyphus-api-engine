@@ -171,6 +171,7 @@ Temporary Items
 *.tmp
 *.temp
 {{db_path}}
+${db_path}
 
 # Example output files
 examples/output/
