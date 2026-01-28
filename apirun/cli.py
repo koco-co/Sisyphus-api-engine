@@ -118,6 +118,27 @@ Examples:
         help="Enable debug mode with variable tracking",
     )
 
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=["text", "json"],
+        default="text",
+        help="Output format: text (default) or json",
+    )
+
+    parser.add_argument(
+        "--allure",
+        action="store_true",
+        help="Generate Allure report (saves to allure-results directory)",
+    )
+
+    parser.add_argument(
+        "--allure-dir",
+        type=str,
+        default="allure-results",
+        help="Allure results directory (default: allure-results)",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -136,7 +157,76 @@ Examples:
             args.override,
             args.debug,
             args.output,
+            args.format,
+            args.allure,
+            args.allure_dir,
         )
+
+        # Handle output based on format
+        if args.format == "json":
+            # Determine if we should output compact or full JSON
+            # Check verbose flag (from CLI or YAML config)
+            use_verbose = args.verbose
+            if not use_verbose and result.get("test_case", {}).get("config", {}).get("verbose"):
+                use_verbose = True
+
+            if use_verbose:
+                # Full JSON output (all information)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                # Compact JSON output (API responses only)
+                from apirun.result.collector import ResultCollector
+                from apirun.core.models import TestCaseResult
+
+                # Reconstruct TestCaseResult from dict (or we could store it)
+                # For simplicity, we'll output the compact version directly
+                compact_result = {
+                    "test_name": result["test_case"]["name"],
+                    "status": result["test_case"]["status"],
+                    "duration": result["test_case"]["duration"],
+                    "timestamp": result["test_case"]["start_time"],
+                    "statistics": result["statistics"],
+                    "api_responses": []
+                }
+
+                # Extract API responses from steps
+                for step in result.get("steps", []):
+                    if step.get("response"):
+                        response_data = {
+                            "step": step["name"],
+                            "status": step["status"],
+                            "step_index": len(compact_result["api_responses"]),
+                        }
+
+                        # Add response
+                        if "response" in step:
+                            response_data["response"] = step["response"]
+
+                        # Add status code if available
+                        if isinstance(step.get("response"), dict):
+                            if "status_code" in step["response"]:
+                                response_data["status_code"] = step["response"]["status_code"]
+                            if "body" in step["response"]:
+                                response_data["body"] = step["response"]["body"]
+
+                        # Add duration
+                        if step.get("start_time") and step.get("end_time"):
+                            from datetime import datetime
+                            start = datetime.fromisoformat(step["start_time"]) if isinstance(step["start_time"], str) else step["start_time"]
+                            end = datetime.fromisoformat(step["end_time"]) if isinstance(step["end_time"], str) else step["end_time"]
+                            duration = (end - start).total_seconds()
+                            response_data["duration"] = round(duration, 3)
+
+                        # Add error info if failed
+                        if step.get("error_info"):
+                            response_data["error"] = {
+                                "type": step["error_info"]["type"],
+                                "message": step["error_info"]["message"],
+                            }
+
+                        compact_result["api_responses"].append(response_data)
+
+                print(json.dumps(compact_result, ensure_ascii=False, indent=2))
 
         # Save result if output path specified (either in YAML or CLI)
         output_path = args.output
@@ -146,7 +236,8 @@ Examples:
 
         if output_path:
             save_result(result, output_path)
-            if args.verbose or result.get("test_case", {}).get("config", {}).get("verbose"):
+            # Only print save message in text mode
+            if args.format == "text" and (args.verbose or result.get("test_case", {}).get("config", {}).get("verbose")):
                 print(f"\nResults saved to: {output_path}")
 
         return 0
@@ -298,6 +389,7 @@ def execute_test_case(
     overrides: Optional[list] = None,
     debug: bool = False,
     output: Optional[str] = None,
+    format_type: str = "text",
 ) -> dict:
     """Execute test case and return results.
 
@@ -312,6 +404,7 @@ def execute_test_case(
         overrides: Configuration overrides (list of "key=value" strings)
         debug: Enable debug mode (overrides YAML config)
         output: Output file path (overrides YAML config)
+        format_type: Output format (text/json, overrides YAML config)
 
     Returns:
         Execution result as dictionary
@@ -346,6 +439,20 @@ def execute_test_case(
         if test_case.config.output is None:
             test_case.config.output = {}
         test_case.config.output["path"] = output
+
+    # Determine output format configuration
+    # Priority: CLI args > YAML config > defaults (text)
+    output_format = format_type
+    if test_case.config and test_case.config.output:
+        yaml_format = test_case.config.output.get("format", "text")
+        # Only use YAML config if CLI is default value
+        if format_type == "text" and yaml_format in ["text", "json"]:
+            output_format = yaml_format
+
+    # Store format in config for later use
+    if test_case.config.output is None:
+        test_case.config.output = {}
+    test_case.config.output["format"] = output_format
 
     # Parse key=value overrides
     override_dict = {}
@@ -542,76 +649,87 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
     Returns:
         Execution result as dictionary
     """
-    # Print test case info
-    print(f"Executing: {test_case.name}")
-    print(f"Description: {test_case.description}")
-    print(f"Steps: {len(test_case.steps)}")
+    # Check if output format is JSON
+    is_json_output = (
+        test_case.config
+        and test_case.config.output
+        and test_case.config.output.get("format") == "json"
+    )
+
+    # Only print in text mode
+    if not is_json_output:
+        # Print test case info
+        print(f"Executing: {test_case.name}")
+        print(f"Description: {test_case.description}")
+        print(f"Steps: {len(test_case.steps)}")
 
     # Execute test case
     executor = TestCaseExecutor(test_case, notifier=notifier)
     result = executor.execute()
 
-    # Print summary
-    print(f"\n{'='*60}")
-    print(f"Status: {result['test_case']['status'].upper()}")
-    print(f"Duration: {result['test_case']['duration']:.2f}s")
-    print(f"Statistics:")
-    print(f"  Total:   {result['statistics']['total_steps']}")
-    print(f"  Passed:  {result['statistics']['passed_steps']} ✓")
-    print(f"  Failed:  {result['statistics']['failed_steps']} ✗")
-    print(f"  Skipped: {result['statistics']['skipped_steps']} ⊘")
-    print(f"Pass Rate: {result['statistics']['pass_rate']:.1f}%")
-    print(f"{'='*60}")
+    # Only print summary in text mode
+    if not is_json_output:
+        # Print summary
+        print(f"\n{'='*60}")
+        print(f"Status: {result['test_case']['status'].upper()}")
+        print(f"Duration: {result['test_case']['duration']:.2f}s")
+        print(f"Statistics:")
+        print(f"  Total:   {result['statistics']['total_steps']}")
+        print(f"  Passed:  {result['statistics']['passed_steps']} ✓")
+        print(f"  Failed:  {result['statistics']['failed_steps']} ✗")
+        print(f"  Skipped: {result['statistics']['skipped_steps']} ⊘")
+        print(f"Pass Rate: {result['statistics']['pass_rate']:.1f}%")
+        print(f"{'='*60}")
 
-    # Print step results if verbose
-    if verbose:
-        print(f"\nStep Details:")
-        for step in result["steps"]:
-            status_icon = {
-                "success": "✓",
-                "failure": "✗",
-                "skipped": "⊘",
-                "error": "⚠",
-            }.get(step["status"], "?")
+        # Print step results if verbose
+        if verbose:
+            print(f"\nStep Details:")
+            for step in result["steps"]:
+                status_icon = {
+                    "success": "✓",
+                    "failure": "✗",
+                    "skipped": "⊘",
+                    "error": "⚠",
+                }.get(step["status"], "?")
 
-            print(f"\n  {status_icon} {step['name']}")
-            print(f"     Status: {step['status']}")
+                print(f"\n  {status_icon} {step['name']}")
+                print(f"     Status: {step['status']}")
 
-            if step.get("performance"):
-                perf = step["performance"]
-                total_time = perf.get("total_time", 0)
-                print(f"     Total Time: {total_time:.2f}ms")
+                if step.get("performance"):
+                    perf = step["performance"]
+                    total_time = perf.get("total_time", 0)
+                    print(f"     Total Time: {total_time:.2f}ms")
 
-                # Display detailed timing breakdown if available
-                dns_time = perf.get("dns_time", 0)
-                tcp_time = perf.get("tcp_time", 0)
-                tls_time = perf.get("tls_time", 0)
-                server_time = perf.get("server_time", 0)
-                download_time = perf.get("download_time", 0)
-                upload_time = perf.get("upload_time", 0)
+                    # Display detailed timing breakdown if available
+                    dns_time = perf.get("dns_time", 0)
+                    tcp_time = perf.get("tcp_time", 0)
+                    tls_time = perf.get("tls_time", 0)
+                    server_time = perf.get("server_time", 0)
+                    download_time = perf.get("download_time", 0)
+                    upload_time = perf.get("upload_time", 0)
 
-                if any([dns_time, tcp_time, tls_time, server_time, download_time, upload_time]):
-                    timing_details = []
-                    if dns_time > 0:
-                        timing_details.append(f"DNS: {dns_time:.2f}ms")
-                    if tcp_time > 0:
-                        timing_details.append(f"TCP: {tcp_time:.2f}ms")
-                    if tls_time > 0:
-                        timing_details.append(f"TLS: {tls_time:.2f}ms")
-                    if server_time > 0:
-                        timing_details.append(f"Server: {server_time:.2f}ms")
-                    if download_time > 0:
-                        timing_details.append(f"Download: {download_time:.2f}ms")
-                    if upload_time > 0:
-                        timing_details.append(f"Upload: {upload_time:.2f}ms")
+                    if any([dns_time, tcp_time, tls_time, server_time, download_time, upload_time]):
+                        timing_details = []
+                        if dns_time > 0:
+                            timing_details.append(f"DNS: {dns_time:.2f}ms")
+                        if tcp_time > 0:
+                            timing_details.append(f"TCP: {tcp_time:.2f}ms")
+                        if tls_time > 0:
+                            timing_details.append(f"TLS: {tls_time:.2f}ms")
+                        if server_time > 0:
+                            timing_details.append(f"Server: {server_time:.2f}ms")
+                        if download_time > 0:
+                            timing_details.append(f"Download: {download_time:.2f}ms")
+                        if upload_time > 0:
+                            timing_details.append(f"Upload: {upload_time:.2f}ms")
 
-                    print(f"     Breakdown: {' | '.join(timing_details)}")
+                        print(f"     Breakdown: {' | '.join(timing_details)}")
 
-                # Display size information
-                size = perf.get("size", 0)
-                if size > 0:
-                    size_kb = size / 1024
-                    print(f"     Size: {size} bytes ({size_kb:.2f} KB)")
+                    # Display size information
+                    size = perf.get("size", 0)
+                    if size > 0:
+                        size_kb = size / 1024
+                        print(f"     Size: {size} bytes ({size_kb:.2f} KB)")
 
             if step.get("response", {}).get("status_code"):
                 print(f"     Status Code: {step['response']['status_code']}")

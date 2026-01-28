@@ -283,3 +283,72 @@ class ResultCollector:
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
+
+    def to_compact_json(self, result: TestCaseResult) -> Dict[str, Any]:
+        """Convert result to compact JSON format (API responses only).
+
+        This format focuses on API responses and minimal test information.
+        Suitable for quick API testing and response extraction.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Compact JSON dictionary with API responses
+        """
+        compact_data = {
+            "test_name": result.name,
+            "status": result.status,
+            "duration": round(result.duration, 2),
+            "timestamp": result.start_time.isoformat() if result.start_time else None,
+            "api_responses": [],
+        }
+
+        # Add statistics
+        compact_data["statistics"] = {
+            "total": result.total_steps,
+            "passed": result.passed_steps,
+            "failed": result.failed_steps,
+            "skipped": result.skipped_steps,
+        }
+
+        # Process each step
+        for step_result in result.step_results:
+            # Only include steps that have responses (API requests)
+            if step_result.response:
+                response_data = {
+                    "step": step_result.name,
+                    "status": step_result.status,
+                    "step_index": len(compact_data["api_responses"]),
+                }
+
+                # Add response data (masked)
+                if step_result.response:
+                    response_data["response"] = self._mask_sensitive_data(
+                        step_result.response
+                    )
+
+                # Add status code if available
+                if isinstance(step_result.response, dict):
+                    if "status_code" in step_result.response:
+                        response_data["status_code"] = step_result.response[
+                            "status_code"
+                        ]
+                    if "body" in step_result.response:
+                        response_data["body"] = step_result.response["body"]
+
+                # Add duration if available
+                if step_result.start_time and step_result.end_time:
+                    duration = (step_result.end_time - step_result.start_time).total_seconds()
+                    response_data["duration"] = round(duration, 3)
+
+                # Add error info if failed
+                if step_result.error_info:
+                    response_data["error"] = {
+                        "type": step_result.error_info.type,
+                        "message": step_result.error_info.message,
+                    }
+
+                compact_data["api_responses"].append(response_data)
+
+        return compact_data
