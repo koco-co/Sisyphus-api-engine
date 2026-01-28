@@ -376,7 +376,39 @@ def _execute_single_test(test_case, verbose: bool = False) -> dict:
 
             if step.get("performance"):
                 perf = step["performance"]
-                print(f"     Time: {perf['total_time']:.2f}ms")
+                total_time = perf.get("total_time", 0)
+                print(f"     Total Time: {total_time:.2f}ms")
+
+                # Display detailed timing breakdown if available
+                dns_time = perf.get("dns_time", 0)
+                tcp_time = perf.get("tcp_time", 0)
+                tls_time = perf.get("tls_time", 0)
+                server_time = perf.get("server_time", 0)
+                download_time = perf.get("download_time", 0)
+                upload_time = perf.get("upload_time", 0)
+
+                if any([dns_time, tcp_time, tls_time, server_time, download_time, upload_time]):
+                    timing_details = []
+                    if dns_time > 0:
+                        timing_details.append(f"DNS: {dns_time:.2f}ms")
+                    if tcp_time > 0:
+                        timing_details.append(f"TCP: {tcp_time:.2f}ms")
+                    if tls_time > 0:
+                        timing_details.append(f"TLS: {tls_time:.2f}ms")
+                    if server_time > 0:
+                        timing_details.append(f"Server: {server_time:.2f}ms")
+                    if download_time > 0:
+                        timing_details.append(f"Download: {download_time:.2f}ms")
+                    if upload_time > 0:
+                        timing_details.append(f"Upload: {upload_time:.2f}ms")
+
+                    print(f"     Breakdown: {' | '.join(timing_details)}")
+
+                # Display size information
+                size = perf.get("size", 0)
+                if size > 0:
+                    size_kb = size / 1024
+                    print(f"     Size: {size} bytes ({size_kb:.2f} KB)")
 
             if step.get("response", {}).get("status_code"):
                 print(f"     Status Code: {step['response']['status_code']}")

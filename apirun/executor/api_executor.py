@@ -1,6 +1,7 @@
 """API Executor for Sisyphus API Engine.
 
-This module implements HTTP/HTTPS request execution.
+This module implements HTTP/HTTPS request execution with detailed
+performance metrics collection.
 Following Google Python Style Guide.
 """
 
@@ -12,6 +13,7 @@ from requests.exceptions import RequestException
 from apirun.executor.step_executor import StepExecutor
 from apirun.core.models import TestStep, PerformanceMetrics
 from apirun.validation.engine import ValidationEngine
+from apirun.utils.performance import PerformanceCollector, Timings
 
 
 class APIExecutor(StepExecutor):
@@ -25,11 +27,12 @@ class APIExecutor(StepExecutor):
     - File upload/download
     - Cookie/Session management
     - SSL verification
-    - Performance metrics collection
+    - Detailed performance metrics collection
 
     Attributes:
         session: Requests session instance
         validation_engine: Validation engine instance
+        performance_collector: Performance metrics collector
     """
 
     def __init__(
@@ -52,6 +55,12 @@ class APIExecutor(StepExecutor):
         super().__init__(variable_manager, step, timeout, retry_times, previous_results)
         self.session = requests.Session()
         self.validation_engine = ValidationEngine()
+        self.performance_collector = PerformanceCollector()
+
+        # Mount performance tracking adapter
+        adapter = self.performance_collector.get_adapter()
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
     def _execute_step(self, rendered_step: Dict[str, Any]) -> Any:
         """Execute HTTP request.
@@ -93,34 +102,37 @@ class APIExecutor(StepExecutor):
             else:
                 request_kwargs["data"] = body
 
-        # Execute request with performance tracking
-        start_time = time.time()
-        dns_start = time.time()
-
         try:
+            # Execute request with detailed performance tracking
             response = self.session.request(**request_kwargs)
-            end_time = time.time()
 
-            # Calculate performance metrics
-            total_time = (end_time - start_time) * 1000  # Convert to milliseconds
+            # Get detailed timings from performance collector
+            request_id = getattr(response, "request_id", None)
+            timings: Optional[Timings] = None
 
-            # For detailed timing, we would need lower-level libraries
-            # Using estimates for now
-            dns_time = min(total_time * 0.1, 50)
-            tcp_time = min(total_time * 0.15, 80)
-            tls_time = min(total_time * 0.2, 100) if url.startswith("https") else 0
-            server_time = min(total_time * 0.4, 200)
-            download_time = total_time - dns_time - tcp_time - tls_time - server_time
+            if request_id is not None:
+                timings = self.performance_collector.get_timings(request_id)
 
-            performance = PerformanceMetrics(
-                total_time=total_time,
-                dns_time=dns_time,
-                tcp_time=tcp_time,
-                tls_time=tls_time,
-                server_time=server_time,
-                download_time=download_time,
-                size=len(response.content),
-            )
+            # Create performance metrics
+            if timings:
+                performance = PerformanceMetrics(
+                    total_time=timings.total,
+                    dns_time=timings.dns,
+                    tcp_time=timings.tcp,
+                    tls_time=timings.tls,
+                    server_time=timings.server,
+                    download_time=timings.download,
+                    upload_time=timings.upload,
+                    size=len(response.content),
+                )
+            else:
+                # Fallback to basic timing if detailed collection failed
+                total_time = response.elapsed.total_seconds() * 1000 if hasattr(response, "elapsed") else 0
+
+                performance = PerformanceMetrics(
+                    total_time=total_time,
+                    size=len(response.content),
+                )
 
         except RequestException as e:
             raise RequestException(f"HTTP request failed: {e}")
