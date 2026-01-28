@@ -7,6 +7,7 @@ from apirun.executor.database_executor import DatabaseExecutor
 from apirun.executor.wait_executor import WaitExecutor
 from apirun.executor.loop_executor import LoopExecutor
 from apirun.executor.concurrent_executor import ConcurrentExecutor
+from apirun.executor.script_executor import ScriptExecutor
 
 __all__ = [
     "StepExecutor",
@@ -16,4 +17,5 @@ __all__ = [
     "WaitExecutor",
     "LoopExecutor",
     "ConcurrentExecutor",
+    "ScriptExecutor",
 ]

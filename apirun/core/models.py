@@ -177,6 +177,9 @@ class TestStep:
             - stop_on: List of error types to stop retrying on
         max_concurrency: Maximum number of concurrent threads (for concurrent steps)
         concurrent_steps: Steps to execute concurrently (for concurrent steps)
+        script: Script code to execute (for script steps)
+        script_type: Script language type (python/javascript, default: python)
+        allow_imports: Whether to allow module imports in scripts (default: true)
     """
 
     name: str
@@ -214,6 +217,10 @@ class TestStep:
     # Concurrent step fields
     max_concurrency: Optional[int] = None
     concurrent_steps: Optional[List[Dict[str, Any]]] = None
+    # Script step fields
+    script: Optional[str] = None
+    script_type: Optional[str] = None
+    allow_imports: Optional[bool] = None
 
 
 @dataclass

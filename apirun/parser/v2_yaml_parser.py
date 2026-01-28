@@ -275,6 +275,11 @@ class V2YamlParser:
         max_concurrency = step_details.get("max_concurrency")
         concurrent_steps = step_details.get("concurrent_steps")
 
+        # Parse script-specific fields
+        script = step_details.get("script")
+        script_type = step_details.get("script_type", "python")
+        allow_imports = step_details.get("allow_imports", True)
+
         # Parse validations
         validations = []
         validations_data = step_details.get("validations", [])
@@ -337,6 +342,9 @@ class V2YamlParser:
             retry_policy=retry_policy,
             max_concurrency=max_concurrency,
             concurrent_steps=concurrent_steps,
+            script=script,
+            script_type=script_type,
+            allow_imports=allow_imports,
         )
 
     def _parse_validation(self, val_data: Dict[str, Any]) -> Optional[ValidationRule]:
