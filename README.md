@@ -226,30 +226,54 @@ steps: []                     # 必填：测试步骤列表
 
 - **[07_数据驱动测试.yaml](examples/07_数据驱动测试.yaml)** - CSV 数据驱动
 
-### 🐍 Python 演示脚本
+### 📁 辅助目录
 
-- **[08_重试机制演示.py](examples/08_重试机制演示.py)** - 展示各种重试策略
-- **[09_等待循环演示.py](examples/09_等待循环演示.py)** - 展示等待和循环功能
+- **[demo_data/](examples/demo_data/)** - 测试数据文件（如 CSV）
+- **[demo_script/](examples/demo_script/)** - Python 演示脚本
 
 <details>
-<summary>查看完整示例列表</summary>
+<summary>查看完整示例列表和运行方式</summary>
+
+#### 目录结构
+
+```
+examples/
+├── 01_最简案例.yaml
+├── 02_HTTP请求测试.yaml
+├── 03_完整流程测试.yaml
+├── 04_数据库操作.yaml
+├── 05_步骤控制.yaml
+├── 06_等待和循环.yaml
+├── 07_数据驱动测试.yaml
+├── demo_data/
+│   └── 数据驱动测试.csv
+└── demo_script/
+    ├── 重试机制演示.py
+    └── 等待循环演示.py
+```
 
 #### 运行 YAML 测试用例
 
 ```bash
 # 验证所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-api-engine --validate "$file"
+    sisyphus-engine --validate "$file"
 done
 
 # 运行所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-api-engine --cases "$file"
+    sisyphus-engine --cases "$file"
 done
+```
 
-# 运行 Python 演示脚本
-python examples/08_重试机制演示.py
-python examples/09_等待循环演示.py
+#### 运行 Python 演示脚本
+
+```bash
+# 演示重试机制
+python examples/demo_script/重试机制演示.py
+
+# 演示等待和循环
+python examples/demo_script/等待循环演示.py
 ```
 
 #### 学习路径
@@ -261,8 +285,8 @@ python examples/09_等待循环演示.py
 5. 进阶 `05_步骤控制.yaml` 学习流程控制
 6. 掌握 `06_等待和循环.yaml` 处理异步场景
 7. 精通 `07_数据驱动测试.yaml` 实现数据驱动
-8. 运行 `08_重试机制演示.py` 深入理解重试机制
-9. 运行 `09_等待循环演示.py` 深入理解等待和循环
+8. 运行 `demo_script/重试机制演示.py` 深入理解重试机制
+9. 运行 `demo_script/等待循环演示.py` 深入理解等待和循环
 
 </details>
 
@@ -307,7 +331,7 @@ steps:
 config:
   data_source:
     type: csv
-    file_path: "test_data.csv"
+    file_path: "数据驱动测试.csv"
     delimiter: ","
     has_header: true
   data_iterations: true

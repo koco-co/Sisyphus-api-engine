@@ -108,7 +108,7 @@ teststeps:
     priority: "P0"
 
     # 数据驱动：从CSV/JSON文件读取多组数据
-    data_provider: "test_data/login_users.csv"
+    data_provider: "demo_data/login_users.csv"
 
     # 或内联数据
     # data_provider:
@@ -285,7 +285,7 @@ teststeps:
 
       # Multipart上传
       upload:
-        file: "test_data/avatar.jpg"
+        file: "demo_data/avatar.jpg"
         form_fields:
           type: "avatar"
           user_id: "${user_id}"
@@ -529,7 +529,7 @@ teststeps:
 
       # 或文件上传
       # upload:
-      #   file: "test_data/avatar.jpg"
+      #   file: "demo_data/avatar.jpg"
       #   form_fields:
       #     type: "avatar"
 
@@ -796,7 +796,7 @@ teststeps:
 teststeps:
   # 从文件读取
   - name: "批量登录测试"
-    data_provider: "test_data/login_users.csv"
+    data_provider: "demo_data/login_users.csv"
     # CSV格式：
     # username,password,expected
     # user1,pass1,200

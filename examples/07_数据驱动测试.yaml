@@ -7,7 +7,7 @@ config:
   data_iterations: true
   data_source:
     type: csv
-    file_path: "examples/test_data.csv"
+    file_path: "examples/demo_data/数据驱动测试.csv"
     delimiter: ","
     encoding: utf-8
     has_header: true

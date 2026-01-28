@@ -248,7 +248,7 @@ steps:
 config:
   data_source:
     type: csv
-    file_path: test_data.csv
+    file_path: 数据驱动测试.csv
     delimiter: ","
     has_header: true
   data_iterations: true

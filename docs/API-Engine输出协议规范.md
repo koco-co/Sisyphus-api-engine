@@ -108,7 +108,7 @@
 
       "data_provider": {
         "type": "csv",
-        "source": "test_data/login_users.csv",
+        "source": "demo_data/login_users.csv",
         "total_iterations": 3,
         "current_data": {
           "username": "user1",
@@ -860,7 +860,7 @@
 {
   "data_provider": {
     "type": "csv",                         // [csv, json, database, inline]
-    "source": "test_data/login_users.csv",
+    "source": "demo_data/login_users.csv",
     "total_iterations": 10,
     "current_iteration": 0,
     "current_data": {
