@@ -12,6 +12,7 @@ from apirun.executor.api_executor import APIExecutor
 from apirun.executor.database_executor import DatabaseExecutor
 from apirun.executor.wait_executor import WaitExecutor
 from apirun.executor.loop_executor import LoopExecutor
+from apirun.executor.concurrent_executor import ConcurrentExecutor
 from apirun.result.collector import ResultCollector
 
 
@@ -175,6 +176,10 @@ class TestCaseExecutor:
             )
         elif step.type == "loop":
             executor = LoopExecutor(
+                self.variable_manager, step, timeout, retry_times, previous_results
+            )
+        elif step.type == "concurrent":
+            executor = ConcurrentExecutor(
                 self.variable_manager, step, timeout, retry_times, previous_results
             )
         else:

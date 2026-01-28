@@ -271,6 +271,10 @@ class V2YamlParser:
         loop_variable = step_details.get("loop_variable")
         loop_steps = step_details.get("loop_steps")
 
+        # Parse concurrent-specific fields
+        max_concurrency = step_details.get("max_concurrency")
+        concurrent_steps = step_details.get("concurrent_steps")
+
         # Parse validations
         validations = []
         validations_data = step_details.get("validations", [])
@@ -331,6 +335,8 @@ class V2YamlParser:
             loop_variable=loop_variable,
             loop_steps=loop_steps,
             retry_policy=retry_policy,
+            max_concurrency=max_concurrency,
+            concurrent_steps=concurrent_steps,
         )
 
     def _parse_validation(self, val_data: Dict[str, Any]) -> Optional[ValidationRule]:

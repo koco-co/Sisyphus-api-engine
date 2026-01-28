@@ -175,6 +175,8 @@ class TestStep:
             - jitter: Whether to add random jitter
             - retry_on: List of error types to retry on
             - stop_on: List of error types to stop retrying on
+        max_concurrency: Maximum number of concurrent threads (for concurrent steps)
+        concurrent_steps: Steps to execute concurrently (for concurrent steps)
     """
 
     name: str
@@ -209,6 +211,9 @@ class TestStep:
     loop_steps: Optional[List[Dict[str, Any]]] = None
     # Retry policy fields
     retry_policy: Optional[Dict[str, Any]] = None
+    # Concurrent step fields
+    max_concurrency: Optional[int] = None
+    concurrent_steps: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
