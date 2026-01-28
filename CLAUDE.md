@@ -20,19 +20,19 @@ pip install -r requirements.txt  # 如果存在
 ### 运行测试用例
 ```bash
 # 基本运行
-sisyphus-engine --cases <yaml_file_path>
+sisyphus-api-engine --cases <yaml_file_path>
 
 # 详细输出
-sisyphus-engine --cases <yaml_file_path> -v
+sisyphus-api-engine --cases <yaml_file_path> -v
 
 # 保存结果到 JSON
-sisyphus-engine --cases <yaml_file_path> -o result.json
+sisyphus-api-engine --cases <yaml_file_path> -o result.json
 
 # 验证 YAML 语法（不执行）
-sisyphus-engine --validate <yaml_file_path>
+sisyphus-api-engine --validate <yaml_file_path>
 
 # 切换环境配置
-sisyphus-engine --cases <yaml_file_path> --profile staging
+sisyphus-api-engine --cases <yaml_file_path> --profile staging
 ```
 
 ### 运行单个测试文件

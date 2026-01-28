@@ -69,7 +69,8 @@ Repository = "https://github.com/koco-co/Sisyphus-api-engine"
 "Bug Tracker" = "https://github.com/koco-co/Sisyphus-api-engine/issues"
 
 [project.scripts]
-sisyphus-engine = "apirun.cli:main"
+sisyphus-api-engine = "apirun.cli:main"
+sisyphus-api-validate = "apirun.cli:validate_main"
 
 [tool.setuptools]
 zip-safe = false

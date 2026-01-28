@@ -95,10 +95,10 @@ pip install Sisyphus-api-engine
 
 ```bash
 # 查看版本
-sisyphus-engine --help
+sisyphus-api-engine --help
 
 # 运行示例测试
-sisyphus-engine --cases examples/01_最简案例.yaml
+sisyphus-api-engine --cases examples/01_最简案例.yaml
 ```
 
 ---
@@ -134,13 +134,13 @@ steps:
 
 ```bash
 # 基本运行
-sisyphus-engine --cases my_first_test.yaml
+sisyphus-api-engine --cases my_first_test.yaml
 
 # 详细输出
-sisyphus-engine --cases my_first_test.yaml -v
+sisyphus-api-engine --cases my_first_test.yaml -v
 
 # 保存结果
-sisyphus-engine --cases my_first_test.yaml -o result.json
+sisyphus-api-engine --cases my_first_test.yaml -o result.json
 ```
 
 ### 3. 查看结果
@@ -239,12 +239,12 @@ steps: []                     # 必填：测试步骤列表
 ```bash
 # 验证所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-engine --validate "$file"
+    sisyphus-api-engine --validate "$file"
 done
 
 # 运行所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-engine --cases "$file"
+    sisyphus-api-engine --cases "$file"
 done
 
 # 运行 Python 演示脚本
@@ -460,7 +460,7 @@ if step.type == "my_type":
 使用 `--profile` 参数：
 
 ```bash
-sisyphus-engine --cases test.yaml --profile staging
+sisyphus-api-engine --cases test.yaml --profile staging
 ```
 
 或在 YAML 中设置：
@@ -478,7 +478,7 @@ config:
 使用 `-v` 参数查看详细输出：
 
 ```bash
-sisyphus-engine --cases test.yaml -v
+sisyphus-api-engine --cases test.yaml -v
 ```
 
 这将显示每个步骤的详细信息，包括请求、响应、验证结果等。

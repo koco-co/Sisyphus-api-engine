@@ -29,16 +29,19 @@ def main() -> int:
         epilog="""
 Examples:
   # Run a test case
-  sisyphus-engine --cases test_case.yaml
+  sisyphus-api-engine --cases test_case.yaml
 
   # Run with verbose output
-  sisyphus-engine --cases test_case.yaml -v
+  sisyphus-api-engine --cases test_case.yaml -v
 
   # Run and save results to JSON
-  sisyphus-engine --cases test_case.yaml -o result.json
+  sisyphus-api-engine --cases test_case.yaml -o result.json
 
   # Validate YAML syntax
-  sisyphus-engine --validate test_case.yaml
+  sisyphus-api-engine --validate test_case.yaml
+
+  # Or use the dedicated validate command
+  sisyphus-api-validate test_case.yaml
         """,
     )
 
@@ -103,6 +106,89 @@ Examples:
             import traceback
 
             traceback.print_exc()
+        return 1
+
+
+def validate_main() -> int:
+    """CLI entry point for validation-only mode.
+
+    This is a dedicated command for validating YAML syntax without execution.
+
+    Returns:
+        Exit code (0 for valid, non-zero for invalid)
+    """
+    parser = argparse.ArgumentParser(
+        description="Sisyphus API Engine - YAML Validator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Validate a single file
+  sisyphus-api-validate test_case.yaml
+
+  # Validate all files in a directory
+  sisyphus-api-validate examples/
+
+  # Validate multiple files
+  sisyphus-api-validate test1.yaml test2.yaml test3.yaml
+        """,
+    )
+
+    parser.add_argument(
+        "paths",
+        type=str,
+        nargs="+",
+        help="Path(s) to YAML file(s) or directory",
+    )
+
+    args = parser.parse_args()
+
+    try:
+        all_valid = True
+        validator = V2YamlParser()
+
+        for path_str in args.paths:
+            path = Path(path_str)
+
+            if not path.exists():
+                print(f"Error: Path not found: {path_str}", file=sys.stderr)
+                all_valid = False
+                continue
+
+            if path.is_file():
+                yaml_files = [path]
+            elif path.is_dir():
+                yaml_files = list(path.glob("**/*.yaml"))
+                if not yaml_files:
+                    print(f"Warning: No YAML files found in {path_str}")
+                    continue
+            else:
+                print(f"Error: Invalid path: {path_str}", file=sys.stderr)
+                all_valid = False
+                continue
+
+            for yaml_file in yaml_files:
+                print(f"Validating: {yaml_file}")
+                errors = validator.validate_yaml(str(yaml_file))
+
+                if errors:
+                    all_valid = False
+                    print(f"  ❌ Validation failed:")
+                    for error in errors:
+                        print(f"    - {error}")
+                else:
+                    print(f"  ✓ Valid")
+
+        if all_valid:
+            print("\n✓ All YAML files are valid!")
+            return 0
+        else:
+            print("\n❌ Some YAML files have validation errors.")
+            return 1
+
+    except Exception as e:
+        print(f"Unexpected Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return 1
 
 

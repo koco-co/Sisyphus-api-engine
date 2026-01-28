@@ -86,7 +86,7 @@ check_environment() {
     fi
 
     # 检查 CLI 是否可用
-    if ! python -m apirun.cli --help &> /dev/null; then
+    if ! sisyphus-api-engine --help &> /dev/null; then
         log_error "CLI 不可用，请检查安装"
         exit 1
     fi
@@ -119,7 +119,7 @@ run_yaml_tests() {
         ((TOTAL_TESTS++))
 
         # 运行测试并捕获输出
-        if python -m apirun.cli --cases "$yaml_file" -v > /tmp/test_output_$$.txt 2>&1; then
+        if sisyphus-api-engine --cases "$yaml_file" -v > /tmp/test_output_$$.txt 2>&1; then
             # 测试通过
             PASSED_STATUS=$(grep -o "Status: PASSED" /tmp/test_output_$$.txt || echo "")
             if [ -n "$PASSED_STATUS" ]; then
