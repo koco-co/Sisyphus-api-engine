@@ -5,40 +5,63 @@ This module handles variable management including:
 - Profile-specific variables
 - Step-extracted variables
 - Variable rendering with Jinja2 templates
+- Variable tracking and change history
+- Environment variable integration
 
 Following Google Python Style Guide.
 """
 
 import re
 import copy
-from typing import Any, Dict, Optional
+import os
+from typing import Any, Dict, Optional, List
+from datetime import datetime
 from jinja2 import Environment, BaseLoader, TemplateError
 
 
 class VariableManager:
     """Manages test variables across different scopes.
 
-    Variables are organized in layers:
-    1. Global variables (lowest priority)
-    2. Profile variables
-    3. Step-extracted variables (highest priority)
+    Variables are organized in layers (from lowest to highest priority):
+    1. Global variables
+    2. Environment variables (OS environment variables)
+    3. Profile variables
+    4. Profile overrides (CLI or runtime overrides)
+    5. Step-extracted variables
 
     Attributes:
         global_vars: Global variable dictionary
         profile_vars: Active profile variables
         extracted_vars: Extracted variables from test steps
+        profile_overrides: Runtime profile overrides
+        env_vars_prefix: Prefix for environment variables to load
+        enable_tracking: Whether to track variable changes
+        change_history: History of variable changes
         _jinja_env: Jinja2 environment for template rendering
     """
 
-    def __init__(self, global_vars: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        global_vars: Optional[Dict[str, Any]] = None,
+        env_vars_prefix: Optional[str] = None,
+        enable_tracking: bool = False,
+    ):
         """Initialize VariableManager.
 
         Args:
             global_vars: Initial global variables
+            env_vars_prefix: Prefix for environment variables (e.g., "API_")
+            enable_tracking: Whether to track variable changes
         """
         self.global_vars = global_vars or {}
         self.profile_vars: Dict[str, Any] = {}
         self.extracted_vars: Dict[str, Any] = {}
+        self.profile_overrides: Dict[str, Any] = {}
+        self.env_vars_prefix = env_vars_prefix
+        self.enable_tracking = enable_tracking
+
+        # Variable change tracking
+        self.change_history: List[Dict[str, Any]] = []
 
         # Initialize Jinja2 environment with custom delimiters
         self._jinja_env = Environment(
@@ -216,6 +239,265 @@ class VariableManager:
             self.profile_vars = copy.deepcopy(snapshot["profile"])
         if "extracted" in snapshot:
             self.extracted_vars = copy.deepcopy(snapshot["extracted"])
+
+    def load_environment_variables(
+        self, prefix: Optional[str] = None, override: bool = False
+    ) -> Dict[str, Any]:
+        """Load variables from OS environment.
+
+        Args:
+            prefix: Environment variable prefix (e.g., "API_")
+                   If None, uses self.env_vars_prefix
+            override: Whether to override existing variables
+
+        Returns:
+            Dictionary of loaded environment variables
+        """
+        env_prefix = prefix or self.env_vars_prefix
+        loaded_vars = {}
+
+        for key, value in os.environ.items():
+            if env_prefix:
+                if key.startswith(env_prefix):
+                    var_name = key[len(env_prefix):].lower()
+                    loaded_vars[var_name] = value
+            else:
+                # Load all environment variables if no prefix
+                loaded_vars[key.lower()] = value
+
+        # Apply to profile_vars or profile_overrides based on override flag
+        if override:
+            self.profile_overrides.update(loaded_vars)
+        else:
+            self.profile_vars.update(loaded_vars)
+
+        return loaded_vars
+
+    def set_profile_override(
+        self, key: str, value: Any, context: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Set a profile override variable.
+
+        Override variables have higher priority than regular profile variables.
+
+        Args:
+            key: Variable name
+            value: Variable value
+            context: Optional context information for tracking
+        """
+        old_value = self.get_variable(key)
+        self.profile_overrides[key] = value
+
+        if self.enable_tracking:
+            self._track_change("override", key, old_value, value, context)
+
+    def set_profile_overrides(self, overrides: Dict[str, Any]) -> None:
+        """Set multiple profile override variables.
+
+        Args:
+            overrides: Dictionary of override variables
+        """
+        for key, value in overrides.items():
+            self.set_profile_override(key, value)
+
+    def clear_profile_overrides(self) -> None:
+        """Clear all profile override variables."""
+        self.profile_overrides.clear()
+
+    def get_variable_with_source(self, name: str, default: Any = None) -> tuple:
+        """Get variable value along with its source.
+
+        Args:
+            name: Variable name
+            default: Default value if not found
+
+        Returns:
+            Tuple of (value, source) where source is one of:
+            - "extracted"
+            - "override"
+            - "profile"
+            - "env"
+            - "global"
+            - "default"
+        """
+        # Check in priority order
+        if name in self.extracted_vars:
+            return self.extracted_vars[name], "extracted"
+        if name in self.profile_overrides:
+            return self.profile_overrides[name], "override"
+        if name in self.profile_vars:
+            return self.profile_vars[name], "profile"
+
+        # Check environment variables (after profile)
+        env_key = f"{self.env_vars_prefix}{name.upper()}" if self.env_vars_prefix else name.upper()
+        if env_key in os.environ:
+            return os.environ[env_key], "env"
+
+        if name in self.global_vars:
+            return self.global_vars[name], "global"
+
+        return default, "default"
+
+    def get_all_variables(self) -> Dict[str, Any]:
+        """Get all variables merged (extracted > override > profile > env > global).
+
+        Note: Environment variables are not merged into this dict as they are
+        checked separately in get_variable_with_source().
+
+        Returns:
+            Merged variable dictionary
+        """
+        merged = copy.deepcopy(self.global_vars)
+        merged.update(self.profile_vars)
+        merged.update(self.profile_overrides)
+        merged.update(self.extracted_vars)
+
+        return merged
+
+    def compute_delta(self, before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+        """Compute variable changes between two states.
+
+        Args:
+            before: Variable state before execution
+            after: Variable state after execution
+
+        Returns:
+            Dictionary with changes in format:
+            {
+                "added": {"var_name": value},
+                "modified": {"var_name": {"old": old_value, "new": new_value}},
+                "deleted": {"var_name": old_value}
+            }
+        """
+        delta = {
+            "added": {},
+            "modified": {},
+            "deleted": {}
+        }
+
+        # Find added and modified variables
+        for key, value in after.items():
+            if key not in before:
+                delta["added"][key] = value
+            elif before[key] != value:
+                delta["modified"][key] = {
+                    "old": before[key],
+                    "new": value
+                }
+
+        # Find deleted variables
+        for key in before:
+            if key not in after:
+                delta["deleted"][key] = before[key]
+
+        return delta
+
+    def _track_change(
+        self,
+        source: str,
+        var_name: str,
+        old_value: Any,
+        new_value: Any,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Track a variable change.
+
+        Args:
+            source: Source of change (extract/override/profile/global)
+            var_name: Variable name
+            old_value: Old variable value
+            new_value: New variable value
+            context: Additional context (step_name, etc.)
+        """
+        if not self.enable_tracking:
+            return
+
+        change_record = {
+            "timestamp": datetime.now().isoformat(),
+            "source": source,
+            "variable": var_name,
+            "old_value": old_value,
+            "new_value": new_value,
+            "context": context or {},
+        }
+
+        self.change_history.append(change_record)
+
+    def get_change_history(
+        self, variable_name: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Get variable change history.
+
+        Args:
+            variable_name: Filter by variable name (None for all)
+            limit: Maximum number of records to return (None for all)
+
+        Returns:
+            List of change records
+        """
+        history = self.change_history
+
+        if variable_name:
+            history = [record for record in history if record["variable"] == variable_name]
+
+        if limit:
+            history = history[-limit:]
+
+        return history
+
+    def clear_change_history(self) -> None:
+        """Clear all change history."""
+        self.change_history.clear()
+
+    def get_debug_info(self) -> Dict[str, Any]:
+        """Get detailed debug information about all variables.
+
+        Returns:
+            Dictionary with variable sources and metadata
+        """
+        debug_info = {
+            "global_vars": self.global_vars.copy(),
+            "profile_vars": self.profile_vars.copy(),
+            "profile_overrides": self.profile_overrides.copy(),
+            "extracted_vars": self.extracted_vars.copy(),
+            "env_vars_prefix": self.env_vars_prefix,
+            "tracking_enabled": self.enable_tracking,
+            "change_history_count": len(self.change_history),
+        }
+
+        # Add environment variables if prefix is set
+        if self.env_vars_prefix:
+            debug_info["environment_variables"] = {}
+            for key, value in os.environ.items():
+                if key.startswith(self.env_vars_prefix):
+                    debug_info["environment_variables"][key] = value
+
+        return debug_info
+
+    def export_variables(
+        self, include_source: bool = False, include_env: bool = False
+    ) -> Dict[str, Any]:
+        """Export all variables in a structured format.
+
+        Args:
+            include_source: Whether to include variable source information
+            include_env: Whether to include environment variables
+
+        Returns:
+            Structured export of all variables
+        """
+        if include_source:
+            exported = {}
+            all_vars = self.get_all_variables()
+            for var_name in all_vars:
+                value, source = self.get_variable_with_source(var_name)
+                exported[var_name] = {
+                    "value": value,
+                    "source": source
+                }
+            return exported
+        else:
+            return self.get_all_variables()
 
 
 class VariableScope:

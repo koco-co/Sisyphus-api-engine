@@ -4,6 +4,7 @@ This module implements the main test case execution scheduler.
 Following Google Python Style Guide.
 """
 
+import asyncio
 from typing import Optional
 
 from apirun.core.models import TestCase, TestStep, GlobalConfig, ProfileConfig
@@ -26,22 +27,26 @@ class TestCaseExecutor:
     - Schedules and executes steps
     - Collects results
     - Handles errors
+    - Supports optional WebSocket real-time notifications
 
     Attributes:
         test_case: Test case to execute
         variable_manager: Variable manager instance
         result_collector: Result collector instance
+        notifier: Optional WebSocket notifier for real-time updates
     """
 
-    def __init__(self, test_case: TestCase):
+    def __init__(self, test_case: TestCase, notifier: Optional["WebSocketNotifier"] = None):
         """Initialize TestCaseExecutor.
 
         Args:
             test_case: Test case to execute
+            notifier: Optional WebSocket notifier for real-time updates
         """
         self.test_case = test_case
         self.variable_manager = VariableManager()
         self.result_collector = ResultCollector()
+        self.notifier = notifier
 
     def execute(self) -> dict:
         """Execute the test case.
@@ -49,6 +54,15 @@ class TestCaseExecutor:
         Returns:
             v2.0 compliant JSON result dictionary
         """
+        import time
+        from datetime import datetime
+
+        start_time = datetime.now()
+
+        # Notify test start
+        if self.notifier:
+            self._run_async(self.notifier.notify_test_start(self.test_case))
+
         # Initialize global variables
         self._initialize_variables()
 
@@ -61,9 +75,26 @@ class TestCaseExecutor:
         # Execute steps
         step_results = []
         for i, step in enumerate(self.test_case.steps):
+            # Notify step start
+            if self.notifier:
+                self._run_async(
+                    self.notifier.notify_step_start(
+                        step_name=step.name,
+                        step_type=step.type,
+                        step_index=i,
+                        total_steps=len(self.test_case.steps),
+                    )
+                )
+
             # Pass previous step results for dependency checking
             step_result = self._execute_step(step, step_results)
             step_results.append(step_result)
+
+            # Notify step complete
+            if self.notifier:
+                self._run_async(
+                    self.notifier.notify_step_complete(i, step_result)
+                )
 
             # Stop on failure (or continue based on config)
             if step_result.status == "failure":
@@ -77,7 +108,42 @@ class TestCaseExecutor:
         # Collect results
         result = self.result_collector.collect(self.test_case, step_results)
 
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+
+        # Notify test complete
+        if self.notifier:
+            self._run_async(
+                self.notifier.notify_test_complete(
+                    test_case=self.test_case,
+                    status=result.status,
+                    total_steps=result.total_steps,
+                    passed_steps=result.passed_steps,
+                    failed_steps=result.failed_steps,
+                    skipped_steps=result.skipped_steps,
+                    duration=duration,
+                )
+            )
+
         return self.result_collector.to_v2_json(result)
+
+    def _run_async(self, coro):
+        """Run an async coroutine in the sync context.
+
+        Args:
+            coro: Coroutine to run
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is already running, create task
+                asyncio.create_task(coro)
+            else:
+                # If loop is not running, run the coroutine
+                loop.run_until_complete(coro)
+        except RuntimeError:
+            # No event loop, create a new one and run
+            asyncio.run(coro)
 
     def _initialize_variables(self) -> None:
         """Initialize global variables from config."""

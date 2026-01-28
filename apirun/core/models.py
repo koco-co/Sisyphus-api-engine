@@ -42,12 +42,16 @@ class ProfileConfig:
         variables: Environment-specific variables
         timeout: Default timeout for requests
         verify_ssl: Whether to verify SSL certificates
+        overrides: Configuration overrides from environment variables or CLI
+        priority: Variable priority level (higher values take precedence)
     """
 
     base_url: str
     variables: Dict[str, Any] = field(default_factory=dict)
     timeout: int = 30
     verify_ssl: bool = True
+    overrides: Dict[str, Any] = field(default_factory=dict)
+    priority: int = 0
 
 
 @dataclass
@@ -76,6 +80,13 @@ class GlobalConfig:
             - sql: SQL query (for database)
         data_iterations: Whether to iterate over data source (default: False)
         variable_prefix: Prefix for data variables (default: "")
+        websocket: WebSocket configuration for real-time push
+            - enabled: Whether to enable WebSocket server
+            - host: WebSocket server host (default: "localhost")
+            - port: WebSocket server port (default: 8765)
+            - send_progress: Whether to send progress events (default: true)
+            - send_logs: Whether to send log events (default: true)
+            - send_variables: Whether to send variable update events (default: false)
     """
 
     name: str
@@ -90,6 +101,7 @@ class GlobalConfig:
     data_source: Optional[Dict[str, Any]] = None
     data_iterations: bool = False
     variable_prefix: str = ""
+    websocket: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -258,6 +270,10 @@ class ErrorInfo:
         message: Error message
         suggestion: Suggested fix for the error
         stack_trace: Full stack trace
+        context: Additional context information (variables, step name, etc.)
+        timestamp: When the error occurred
+        severity: Error severity (critical/high/medium/low)
+        error_code: Machine-readable error code
     """
 
     type: str
@@ -265,6 +281,10 @@ class ErrorInfo:
     message: str
     suggestion: str = ""
     stack_trace: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    timestamp: Optional[datetime] = None
+    severity: str = "medium"
+    error_code: str = ""
 
 
 @dataclass
@@ -309,6 +329,8 @@ class StepResult:
         retry_count: Number of retries performed
         variables_snapshot: Variable state before execution
         retry_history: Detailed retry attempt history
+        variables_delta: Variable changes during execution (before -> after)
+        variables_after: Variable state after execution
     """
 
     name: str
@@ -323,6 +345,8 @@ class StepResult:
     retry_count: int = 0
     variables_snapshot: Dict[str, Any] = field(default_factory=dict)
     retry_history: List[Dict[str, Any]] = field(default_factory=list)
+    variables_delta: Dict[str, Any] = field(default_factory=dict)
+    variables_after: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

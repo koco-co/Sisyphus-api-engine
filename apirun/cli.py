@@ -7,6 +7,7 @@ Following Google Python Style Guide.
 import argparse
 import json
 import sys
+import asyncio
 from typing import Optional
 from pathlib import Path
 
@@ -78,6 +79,45 @@ Examples:
         help="Active profile name (overrides config)",
     )
 
+    parser.add_argument(
+        "--ws-server",
+        action="store_true",
+        help="Enable WebSocket server for real-time updates",
+    )
+
+    parser.add_argument(
+        "--ws-host",
+        type=str,
+        default="localhost",
+        help="WebSocket server host (default: localhost)",
+    )
+
+    parser.add_argument(
+        "--ws-port",
+        type=int,
+        default=8765,
+        help="WebSocket server port (default: 8765)",
+    )
+
+    parser.add_argument(
+        "--env-prefix",
+        type=str,
+        help="Environment variable prefix to load (e.g., 'API_')",
+    )
+
+    parser.add_argument(
+        "--override",
+        type=str,
+        action="append",
+        help="Configuration overrides in format 'key=value' (can be used multiple times)",
+    )
+
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode with variable tracking",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -85,7 +125,17 @@ Examples:
             return validate_yaml(args.cases)
 
         # Execute test case
-        result = execute_test_case(args.cases, args.verbose, args.profile)
+        result = execute_test_case(
+            args.cases,
+            args.verbose,
+            args.profile,
+            args.ws_server,
+            args.ws_host,
+            args.ws_port,
+            args.env_prefix,
+            args.override,
+            args.debug,
+        )
 
         if args.output:
             save_result(result, args.output)
@@ -231,7 +281,15 @@ def validate_yaml(case_path: str) -> int:
 
 
 def execute_test_case(
-    case_path: str, verbose: bool = False, profile: Optional[str] = None
+    case_path: str,
+    verbose: bool = False,
+    profile: Optional[str] = None,
+    ws_server: bool = False,
+    ws_host: str = "localhost",
+    ws_port: int = 8765,
+    env_prefix: Optional[str] = None,
+    overrides: Optional[list] = None,
+    debug: bool = False,
 ) -> dict:
     """Execute test case and return results.
 
@@ -239,6 +297,12 @@ def execute_test_case(
         case_path: Path to YAML file
         verbose: Enable verbose output
         profile: Active profile name (overrides config)
+        ws_server: Enable WebSocket server for real-time updates
+        ws_host: WebSocket server host
+        ws_port: WebSocket server port
+        env_prefix: Environment variable prefix
+        overrides: Configuration overrides (list of "key=value" strings)
+        debug: Enable debug mode
 
     Returns:
         Execution result as dictionary
@@ -251,6 +315,45 @@ def execute_test_case(
     if profile and test_case.config:
         test_case.config.active_profile = profile
 
+    # Parse overrides
+    override_dict = {}
+    if overrides:
+        for override in overrides:
+            if "=" in override:
+                key, value = override.split("=", 1)
+                override_dict[key] = value
+
+    # Apply overrides to test case config
+    if override_dict and test_case.config:
+        for key, value in override_dict.items():
+            if hasattr(test_case.config, key):
+                setattr(test_case.config, key, value)
+            elif test_case.config.active_profile in test_case.config.profiles:
+                setattr(test_case.config.profiles[test_case.config.active_profile], key, value)
+
+    # Determine WebSocket configuration
+    # Priority: CLI args > YAML config > defaults
+    ws_config_enabled = ws_server
+    ws_config_host = ws_host
+    ws_config_port = ws_port
+
+    # Read from YAML config if available
+    if test_case.config and test_case.config.websocket:
+        yaml_ws = test_case.config.websocket
+        # Only use YAML config if CLI args are not explicitly set
+        if not ws_server and yaml_ws.get("enabled", False):
+            ws_config_enabled = True
+        if ws_host == "localhost":  # Default value, check if YAML has custom value
+            ws_config_host = yaml_ws.get("host", "localhost")
+        if ws_port == 8765:  # Default value, check if YAML has custom value
+            ws_config_port = yaml_ws.get("port", 8765)
+
+    # Check if WebSocket server mode is enabled
+    if ws_config_enabled:
+        return _execute_with_websocket(
+            test_case, verbose, ws_config_host, ws_config_port, yaml_ws_config=test_case.config.websocket if test_case.config else None
+        )
+
     # Check if data-driven testing is enabled
     if (
         test_case.config
@@ -260,6 +363,73 @@ def execute_test_case(
         return _execute_data_driven_test(test_case, verbose)
     else:
         return _execute_single_test(test_case, verbose)
+
+
+def _execute_with_websocket(
+    test_case, verbose: bool = False, ws_host: str = "localhost", ws_port: int = 8765, yaml_ws_config: dict = None
+) -> dict:
+    """Execute test case with WebSocket server enabled.
+
+    Args:
+        test_case: Test case to execute
+        verbose: Enable verbose output
+        ws_host: WebSocket server host
+        ws_port: WebSocket server port
+        yaml_ws_config: WebSocket configuration from YAML
+
+    Returns:
+        Execution result as dictionary
+    """
+    from apirun.websocket.server import WebSocketServer
+    from apirun.websocket.broadcaster import EventBroadcaster
+    from apirun.websocket.notifier import WebSocketNotifier
+
+    # Merge YAML config with defaults (YAML config takes priority)
+    ws_settings = yaml_ws_config or {}
+    enable_progress = ws_settings.get("send_progress", True)
+    enable_logs = ws_settings.get("send_logs", True)
+    enable_variables = ws_settings.get("send_variables", False)
+
+    async def run_test_with_ws():
+        """Async function to run WebSocket server and test execution."""
+        # Create WebSocket server and broadcaster
+        server = WebSocketServer(host=ws_host, port=ws_port)
+        broadcaster = EventBroadcaster(server=server)
+
+        # Start server and broadcaster
+        await server.start()
+        await broadcaster.start()
+
+        print(f"WebSocket server started at ws://{ws_host}:{ws_port}")
+        print("Connect a WebSocket client to receive real-time updates.")
+        print("Press Ctrl+C to stop the server.\n")
+
+        try:
+            # Create notifier with config from YAML
+            notifier = WebSocketNotifier(
+                broadcaster=broadcaster,
+                test_case_id=test_case.name,
+                enable_progress=enable_progress,
+                enable_logs=enable_logs,
+                enable_variables=enable_variables,
+            )
+
+            # Execute test case with notifier
+            result = _execute_single_test(test_case, verbose, notifier=notifier)
+
+            # Wait a bit for final messages to be sent
+            await asyncio.sleep(0.5)
+
+            return result
+
+        finally:
+            # Stop broadcaster and server
+            await broadcaster.stop()
+            await server.stop()
+            print(f"\nWebSocket server stopped.")
+
+    # Run the async function
+    return asyncio.run(run_test_with_ws())
 
 
 def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
@@ -295,7 +465,7 @@ def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
         if verbose:
             print(f"Data: {data_row}")
 
-        result = _execute_single_test(augmented_test_case, verbose)
+        result = _execute_single_test(augmented_test_case, verbose, notifier=None)
         all_results.append(result)
 
         # Update statistics
@@ -329,12 +499,13 @@ def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
     return aggregated_result
 
 
-def _execute_single_test(test_case, verbose: bool = False) -> dict:
+def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dict:
     """Execute single test case.
 
     Args:
         test_case: Test case to execute
         verbose: Enable verbose output
+        notifier: Optional WebSocket notifier for real-time updates
 
     Returns:
         Execution result as dictionary
@@ -345,7 +516,7 @@ def _execute_single_test(test_case, verbose: bool = False) -> dict:
     print(f"Steps: {len(test_case.steps)}")
 
     # Execute test case
-    executor = TestCaseExecutor(test_case)
+    executor = TestCaseExecutor(test_case, notifier=notifier)
     result = executor.execute()
 
     # Print summary

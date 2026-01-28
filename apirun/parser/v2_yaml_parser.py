@@ -212,6 +212,9 @@ class V2YamlParser:
         data_iterations = config_data.get("data_iterations", False)
         variable_prefix = config_data.get("variable_prefix", "")
 
+        # Parse WebSocket configuration
+        websocket = config_data.get("websocket")
+
         return GlobalConfig(
             name=name,
             description=description,
@@ -225,6 +228,7 @@ class V2YamlParser:
             data_source=data_source,
             data_iterations=data_iterations,
             variable_prefix=variable_prefix,
+            websocket=websocket,
         )
 
     def _parse_step(self, step_data: Dict[str, Any]) -> Optional[TestStep]:
