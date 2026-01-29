@@ -1,10 +1,9 @@
 # Sisyphus API Engine
 
-<div align="center">
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
 ![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.0.0-orange)
+![Version](https://img.shields.io/badge/version-1.0.1-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
@@ -12,8 +11,6 @@
 基于 YAML 的声明式测试框架，支持复杂的 API 测试场景
 
 [功能特性](#-功能特性) • [快速开始](#-快速开始) • [文档](#-文档) • [示例](#-示例)
-
-</div>
 
 ---
 
@@ -314,7 +311,7 @@ done
 19. 实践 `19_Mock服务器测试.yaml` 理解 Mock 服务
 20. 学习 `20_WebSocket实时推送.yaml` 掌握实时推送
 21. 通过 `21_性能测试.yaml` 理解性能测试
-22. 最后学习 `00_最佳实践.yaml` 掌握生产级实践
+22. 最后学习 `22_最佳实践.yaml` 掌握生产级实践
 
 </details>
 
@@ -649,9 +646,6 @@ config:
 
 ---
 
-<div align="center">
 **如果这个项目对你有帮助，请给个 ⭐️ Star！**
 
 Made with ❤️ by koco-co
-
-</div>
