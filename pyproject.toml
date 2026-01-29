@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Sisyphus-api-engine"
-version = "1.0.0"
+version = "1.0.1"
 description = "Sisyphus - Enterprise-grade API Automation Testing Engine"
 readme = "README.md"
 license = {text = "MIT"}
@@ -15,7 +15,7 @@ authors = [
 maintainers = [
     {name = "koco-co", email = "kopohub@gmail.com"}
 ]
-keywords = ["api", "testing", "automation", "yaml", "json", "mock", "concurrent"]
+keywords = ["api", "testing", "automation", "yaml", "json", "mock", "concurrent", "allure", "websocket", "ddt", "data-driven"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
