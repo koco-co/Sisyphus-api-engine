@@ -66,6 +66,11 @@ class VariableManager:
         # Variable change tracking
         self.change_history: List[Dict[str, Any]] = []
 
+        # Performance optimization: cache for merged variables
+        self._cache: Dict[str, Any] = {}
+        self._cache_dirty: bool = True
+        self._cache_version: int = 0
+
         # Initialize Jinja2 environment with custom delimiters and built-in functions
         self._jinja_env = Environment(
             loader=BaseLoader(),
@@ -77,6 +82,11 @@ class VariableManager:
         template_functions = get_template_functions(self)
         self._jinja_env.globals.update(template_functions)
 
+    def _invalidate_cache(self) -> None:
+        """Invalidate the variable cache."""
+        self._cache_dirty = True
+        self._cache_version += 1
+
     def set_profile(self, profile_vars: Dict[str, Any]) -> None:
         """Set active profile variables.
 
@@ -84,6 +94,7 @@ class VariableManager:
             profile_vars: Profile-specific variables
         """
         self.profile_vars = profile_vars
+        self._invalidate_cache()
 
     def set_variable(self, name: str, value: Any) -> None:
         """Set a variable.
@@ -93,6 +104,7 @@ class VariableManager:
             value: Variable value
         """
         self.extracted_vars[name] = value
+        self._invalidate_cache()
 
     def get_variable(self, name: str, default: Any = None) -> Any:
         """Get a variable value.
@@ -225,13 +237,16 @@ class VariableManager:
     def snapshot(self) -> Dict[str, Any]:
         """Create a snapshot of current variable state.
 
+        Performance: Uses optimized copy strategy - shallow copy for most cases.
+
         Returns:
-            Deep copy of all variables
+            Copy of all variables
         """
         return {
-            "global": copy.deepcopy(self.global_vars),
-            "profile": copy.deepcopy(self.profile_vars),
-            "extracted": copy.deepcopy(self.extracted_vars),
+            "global": self.global_vars.copy(),
+            "profile": self.profile_vars.copy(),
+            "extracted": self.extracted_vars.copy(),
+            "cache_version": self._cache_version,
         }
 
     def restore_snapshot(self, snapshot: Dict[str, Any]) -> None:
@@ -241,11 +256,14 @@ class VariableManager:
             snapshot: Snapshot from snapshot() method
         """
         if "global" in snapshot:
-            self.global_vars = copy.deepcopy(snapshot["global"])
+            self.global_vars = snapshot["global"].copy()
         if "profile" in snapshot:
-            self.profile_vars = copy.deepcopy(snapshot["profile"])
+            self.profile_vars = snapshot["profile"].copy()
         if "extracted" in snapshot:
-            self.extracted_vars = copy.deepcopy(snapshot["extracted"])
+            self.extracted_vars = snapshot["extracted"].copy()
+
+        # Invalidate cache since variables changed
+        self._invalidate_cache()
 
     def load_environment_variables(
         self, prefix: Optional[str] = None, override: bool = False
@@ -351,13 +369,28 @@ class VariableManager:
         Note: Environment variables are not merged into this dict as they are
         checked separately in get_variable_with_source().
 
+        Performance: Uses caching to avoid repeated deep copies.
+
         Returns:
             Merged variable dictionary
         """
-        merged = copy.deepcopy(self.global_vars)
+        # Return cached result if available and not dirty
+        if not self._cache_dirty and self._cache:
+            return self._cache
+
+        # Build merged dictionary with shallow copies (faster than deepcopy)
+        merged = {}
+
+        # Merge in priority order (lowest to highest)
+        # Only do shallow copy for the base
+        merged.update(self.global_vars)
         merged.update(self.profile_vars)
         merged.update(self.profile_overrides)
         merged.update(self.extracted_vars)
+
+        # Cache the result
+        self._cache = merged
+        self._cache_dirty = False
 
         return merged
 
