@@ -230,6 +230,41 @@ class JSONExporter:
             "suggestion": error_info.suggestion,
         }
 
+    def _filter_non_serializable(self, obj: Any) -> Any:
+        """Filter out non-serializable objects.
+
+        Args:
+            obj: Object to filter
+
+        Returns:
+            Filtered object or placeholder string
+        """
+        import types
+
+        # Check for non-serializable types
+        if isinstance(obj, (types.ModuleType, types.FunctionType, type(lambda: None))):
+            return f"<{type(obj).__name__}: {getattr(obj, '__name__', 'N/A')}>"
+
+        if isinstance(obj, dict):
+            return {k: self._filter_non_serializable(v) for k, v in obj.items()}
+
+        if isinstance(obj, list):
+            return [self._filter_non_serializable(item) for item in obj]
+
+        if isinstance(obj, tuple):
+            return tuple(self._filter_non_serializable(item) for item in obj)
+
+        if isinstance(obj, set):
+            return {self._filter_non_serializable(item) for item in obj}
+
+        # For other types, try to serialize
+        try:
+            import json
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            return f"<{type(obj).__name__}>"
+
     def _mask_variables(self, variables: Dict[str, Any]) -> Dict[str, Any]:
         """Mask sensitive variables.
 
@@ -239,11 +274,14 @@ class JSONExporter:
         Returns:
             Masked variable dictionary
         """
+        # First filter non-serializable objects
+        filtered = self._filter_non_serializable(variables)
+
         if not self.mask_sensitive:
-            return variables
+            return filtered
 
         masked = {}
-        for key, value in variables.items():
+        for key, value in filtered.items():
             if any(pattern in key.lower() for pattern in self.sensitive_patterns):
                 masked[key] = "***"
             else:
