@@ -1,0 +1,51 @@
+name: "Allure报告格式示例"
+description: "演示如何配置生成Allure测试报告"
+
+config:
+  name: "Allure报告配置"
+  timeout: 30
+
+  # 输出配置
+  output:
+    format: text              # 输出格式：text（默认）或 json
+    allure: true               # 启用Allure报告生成
+    allure_dir: "allure-results"  # Allure结果目录
+
+steps:
+  # 步骤1: 成功的GET请求
+  - name: "获取用户信息"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get"
+    validations:
+      - type: status_code
+        expect: 200
+        description: "验证HTTP状态码为200"
+
+  # 步骤2: 失败的POST请求（演示错误处理）
+  - name: "创建用户（故意失败）"
+    type: request
+    method: POST
+    url: "https://httpbin.org/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      name: "测试用户"
+      role: "admin"
+    validations:
+      - type: status_code
+        expect: 201  # 故意设置为201，实际返回200
+        description: "验证HTTP状态码为201"
+      - type: eq
+        path: "$.json.status"
+        expect: "created"
+        description: "验证状态为created"
+
+  # 步骤3: 使用提取的变量
+  - name: "使用提取的数据"
+    type: request
+    method: GET
+    url: "https://httpbin.org/headers"
+    validations:
+      - type: status_code
+        expect: 200

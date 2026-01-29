@@ -121,9 +121,9 @@ Examples:
     parser.add_argument(
         "--format",
         type=str,
-        choices=["text", "json", "csv"],
+        choices=["text", "json", "csv", "junit", "html"],
         default="text",
-        help="Output format: text (default), json, or csv",
+        help="Output format: text (default), json, csv, junit, or html",
     )
 
     parser.add_argument(
@@ -479,7 +479,7 @@ def execute_test_case(
     if test_case.config and test_case.config.output:
         yaml_format = test_case.config.output.get("format", "text")
         # Only use YAML config if CLI is default value
-        if format_type == "text" and yaml_format in ["text", "json", "csv"]:
+        if format_type == "text" and yaml_format in ["text", "json", "csv", "junit", "html"]:
             output_format = yaml_format
 
     # Store format in config for later use
@@ -704,11 +704,11 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
     Returns:
         Execution result as dictionary
     """
-    # Check if output format is text (JSON/CSV modes suppress text output)
+    # Check if output format is text (JSON/CSV/JUnit/HTML modes suppress text output)
     is_text_output = not (
         test_case.config
         and test_case.config.output
-        and test_case.config.output.get("format") in ["json", "csv"]
+        and test_case.config.output.get("format") in ["json", "csv", "junit", "html"]
     )
 
     # Only print in text mode
@@ -812,37 +812,108 @@ def save_result(result: dict, output_path: str) -> None:
         output_format = "csv"
     elif output_path.endswith(".json"):
         output_format = "json"
+    elif output_path.endswith(".xml"):
+        output_format = "junit"
+    elif output_path.endswith(".html"):
+        output_format = "html"
     else:
         # Use format from config
         output_format = format_from_config
 
-    # Save based on format
-    if output_format == "csv":
-        from apirun.result.collector import ResultCollector
-        from apirun.core.models import TestCaseResult
-        from datetime import datetime
+    # Reconstruct TestCaseResult (needed for all formats)
+    from apirun.core.models import TestCaseResult, StepResult, PerformanceMetrics, ErrorInfo
+    from datetime import datetime
 
-        # Reconstruct TestCaseResult from dict
-        start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
-        end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+    start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
+    end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
 
-        test_case_result = TestCaseResult(
-            name=result["test_case"]["name"],
-            status=result["test_case"]["status"],
-            start_time=start_time,
-            end_time=end_time,
-            duration=result["test_case"]["duration"],
-            total_steps=result["statistics"]["total_steps"],
-            passed_steps=result["statistics"]["passed_steps"],
-            failed_steps=result["statistics"]["failed_steps"],
-            skipped_steps=result["statistics"]["skipped_steps"],
-            step_results=[],  # CSV doesn't need full step results
-            final_variables={},
+    # Reconstruct step results for formats that need them
+    step_results = []
+    for step_data in result.get("steps", []):
+        step_result = StepResult(
+            name=step_data["name"],
+            status=step_data["status"],
+            response=step_data.get("response"),
+            extracted_vars=step_data.get("extracted_vars", {}),
+            validation_results=step_data.get("validations", []),
+            performance=None,
             error_info=None,
         )
 
+        # Add performance if available
+        if step_data.get("performance"):
+            perf_data = step_data["performance"]
+            step_result.performance = PerformanceMetrics(
+                total_time=perf_data.get("total_time", 0),
+                dns_time=perf_data.get("dns_time", 0),
+                tcp_time=perf_data.get("tcp_time", 0),
+                tls_time=perf_data.get("tls_time", 0),
+                server_time=perf_data.get("server_time", 0),
+                download_time=perf_data.get("download_time", 0),
+                upload_time=perf_data.get("upload_time", 0),
+                size=perf_data.get("size", 0),
+            )
+
+        # Add error info if available
+        if step_data.get("error_info"):
+            err_data = step_data["error_info"]
+            from apirun.core.models import ErrorCategory
+            category_map = {
+                "assertion": ErrorCategory.ASSERTION,
+                "network": ErrorCategory.NETWORK,
+                "timeout": ErrorCategory.TIMEOUT,
+                "parsing": ErrorCategory.PARSING,
+                "business": ErrorCategory.BUSINESS,
+                "system": ErrorCategory.SYSTEM,
+            }
+            category = category_map.get(err_data.get("category", ""), ErrorCategory.SYSTEM)
+            step_result.error_info = ErrorInfo(
+                type=err_data.get("type", "UnknownError"),
+                category=category,
+                message=err_data.get("message", ""),
+                suggestion=err_data.get("suggestion", ""),
+            )
+
+        # Parse timestamps
+        if step_data.get("start_time"):
+            step_result.start_time = datetime.fromisoformat(step_data["start_time"])
+        if step_data.get("end_time"):
+            step_result.end_time = datetime.fromisoformat(step_data["end_time"])
+
+        step_result.retry_count = step_data.get("retry_count", 0)
+        step_results.append(step_result)
+
+    test_case_result = TestCaseResult(
+        name=result["test_case"]["name"],
+        status=result["test_case"]["status"],
+        start_time=start_time,
+        end_time=end_time,
+        duration=result["test_case"]["duration"],
+        total_steps=result["statistics"]["total_steps"],
+        passed_steps=result["statistics"]["passed_steps"],
+        failed_steps=result["statistics"]["failed_steps"],
+        skipped_steps=result["statistics"]["skipped_steps"],
+        step_results=step_results,
+        final_variables=result.get("final_variables", {}),
+        error_info=None,
+    )
+
+    # Save based on format
+    if output_format == "csv":
+        from apirun.result.collector import ResultCollector
         collector = ResultCollector()
         collector.save_csv(test_case_result, output_path)
+
+    elif output_format == "junit":
+        from apirun.result.junit_exporter import JUnitExporter
+        exporter = JUnitExporter()
+        exporter.save_junit_xml(test_case_result, output_path)
+
+    elif output_format == "html":
+        from apirun.result.html_exporter import HTMLExporter
+        exporter = HTMLExporter()
+        exporter.save_html(test_case_result, output_path)
+
     else:
         # Default to JSON
         with open(output_path, "w", encoding="utf-8") as f:
