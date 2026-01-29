@@ -147,14 +147,26 @@ class StepExecutor(ABC):
 
                     # Merge step result into result
                     result.status = "success"
-                    if hasattr(step_result, "response"):
-                        result.response = step_result.response
-                    if hasattr(step_result, "extracted_vars"):
-                        result.extracted_vars = step_result.extracted_vars
-                    if hasattr(step_result, "performance"):
-                        result.performance = step_result.performance
-                    if hasattr(step_result, "validation_results"):
-                        result.validation_results = step_result.validation_results
+
+                    # Handle both dict and object return values
+                    if isinstance(step_result, dict):
+                        if "response" in step_result:
+                            result.response = step_result["response"]
+                        if "extracted_vars" in step_result:
+                            result.extracted_vars = step_result["extracted_vars"]
+                        if "performance" in step_result:
+                            result.performance = step_result["performance"]
+                        if "validation_results" in step_result:
+                            result.validation_results = step_result["validation_results"]
+                    else:
+                        if hasattr(step_result, "response"):
+                            result.response = step_result.response
+                        if hasattr(step_result, "extracted_vars"):
+                            result.extracted_vars = step_result.extracted_vars
+                        if hasattr(step_result, "performance"):
+                            result.performance = step_result.performance
+                        if hasattr(step_result, "validation_results"):
+                            result.validation_results = step_result.validation_results
 
                     # Extract variables
                     self._extract_variables(result)

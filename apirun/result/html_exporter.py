@@ -1,0 +1,831 @@
+"""HTML Report Exporter for Sisyphus API Engine.
+
+This module implements HTML report generation with interactive features.
+Following Google Python Style Guide.
+"""
+
+import json
+from typing import Any, Dict, List
+from datetime import datetime
+from pathlib import Path
+
+from apirun.core.models import TestCase, TestCaseResult, StepResult
+
+
+class HTMLExporter:
+    """Export test results to HTML format.
+
+    Features:
+    - Responsive design
+    - Interactive expand/collapse sections
+    - Color-coded status indicators
+    - Detailed step information
+    - Performance metrics visualization
+    - Error details and stack traces
+    - Variable state tracking
+    """
+
+    def __init__(self, theme: str = "light"):
+        """Initialize HTMLExporter.
+
+        Args:
+            theme: Theme for the report (light/dark)
+        """
+        self.theme = theme
+        self.colors = self._get_theme_colors(theme)
+
+    def _get_theme_colors(self, theme: str) -> Dict[str, str]:
+        """Get color scheme for the theme.
+
+        Args:
+            theme: Theme name
+
+        Returns:
+            Color scheme dictionary
+        """
+        if theme == "dark":
+            return {
+                "bg_primary": "#1e1e1e",
+                "bg_secondary": "#2d2d2d",
+                "bg_tertiary": "#3d3d3d",
+                "text_primary": "#e0e0e0",
+                "text_secondary": "#a0a0a0",
+                "success": "#4caf50",
+                "failure": "#f44336",
+                "skipped": "#ff9800",
+                "border": "#404040",
+                "accent": "#2196f3",
+            }
+        else:
+            return {
+                "bg_primary": "#ffffff",
+                "bg_secondary": "#f5f5f5",
+                "bg_tertiary": "#e0e0e0",
+                "text_primary": "#333333",
+                "text_secondary": "#666666",
+                "success": "#4caf50",
+                "failure": "#f44336",
+                "skipped": "#ff9800",
+                "border": "#dddddd",
+                "accent": "#2196f3",
+            }
+
+    def to_html(self, result: TestCaseResult) -> str:
+        """Convert test result to HTML format.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            HTML string
+        """
+        # Build HTML components
+        html_parts = []
+
+        # HTML header
+        html_parts.append(self._build_html_header())
+
+        # CSS styles
+        html_parts.append(self._build_css_styles())
+
+        # Body start
+        html_parts.append(self._build_body_start())
+
+        # Header section
+        html_parts.append(self._build_header_section(result))
+
+        # Summary section
+        html_parts.append(self._build_summary_section(result))
+
+        # Statistics section
+        html_parts.append(self._build_statistics_section(result))
+
+        # Steps section
+        html_parts.append(self._build_steps_section(result))
+
+        # Variables section
+        if result.final_variables:
+            html_parts.append(self._build_variables_section(result))
+
+        # Footer
+        html_parts.append(self._build_footer())
+
+        # JavaScript
+        html_parts.append(self._build_javascript())
+
+        # Body end
+        html_parts.append("</body></html>")
+
+        return "\n".join(html_parts)
+
+    def _build_html_header(self) -> str:
+        """Build HTML document header.
+
+        Returns:
+            HTML header string
+        """
+        return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sisyphus API Test Report</title>
+    <style>"""
+
+    def _build_css_styles(self) -> str:
+        """Build CSS styles for the report.
+
+        Returns:
+            CSS styles string
+        """
+        c = self.colors
+        return f"""
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: {c['bg_primary']};
+            color: {c['text_primary']};
+            line-height: 1.6;
+            padding: 20px;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+
+        .header {{
+            background: linear-gradient(135deg, {c['accent']} 0%, #1976d2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }}
+
+        .header h1 {{
+            font-size: 28px;
+            margin-bottom: 10px;
+        }}
+
+        .header .meta {{
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+
+        .section {{
+            background-color: {c['bg_secondary']};
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid {c['border']};
+        }}
+
+        .section h2 {{
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: {c['text_primary']};
+            border-bottom: 2px solid {c['border']};
+            padding-bottom: 10px;
+        }}
+
+        .status-badge {{
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }}
+
+        .status-passed {{
+            background-color: {c['success']};
+            color: white;
+        }}
+
+        .status-failed {{
+            background-color: {c['failure']};
+            color: white;
+        }}
+
+        .status-skipped {{
+            background-color: {c['skipped']};
+            color: white;
+        }}
+
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }}
+
+        .stat-card {{
+            background-color: {c['bg_primary']};
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid {c['border']};
+        }}
+
+        .stat-card .value {{
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+
+        .stat-card .label {{
+            font-size: 14px;
+            color: {c['text_secondary']};
+            text-transform: uppercase;
+        }}
+
+        .stat-card.passed .value {{
+            color: {c['success']};
+        }}
+
+        .stat-card.failed .value {{
+            color: {c['failure']};
+        }}
+
+        .stat-card.skipped .value {{
+            color: {c['skipped']};
+        }}
+
+        .step-item {{
+            background-color: {c['bg_primary']};
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid {c['border']};
+            overflow: hidden;
+        }}
+
+        .step-header {{
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }}
+
+        .step-header:hover {{
+            background-color: {c['bg_tertiary']};
+        }}
+
+        .step-info {{
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }}
+
+        .step-icon {{
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }}
+
+        .step-name {{
+            font-weight: 600;
+            font-size: 16px;
+        }}
+
+        .step-meta {{
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: {c['text_secondary']};
+            font-size: 14px;
+        }}
+
+        .step-details {{
+            display: none;
+            padding: 20px;
+            border-top: 1px solid {c['border']};
+            background-color: {c['bg_secondary']};
+        }}
+
+        .step-details.active {{
+            display: block;
+        }}
+
+        .detail-section {{
+            margin-bottom: 20px;
+        }}
+
+        .detail-section h4 {{
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: {c['text_secondary']};
+            text-transform: uppercase;
+        }}
+
+        .detail-content {{
+            background-color: {c['bg_primary']};
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid {c['border']};
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }}
+
+        .error-box {{
+            background-color: #ffebee;
+            border-left: 4px solid {c['failure']};
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }}
+
+        .error-box.dark {{
+            background-color: #3d1e1e;
+        }}
+
+        .error-title {{
+            font-weight: 600;
+            color: {c['failure']};
+            margin-bottom: 10px;
+        }}
+
+        .performance-metrics {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }}
+
+        .metric-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background-color: {c['bg_primary']};
+            border-radius: 4px;
+            font-size: 13px;
+        }}
+
+        .metric-label {{
+            color: {c['text_secondary']};
+        }}
+
+        .metric-value {{
+            font-weight: 600;
+        }}
+
+        .variables-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 10px;
+        }}
+
+        .variable-item {{
+            background-color: {c['bg_primary']};
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid {c['border']};
+        }}
+
+        .variable-name {{
+            font-weight: 600;
+            color: {c['accent']};
+            margin-bottom: 5px;
+        }}
+
+        .variable-value {{
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: {c['text_secondary']};
+            word-wrap: break-word;
+        }}
+
+        .progress-bar {{
+            width: 100%;
+            height: 30px;
+            background-color: {c['bg_tertiary']};
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            margin-top: 20px;
+        }}
+
+        .progress-segment {{
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            transition: width 0.3s;
+        }}
+
+        .progress-passed {{
+            background-color: {c['success']};
+        }}
+
+        .progress-failed {{
+            background-color: {c['failure']};
+        }}
+
+        .progress-skipped {{
+            background-color: {c['skipped']};
+        }}
+
+        .footer {{
+            text-align: center;
+            padding: 20px;
+            color: {c['text_secondary']};
+            font-size: 14px;
+            margin-top: 40px;
+        }}
+
+        .toggle-all {{
+            margin-bottom: 15px;
+        }}
+
+        .toggle-all button {{
+            padding: 8px 16px;
+            margin-right: 10px;
+            border: 1px solid {c['border']};
+            background-color: {c['bg_primary']};
+            color: {c['text_primary']};
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }}
+
+        .toggle-all button:hover {{
+            background-color: {c['bg_tertiary']};
+        }}
+
+        @media (max-width: 768px) {{
+            .stats-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            .step-meta {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }}
+        }}
+    </style>"""
+
+    def _build_body_start(self) -> str:
+        """Build body start tag.
+
+        Returns:
+            Body start string
+        """
+        return "</head><body><div class='container'>"
+
+    def _build_header_section(self, result: TestCaseResult) -> str:
+        """Build header section.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Header HTML string
+        """
+        status_class = f"status-{result.status}"
+
+        return f"""
+        <div class="header">
+            <h1>🧪 Sisyphus API Test Report</h1>
+            <div class="meta">
+                <strong>Test Case:</strong> {self._escape_html(result.name)}<br>
+                <strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br>
+                <strong>Status:</strong> <span class="status-badge {status_class}">{result.status.upper()}</span>
+            </div>
+        </div>"""
+
+    def _build_summary_section(self, result: TestCaseResult) -> str:
+        """Build summary section.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Summary HTML string
+        """
+        pass_rate = (result.passed_steps / result.total_steps * 100) if result.total_steps > 0 else 0
+
+        return f"""
+        <div class="section">
+            <h2>📊 Test Summary</h2>
+            <p><strong>Duration:</strong> {result.duration:.2f} seconds</p>
+            <p><strong>Started:</strong> {result.start_time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p><strong>Completed:</strong> {result.end_time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+
+            <div class="progress-bar">
+                <div class="progress-segment progress-passed" style="width: {pass_rate}%">
+                    {pass_rate:.1f}% Passed
+                </div>
+                <div class="progress-segment progress-failed" style="width: {(result.failed_steps / result.total_steps * 100) if result.total_steps > 0 else 0}%">
+                    {(result.failed_steps / result.total_steps * 100) if result.total_steps > 0 else 0:.1f}% Failed
+                </div>
+                <div class="progress-segment progress-skipped" style="width: {(result.skipped_steps / result.total_steps * 100) if result.total_steps > 0 else 0}%">
+                    {(result.skipped_steps / result.total_steps * 100) if result.total_steps > 0 else 0:.1f}% Skipped
+                </div>
+            </div>
+        </div>"""
+
+    def _build_statistics_section(self, result: TestCaseResult) -> str:
+        """Build statistics section.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Statistics HTML string
+        """
+        return f"""
+        <div class="section">
+            <h2>📈 Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value">{result.total_steps}</div>
+                    <div class="label">Total Steps</div>
+                </div>
+                <div class="stat-card passed">
+                    <div class="value">{result.passed_steps}</div>
+                    <div class="label">Passed ✓</div>
+                </div>
+                <div class="stat-card failed">
+                    <div class="value">{result.failed_steps}</div>
+                    <div class="label">Failed ✗</div>
+                </div>
+                <div class="stat-card skipped">
+                    <div class="value">{result.skipped_steps}</div>
+                    <div class="label">Skipped ⊘</div>
+                </div>
+            </div>
+        </div>"""
+
+    def _build_steps_section(self, result: TestCaseResult) -> str:
+        """Build steps section.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Steps HTML string
+        """
+        html = f"""
+        <div class="section">
+            <h2>📋 Test Steps</h2>
+            <div class="toggle-all">
+                <button onclick="expandAll()">Expand All</button>
+                <button onclick="collapseAll()">Collapse All</button>
+            </div>
+        """
+
+        for idx, step in enumerate(result.step_results, 1):
+            html += self._build_step_item(step, idx)
+
+        html += "</div>"
+        return html
+
+    def _build_step_item(self, step: StepResult, index: int) -> str:
+        """Build a single step item.
+
+        Args:
+            step: Step result
+            index: Step index
+
+        Returns:
+            Step HTML string
+        """
+        status_icon = {
+            "success": "✓",
+            "failure": "✗",
+            "skipped": "⊘",
+            "error": "⚠",
+        }.get(step.status, "?")
+
+        status_color = {
+            "success": self.colors["success"],
+            "failure": self.colors["failure"],
+            "skipped": self.colors["skipped"],
+            "error": self.colors["failure"],
+        }.get(step.status, self.colors["text_secondary"])
+
+        # Calculate duration
+        duration = 0.0
+        if step.start_time and step.end_time:
+            duration = (step.end_time - step.start_time).total_seconds()
+
+        return f"""
+        <div class="step-item">
+            <div class="step-header" onclick="toggleStep(this)">
+                <div class="step-info">
+                    <div class="step-icon" style="background-color: {status_color}">
+                        {status_icon}
+                    </div>
+                    <div class="step-name">{self._escape_html(step.name)}</div>
+                </div>
+                <div class="step-meta">
+                    <div><strong>Status:</strong> {step.status.upper()}</div>
+                    <div><strong>Duration:</strong> {duration:.3f}s</div>
+                    {f'<div><strong>Retries:</strong> {step.retry_count}</div>' if step.retry_count > 0 else ''}
+                </div>
+            </div>
+            <div class="step-details">
+                {self._build_step_details(step)}
+            </div>
+        </div>"""
+
+    def _build_step_details(self, step: StepResult) -> str:
+        """Build step details section.
+
+        Args:
+            step: Step result
+
+        Returns:
+            Step details HTML string
+        """
+        details = []
+
+        # Error information
+        if step.error_info:
+            details.append(f"""
+            <div class="error-box{' dark' if self.theme == 'dark' else ''}">
+                <div class="error-title">❌ {self._escape_html(step.error_info.type)}</div>
+                <div>{self._escape_html(step.error_info.message)}</div>
+                {f'<div style="margin-top: 10px;"><strong>Suggestion:</strong> {self._escape_html(step.error_info.suggestion)}</div>' if step.error_info.suggestion else ''}
+            </div>
+            """)
+
+        # Performance metrics
+        if step.performance:
+            perf = step.performance
+            details.append(f"""
+            <div class="detail-section">
+                <h4>⚡ Performance Metrics</h4>
+                <div class="performance-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">Total Time</span>
+                        <span class="metric-value">{perf.total_time:.2f}ms</span>
+                    </div>
+                    {f'<div class="metric-item"><span class="metric-label">DNS Time</span><span class="metric-value">{perf.dns_time:.2f}ms</span></div>' if perf.dns_time > 0 else ''}
+                    {f'<div class="metric-item"><span class="metric-label">TCP Time</span><span class="metric-value">{perf.tcp_time:.2f}ms</span></div>' if perf.tcp_time > 0 else ''}
+                    {f'<div class="metric-item"><span class="metric-label">TLS Time</span><span class="metric-value">{perf.tls_time:.2f}ms</span></div>' if perf.tls_time > 0 else ''}
+                    {f'<div class="metric-item"><span class="metric-label">Server Time</span><span class="metric-value">{perf.server_time:.2f}ms</span></div>' if perf.server_time > 0 else ''}
+                    {f'<div class="metric-item"><span class="metric-label">Download Time</span><span class="metric-value">{perf.download_time:.2f}ms</span></div>' if perf.download_time > 0 else ''}
+                    {f'<div class="metric-item"><span class="metric-label">Size</span><span class="metric-value">{perf.size} bytes</span></div>' if perf.size > 0 else ''}
+                </div>
+            </div>
+            """)
+
+        # Response data
+        if step.response:
+            details.append(f"""
+            <div class="detail-section">
+                <h4>📡 Response</h4>
+                <div class="detail-content">{self._escape_html(json.dumps(step.response, indent=2, ensure_ascii=False))}</div>
+            </div>
+            """)
+
+        # Validation results
+        if step.validation_results:
+            validations_html = "<div class='detail-section'><h4>✓ Validations</h4><ul>"
+            for v in step.validation_results:
+                icon = "✓" if v.get("passed", True) else "✗"
+                color = self.colors["success"] if v.get("passed", True) else self.colors["failure"]
+                validations_html += f"<li style='color: {color};'>{icon} {self._escape_html(v.get('description', 'N/A'))}</li>"
+            validations_html += "</ul></div>"
+            details.append(validations_html)
+
+        # Extracted variables
+        if step.extracted_vars:
+            details.append(f"""
+            <div class="detail-section">
+                <h4>🔍 Extracted Variables</h4>
+                <div class="variables-grid">
+                    {"".join(f"<div class='variable-item'><div class='variable-name'>{self._escape_html(k)}</div><div class='variable-value'>{self._escape_html(str(v))}</div></div>" for k, v in step.extracted_vars.items())}
+                </div>
+            </div>
+            """)
+
+        # Variables snapshot
+        if step.variables_snapshot:
+            details.append(f"""
+            <div class="detail-section">
+                <h4>📸 Variables Snapshot</h4>
+                <div class="detail-content">{self._escape_html(json.dumps(step.variables_snapshot, indent=2, ensure_ascii=False))}</div>
+            </div>
+            """)
+
+        return "".join(details)
+
+    def _build_variables_section(self, result: TestCaseResult) -> str:
+        """Build variables section.
+
+        Args:
+            result: Test case result
+
+        Returns:
+            Variables HTML string
+        """
+        return f"""
+        <div class="section">
+            <h2>🔧 Final Variables</h2>
+            <div class="variables-grid">
+                {"".join(f"<div class='variable-item'><div class='variable-name'>{self._escape_html(k)}</div><div class='variable-value'>{self._escape_html(str(v))}</div></div>" for k, v in result.final_variables.items())}
+            </div>
+        </div>
+        """
+
+    def _build_footer(self) -> str:
+        """Build footer section.
+
+        Returns:
+            Footer HTML string
+        """
+        return f"""
+        <div class="footer">
+            <p>Generated by <strong>Sisyphus API Engine</strong></p>
+            <p>© {datetime.now().year} - Enterprise-grade API Testing</p>
+        </div>
+        </div>"""
+
+    def _build_javascript(self) -> str:
+        """Build JavaScript for interactivity.
+
+        Returns:
+            JavaScript string
+        """
+        return """
+        <script>
+        function toggleStep(header) {
+            const details = header.nextElementSibling;
+            details.classList.toggle('active');
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.step-details').forEach(el => {
+                el.classList.add('active');
+            });
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('.step-details').forEach(el => {
+                el.classList.remove('active');
+            });
+        }
+
+        // Auto-expand failed steps
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.step-item').forEach(item => {
+                const status = item.querySelector('.step-meta div:first-child').textContent;
+                if (status.includes('FAILED') || status.includes('ERROR')) {
+                    item.querySelector('.step-details').classList.add('active');
+                }
+            });
+        });
+        </script>"""
+
+    def _escape_html(self, text: str) -> str:
+        """Escape HTML special characters.
+
+        Args:
+            text: Text to escape
+
+        Returns:
+            Escaped text
+        """
+        if not isinstance(text, str):
+            text = str(text)
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;")
+        )
+
+    def save_html(self, result: TestCaseResult, output_path: str) -> None:
+        """Save result as HTML file.
+
+        Args:
+            result: Test case result
+            output_path: Output file path
+        """
+        html_content = self.to_html(result)
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
