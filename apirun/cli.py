@@ -16,6 +16,95 @@ from apirun.executor.test_case_executor import TestCaseExecutor
 from apirun.core.variable_manager import VariableManager
 from apirun.utils.template import render_template
 from apirun.data_driven.iterator import DataDrivenIterator
+from apirun.cli_help_i18n import get_help_messages, get_validate_help_messages
+
+
+def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
+    """Display help message in specified language.
+
+    Args:
+        parser: Argument parser object
+        lang: Language code ('en' for English, 'zh' for Chinese)
+    """
+    messages = get_help_messages(lang)
+
+    print(f"\n{messages['description']}\n")
+    print("用法/Usage:")
+    print("  sisyphus-api-engine --cases <file> [options]\n")
+    print("参数/Arguments:")
+
+    # Format and display arguments
+    for action in parser._actions:
+        if action.dest in ['help', '中文帮助']:
+            continue
+
+        # Get option strings
+        opts = ", ".join(action.option_strings)
+
+        # Get help text
+        help_text = action.help or ""
+
+        # Format default values (only if not already in help text)
+        if action.default is not None and action.default != "==SUPPRESS==":
+            if action.dest in ['ws_host', 'ws_port', 'allure_dir', 'format']:
+                # Check if default is not already mentioned in help text
+                if "(默认:" not in help_text and "(default:" not in help_text:
+                    if isinstance(action.default, str):
+                        help_text += f" (默认: {action.default})"
+                    elif isinstance(action.default, int):
+                        help_text += f" (默认: {action.default})"
+
+        # Display the argument
+        if opts:
+            print(f"  {opts.ljust(25)} {help_text}")
+
+    print(f"\n{messages['epilog']}")
+
+    # Show additional help options
+    print("帮助选项/Help Options:")
+    print("  -h, --help          显示英文帮助 (Show help in English)")
+    print("  -H, --中文帮助      显示中文帮助 (Show help in Chinese)")
+    print()
+
+
+def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
+    """Display validation command help message in specified language.
+
+    Args:
+        parser: Argument parser object
+        lang: Language code ('en' for English, 'zh' for Chinese)
+    """
+    messages = get_validate_help_messages(lang)
+
+    print(f"\n{messages['description']}\n")
+    print("用法/Usage:")
+    print("  sisyphus-api-validate <paths>...\n")
+    print("参数/Arguments:")
+
+    # Format and display arguments
+    for action in parser._actions:
+        if action.dest in ['help', '中文帮助']:
+            continue
+
+        # Get option strings or positional name
+        if action.option_strings:
+            opts = ", ".join(action.option_strings)
+        else:
+            opts = action.dest.upper()
+
+        # Get help text
+        help_text = action.help or ""
+
+        # Display the argument
+        print(f"  {opts.ljust(25)} {help_text}")
+
+    print(f"\n{messages['epilog']}")
+
+    # Show additional help options
+    print("帮助选项/Help Options:")
+    print("  -h, --help          显示英文帮助 (Show help in English)")
+    print("  -H, --中文帮助      显示中文帮助 (Show help in Chinese)")
+    print()
 
 
 def main() -> int:
@@ -27,95 +116,94 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Sisyphus API Engine - Enterprise-grade API Testing Tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Run a test case
-  sisyphus-api-engine --cases test_case.yaml
+        epilog=get_help_messages("en")["epilog"],
+        add_help=False,  # We'll add help manually
+    )
 
-  # Run with verbose output
-  sisyphus-api-engine --cases test_case.yaml -v
+    # Add standard help
+    parser.add_argument(
+        "-h", "--help",
+        action="store_true",
+        help="Show this help message and exit (显示帮助信息)",
+    )
 
-  # Run and save results to JSON
-  sisyphus-api-engine --cases test_case.yaml -o result.json
-
-  # Validate YAML syntax
-  sisyphus-api-engine --validate test_case.yaml
-
-  # Or use the dedicated validate command
-  sisyphus-api-validate test_case.yaml
-        """,
+    # Add Chinese help
+    parser.add_argument(
+        "-H", "--中文帮助",
+        action="store_true",
+        help="显示中文帮助信息 (Show help in Chinese)",
     )
 
     parser.add_argument(
         "--cases",
         type=str,
         required=True,
-        help="Path to YAML test case file or directory",
+        help="Path to YAML test case file or directory (YAML测试用例文件路径)",
     )
 
     parser.add_argument(
         "-o",
         "--output",
         type=str,
-        help="Output file path for JSON results",
+        help="Output file path for JSON results (结果输出文件路径)",
     )
 
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Enable verbose output",
+        help="Enable verbose output (启用详细输出)",
     )
 
     parser.add_argument(
         "--validate",
         action="store_true",
-        help="Validate YAML syntax without execution",
+        help="Validate YAML syntax without execution (验证YAML语法)",
     )
 
     parser.add_argument(
         "--profile",
         type=str,
-        help="Active profile name (overrides config)",
+        help="Active profile name (激活的环境配置)",
     )
 
     parser.add_argument(
         "--ws-server",
         action="store_true",
-        help="Enable WebSocket server for real-time updates",
+        help="Enable WebSocket server for real-time updates (启用WebSocket实时推送)",
     )
 
     parser.add_argument(
         "--ws-host",
         type=str,
         default="localhost",
-        help="WebSocket server host (default: localhost)",
+        help="WebSocket server host (WebSocket服务器地址)",
     )
 
     parser.add_argument(
         "--ws-port",
         type=int,
         default=8765,
-        help="WebSocket server port (default: 8765)",
+        help="WebSocket server port (WebSocket服务器端口)",
     )
 
     parser.add_argument(
         "--env-prefix",
         type=str,
-        help="Environment variable prefix to load (e.g., 'API_')",
+        help="Environment variable prefix to load (环境变量前缀)",
     )
 
     parser.add_argument(
         "--override",
         type=str,
         action="append",
-        help="Configuration overrides in format 'key=value' (can be used multiple times)",
+        help="Configuration overrides in 'key=value' format (配置覆盖, 格式: key=value)",
     )
 
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug mode with variable tracking",
+        help="Enable debug mode with variable tracking (启用调试模式)",
     )
 
     parser.add_argument(
@@ -123,22 +211,32 @@ Examples:
         type=str,
         choices=["text", "json", "csv", "junit", "html"],
         default="text",
-        help="Output format: text (default), json, csv, junit, or html",
+        help="Output format: text/json/csv/junit/html (输出格式)",
     )
 
     parser.add_argument(
         "--allure",
         action="store_true",
-        help="Generate Allure report (saves to allure-results directory)",
+        help="Generate Allure report (生成Allure报告)",
     )
 
     parser.add_argument(
         "--allure-dir",
         type=str,
         default="allure-results",
-        help="Allure results directory (default: allure-results)",
+        help="Allure results directory (Allure结果目录)",
     )
 
+    # Check for help flags first before parsing required arguments
+    import sys
+    if "-H" in sys.argv or "--中文帮助" in sys.argv:
+        show_help(parser, lang="zh")
+        return 0
+    elif "-h" in sys.argv or "--help" in sys.argv:
+        show_help(parser, lang="en")
+        return 0
+
+    # Parse args normally (now --cases is required)
     args = parser.parse_args()
 
     try:
@@ -254,8 +352,152 @@ Examples:
             )
 
             collector = ResultCollector()
-            csv_output = collector.to_csv(test_case_result)
+            # Determine if we should use verbose mode
+            use_verbose = args.verbose
+            if not use_verbose and result.get("test_case", {}).get("config", {}).get("verbose"):
+                use_verbose = True
+
+            csv_output = collector.to_csv(test_case_result, verbose=use_verbose)
             print(csv_output, end="")
+
+        elif args.format == "junit":
+            # JUnit XML output
+            from apirun.result.junit_exporter import JUnitExporter
+            from apirun.core.models import TestCaseResult, StepResult, PerformanceMetrics
+            from datetime import datetime
+
+            # Reconstruct TestCaseResult with full step results
+            start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
+            end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+
+            # Reconstruct step results
+            step_results = []
+            for step_data in result.get("steps", []):
+                step_start = datetime.fromisoformat(step_data["start_time"]) if step_data.get("start_time") else None
+                step_end = datetime.fromisoformat(step_data["end_time"]) if step_data.get("end_time") else None
+                step_perf = None
+                if step_data.get("performance"):
+                    perf_data = step_data["performance"]
+                    step_perf = PerformanceMetrics(
+                        total_time=perf_data.get("total_time", 0),
+                        dns_time=perf_data.get("dns_time", 0),
+                        tcp_time=perf_data.get("tcp_time", 0),
+                        tls_time=perf_data.get("tls_time", 0),
+                        server_time=perf_data.get("server_time", 0),
+                        download_time=perf_data.get("download_time", 0),
+                        size=perf_data.get("size", 0),
+                    )
+
+                step_result = StepResult(
+                    name=step_data["name"],
+                    status=step_data["status"],
+                    start_time=step_start,
+                    end_time=step_end,
+                    response=step_data.get("response"),
+                    performance=step_perf,
+                    error_info=None,  # We'll skip error details in non-verbose mode
+                )
+
+                # Only add detailed error info if verbose
+                if args.verbose and step_data.get("error_info"):
+                    from apirun.core.models import ErrorInfo, ErrorCategory
+                    error_data = step_data["error_info"]
+                    step_result.error_info = ErrorInfo(
+                        type=error_data.get("type", "UNKNOWN"),
+                        message=error_data.get("message", ""),
+                        category=ErrorCategory(error_data.get("category", "SYSTEM")),
+                    )
+
+                step_results.append(step_result)
+
+            test_case_result = TestCaseResult(
+                name=result["test_case"]["name"],
+                status=result["test_case"]["status"],
+                start_time=start_time,
+                end_time=end_time,
+                duration=result["test_case"]["duration"],
+                total_steps=result["statistics"]["total_steps"],
+                passed_steps=result["statistics"]["passed_steps"],
+                failed_steps=result["statistics"]["failed_steps"],
+                skipped_steps=result["statistics"]["skipped_steps"],
+                step_results=step_results,
+                final_variables={},
+                error_info=None,
+            )
+
+            exporter = JUnitExporter()
+            junit_xml = exporter.to_junit_xml(test_case_result)
+            print(junit_xml, end="")
+
+        elif args.format == "html":
+            # HTML output
+            from apirun.result.html_exporter import HTMLExporter
+            from apirun.core.models import TestCaseResult, StepResult, PerformanceMetrics
+            from datetime import datetime
+
+            # Reconstruct TestCaseResult with full step results
+            start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
+            end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+
+            # Reconstruct step results based on verbose mode
+            step_results = []
+            for step_data in result.get("steps", []):
+                step_start = datetime.fromisoformat(step_data["start_time"]) if step_data.get("start_time") else None
+                step_end = datetime.fromisoformat(step_data["end_time"]) if step_data.get("end_time") else None
+
+                step_perf = None
+                if args.verbose and step_data.get("performance"):
+                    perf_data = step_data["performance"]
+                    step_perf = PerformanceMetrics(
+                        total_time=perf_data.get("total_time", 0),
+                        dns_time=perf_data.get("dns_time", 0),
+                        tcp_time=perf_data.get("tcp_time", 0),
+                        tls_time=perf_data.get("tls_time", 0),
+                        server_time=perf_data.get("server_time", 0),
+                        download_time=perf_data.get("download_time", 0),
+                        size=perf_data.get("size", 0),
+                    )
+
+                step_result = StepResult(
+                    name=step_data["name"],
+                    status=step_data["status"],
+                    start_time=step_start,
+                    end_time=step_end,
+                    response=step_data.get("response") if args.verbose else None,
+                    performance=step_perf,
+                    error_info=None,
+                )
+
+                # Only add detailed error info if verbose
+                if args.verbose and step_data.get("error_info"):
+                    from apirun.core.models import ErrorInfo, ErrorCategory
+                    error_data = step_data["error_info"]
+                    step_result.error_info = ErrorInfo(
+                        type=error_data.get("type", "UNKNOWN"),
+                        message=error_data.get("message", ""),
+                        category=ErrorCategory(error_data.get("category", "SYSTEM")),
+                    )
+
+                step_results.append(step_result)
+
+            test_case_result = TestCaseResult(
+                name=result["test_case"]["name"],
+                status=result["test_case"]["status"],
+                start_time=start_time,
+                end_time=end_time,
+                duration=result["test_case"]["duration"],
+                total_steps=result["statistics"]["total_steps"],
+                passed_steps=result["statistics"]["passed_steps"],
+                failed_steps=result["statistics"]["failed_steps"],
+                skipped_steps=result["statistics"]["skipped_steps"],
+                step_results=step_results,
+                final_variables={},
+                error_info=None,
+            )
+
+            exporter = HTMLExporter()
+            html_output = exporter.to_html(test_case_result)
+            print(html_output, end="")
 
         # Save result if output path specified (either in YAML or CLI)
         output_path = args.output
@@ -297,26 +539,40 @@ def validate_main() -> int:
     parser = argparse.ArgumentParser(
         description="Sisyphus API Engine - YAML Validator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Validate a single file
-  sisyphus-api-validate test_case.yaml
+        epilog=get_validate_help_messages("en")["epilog"],
+        add_help=False,
+    )
 
-  # Validate all files in a directory
-  sisyphus-api-validate examples/
+    # Add help options
+    parser.add_argument(
+        "-h", "--help",
+        action="store_true",
+        help="Show this help message and exit (显示帮助信息)",
+    )
 
-  # Validate multiple files
-  sisyphus-api-validate test1.yaml test2.yaml test3.yaml
-        """,
+    parser.add_argument(
+        "-H", "--中文帮助",
+        action="store_true",
+        help="显示中文帮助信息 (Show help in Chinese)",
     )
 
     parser.add_argument(
         "paths",
         type=str,
         nargs="+",
-        help="Path(s) to YAML file(s) or directory",
+        help="Path(s) to YAML file(s) or directory (YAML文件或目录路径)",
     )
 
+    # Check for help flags first
+    import sys
+    if "-H" in sys.argv or "--中文帮助" in sys.argv:
+        show_validate_help(parser, lang="zh")
+        return 0
+    elif "-h" in sys.argv or "--help" in sys.argv:
+        show_validate_help(parser, lang="en")
+        return 0
+
+    # Parse args normally
     args = parser.parse_args()
 
     try:
