@@ -200,8 +200,27 @@ class V2YamlParser:
 
         active_profile = config_data.get("active_profile")
 
-        # Parse global variables
+        # Parse global variables and render template expressions
         variables = config_data.get("variables", {})
+
+        # Render template expressions in global variables
+        if variables:
+            from apirun.core.variable_manager import VariableManager
+            vm = VariableManager()
+            rendered_variables = {}
+            for key, value in variables.items():
+                if isinstance(value, str):
+                    rendered_variables[key] = vm.render_string(value)
+                else:
+                    # For non-string values, try to render them as JSON strings
+                    import json
+                    try:
+                        json_str = json.dumps(value)
+                        rendered_str = vm.render_string(json_str)
+                        rendered_variables[key] = json.loads(rendered_str)
+                    except:
+                        rendered_variables[key] = value
+            variables = rendered_variables
 
         # Parse other config options
         timeout = config_data.get("timeout", 30)

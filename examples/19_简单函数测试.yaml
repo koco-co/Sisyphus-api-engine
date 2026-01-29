@@ -1,0 +1,21 @@
+name: "简单函数测试"
+description: "验证模板函数是否正常工作"
+
+config:
+  timeout: 30
+  variables:
+    test_id: "${random()}"
+    test_uuid: "${uuid()}"
+    test_date: "${date('%Y%m%d')}"
+
+steps:
+  - name: "验证函数渲染"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get"
+    description: "验证模板函数在 URL 中正常工作"
+    validations:
+      - type: eq
+        path: "$.url"
+        expect: "https://httpbin.org/get"
+        description: "验证 URL 正确"

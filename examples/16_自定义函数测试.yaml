@@ -1,0 +1,75 @@
+name: "模板自定义函数测试"
+description: "测试内置的模板函数功能，包括 random、uuid、timestamp 等"
+
+config:
+  timeout: 30
+  variables:
+    # 使用函数定义全局变量
+    random_user_id: "${random()}"
+    request_uuid: "${uuid()}"
+    current_date: "${date('%Y%m%d')}"
+    dynamic_table: "table_${random()}"
+
+steps:
+  - name: "测试 random 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?random_id=${random()}"
+    description: |
+      测试 random() 函数生成随机数
+      random(): 生成 0-1000000 之间的随机整数
+      random(1, 100): 生成 1-100 之间的随机整数
+    validations:
+      - type: eq
+        path: "$.args.random_id"
+        description: "验证 random_id 参数存在"
+
+  - name: "测试 random_str 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?random_id=${random_str()}"
+    description: "random_str(): 生成 8 位随机字符串"
+
+  - name: "测试 uuid 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?request_id=${uuid()}"
+    description: "uuid(): 生成无横线的 UUID 字符串"
+
+  - name: "测试 uuid4 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?request_id=${uuid4()}"
+    description: "uuid4(): 生成标准格式的 UUID v4 字符串"
+
+  - name: "测试 timestamp 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?ts=${timestamp()}"
+    description: "timestamp(): 生成当前 Unix 时间戳（秒）"
+
+  - name: "测试 date 函数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?date=${date('%Y-%m-%d')}"
+    description: "date('%Y-%m-%d'): 生成格式化的日期字符串"
+
+  - name: "测试嵌套函数调用"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get?table=${dynamic_table}&user=${random_user_id}"
+    description: |
+      测试嵌套函数调用和复杂表达式：
+      - table_${random()}: 在字符串中嵌入随机数
+      - user_${uuid()}_${timestamp()}: 多个函数组合
+    validations:
+      - type: eq
+        path: "$.url"
+        expect: "https://httpbin.org/get"
+        description: "验证 URL 正确"
+
+extractors:
+  - name: "random_table_name"
+    type: jsonpath
+    path: "$.args.table"
+    description: "提取动态表名"

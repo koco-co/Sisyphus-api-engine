@@ -5,6 +5,7 @@ This module handles variable management including:
 - Profile-specific variables
 - Step-extracted variables
 - Variable rendering with Jinja2 templates
+- Built-in template functions (random, uuid, timestamp, etc.)
 - Variable tracking and change history
 - Environment variable integration
 
@@ -17,6 +18,8 @@ import os
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 from jinja2 import Environment, BaseLoader, TemplateError
+
+from apirun.core.template_functions import get_template_functions
 
 
 class VariableManager:
@@ -63,12 +66,16 @@ class VariableManager:
         # Variable change tracking
         self.change_history: List[Dict[str, Any]] = []
 
-        # Initialize Jinja2 environment with custom delimiters
+        # Initialize Jinja2 environment with custom delimiters and built-in functions
         self._jinja_env = Environment(
             loader=BaseLoader(),
             variable_start_string="${",
             variable_end_string="}"
         )
+
+        # Register built-in template functions
+        template_functions = get_template_functions()
+        self._jinja_env.globals.update(template_functions)
 
     def set_profile(self, profile_vars: Dict[str, Any]) -> None:
         """Set active profile variables.
