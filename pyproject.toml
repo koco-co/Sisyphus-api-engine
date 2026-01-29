@@ -5,28 +5,32 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "Sisyphus-api-engine"
 version = "1.0.1"
-description = "Sisyphus - Enterprise-grade API Automation Testing Engine"
+description = "Enterprise-grade API automation testing engine with YAML-based declarative syntax, supporting complex testing scenarios including HTTP/HTTPS, database operations, data-driven testing, concurrent execution, and real-time WebSocket reporting."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
-authors = [
-    {name = "koco-co", email = "kopohub@gmail.com"}
-]
-maintainers = [
-    {name = "koco-co", email = "kopohub@gmail.com"}
-]
+author = "koco-co"
+author_email = "kopohub@gmail.com"
+maintainer = "koco-co"
+maintainer_email = "kopohub@gmail.com"
 keywords = ["api", "testing", "automation", "yaml", "json", "mock", "concurrent", "allure", "websocket", "ddt", "data-driven"]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Testing :: Unit",
+    "Topic :: Software Development :: Testing :: Acceptance",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Testing",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)",
 ]
 
 dependencies = [
@@ -65,10 +69,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/koco-co/Sisyphus-api-engine"
-Documentation = "https://github.com/koco-co/Sisyphus-api-engine/wiki"
-Repository = "https://github.com/koco-co/Sisyphus-api-engine"
+"Homepage" = "https://github.com/koco-co/Sisyphus-api-engine"
+"Documentation" = "https://github.com/koco-co/Sisyphus-api-engine/blob/main/README.md"
+"Repository" = "https://github.com/koco-co/Sisyphus-api-engine.git"
 "Bug Tracker" = "https://github.com/koco-co/Sisyphus-api-engine/issues"
+"Changelog" = "https://github.com/koco-co/Sisyphus-api-engine/blob/main/README.md#-更新日志"
 
 [project.scripts]
 sisyphus-api-engine = "apirun.cli:main"
