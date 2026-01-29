@@ -376,7 +376,7 @@ class TestResultCollector:
             step_results=[step_result],
         )
 
-        csv_data = collector.to_csv(case_result)
+        csv_data = collector.to_csv(case_result, verbose=True)
 
         assert "Test Name" in csv_data
         assert "test_csv" in csv_data
@@ -451,7 +451,7 @@ class TestResultCollector:
             temp_path = f.name
 
         try:
-            collector.save_csv(case_result, temp_path)
+            collector.save_csv(case_result, temp_path, verbose=True)
 
             with open(temp_path, "r") as f:
                 content = f.read()
@@ -597,7 +597,7 @@ class TestResultCollectorEdgeCases:
             step_results=[step_result],
         )
 
-        csv_data = collector.to_csv(case_result)
+        csv_data = collector.to_csv(case_result, verbose=True)
 
         # CSV should contain masked data in variables_snapshot
         # Response masking happens at a different level

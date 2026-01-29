@@ -507,14 +507,16 @@ class ResultCollector:
 
         return output.getvalue()
 
-    def save_csv(self, result: TestCaseResult, output_path: str) -> None:
+    def save_csv(self, result: TestCaseResult, output_path: str, verbose: bool = False) -> None:
         """Save result as CSV file.
 
         Args:
             result: Test case result
             output_path: Output file path
+            verbose: If True, include all performance metrics.
+                    If False, only include essential fields.
         """
-        csv_data = self.to_csv(result)
+        csv_data = self.to_csv(result, verbose=verbose)
 
         with open(output_path, "w", encoding="utf-8", newline="") as f:
             f.write(csv_data)
