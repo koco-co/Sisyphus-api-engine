@@ -1,7 +1,6 @@
 # Sisyphus API Engine
 
 <div align="center">
-
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
 ![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -58,15 +57,20 @@
 
 - **重试机制** - 支持固定、指数退避、线性等重试策略
 - **步骤控制** - 条件执行（skip_if/only_if）、依赖管理（depends_on）
-- **流程控制** - 等待、For 循环、While 循环
+- **流程控制** - 等待（固定延迟和条件等待）、For 循环、While 循环
 - **数据驱动** - 支持 CSV、JSON、数据库作为数据源
 - **钩子函数** - 全局和步骤级别的 setup/teardown
+- **并发测试** - 支持多线程并发执行和性能测试
+- **脚本执行** - 支持 Python 脚本执行（安全沙箱）
+- **Mock 服务** - 内置 Mock 服务器，支持接口模拟
 
 ### 📊 结果输出
 
-- **详细报告** - JSON 格式的测试结果输出
-- **性能指标** - 响应时间、DNS 查询、TCP 连接等性能数据
+- **多种格式** - JSON、CSV、HTML、JUnit XML、Allure 报告
+- **性能指标** - DNS、TCP、TLS、服务器处理时间等详细性能数据
 - **错误分类** - 智能错误分类和诊断信息
+- **实时推送** - WebSocket 实时推送测试进度和结果
+- **变量追踪** - 调试模式下追踪变量变化
 
 ---
 
@@ -94,11 +98,14 @@ pip install Sisyphus-api-engine
 ### 验证安装
 
 ```bash
-# 查看版本
+# 查看帮助
 sisyphus-api-engine --help
 
+# 验证 YAML 文件语法
+sisyphus-api-validate examples/22_最佳实践.yaml
+
 # 运行示例测试
-sisyphus-api-engine --cases examples/01_最简案例.yaml
+sisyphus-api-engine --cases examples/22_最佳实践.yaml
 ```
 
 ---
@@ -121,7 +128,7 @@ config:
 steps:
   - 测试GET请求:
       type: request
-      url: "{{config.profiles.prod.base_url}}/get"
+      url: "${config.profiles.prod.base_url}/get"
       method: GET
       validations:
         - type: eq
@@ -139,8 +146,27 @@ sisyphus-api-engine --cases my_first_test.yaml
 # 详细输出
 sisyphus-api-engine --cases my_first_test.yaml -v
 
-# 保存结果
+# 保存结果到 JSON
 sisyphus-api-engine --cases my_first_test.yaml -o result.json
+
+# 导出为 CSV
+sisyphus-api-engine --cases my_first_test.yaml --format csv -o result.csv
+
+# 导出为 HTML
+sisyphus-api-engine --cases my_first_test.yaml --format html -o report.html
+
+# 生成 Allure 报告
+sisyphus-api-engine --cases my_first_test.yaml --allure
+
+# 查看 Allure 报告（会自动打开浏览器）
+allure serve allure-results
+
+# 或者生成静态 HTML 报告
+allure generate allure-results --clean -o allure-report
+allure open allure-report
+
+# 启用 WebSocket 实时推送
+sisyphus-api-engine --cases my_first_test.yaml --ws-server
 ```
 
 ### 3. 查看结果
@@ -190,6 +216,8 @@ steps: []                     # 必填：测试步骤列表
 | `database` | 数据库操作 | 数据验证 |
 | `wait` | 等待/延迟 | 异步场景 |
 | `loop` | 循环控制 | 批量操作 |
+| `concurrent` | 并发执行 | 性能测试 |
+| `script` | 脚本执行 | 自定义逻辑 |
 
 ### 变量作用域
 
@@ -209,84 +237,84 @@ steps: []                     # 必填：测试步骤列表
 
 ### ⭐ 入门级
 
-- **[01_最简案例.yaml](examples/01_最简案例.yaml)** - 最简单的 GET 请求
-- **[02_HTTP请求测试.yaml](examples/02_HTTP请求测试.yaml)** - GET/POST、验证和提取
+- **[01_HTTP请求方法.yaml](examples/01_HTTP请求方法.yaml)** - 各种 HTTP 方法
+- **[02_请求参数配置.yaml](examples/02_请求参数配置.yaml)** - 请求参数和 headers
+- **[03_变量基础语法.yaml](examples/03_变量基础语法.yaml)** - 变量基础语法
+
+### ⭐⭐ 中级
+
+- **[04_内置模板函数.yaml](examples/04_内置模板函数.yaml)** - 内置模板函数
+- **[05_变量提取器.yaml](examples/05_变量提取器.yaml)** - 变量提取器
+- **[06_基础断言验证.yaml](examples/06_基础断言验证.yaml)** - 基础断言验证
 
 ### ⭐⭐⭐ 进阶级
 
-- **[03_完整流程测试.yaml](examples/03_完整流程测试.yaml)** - 登录流程、环境配置
-- **[04_数据库操作.yaml](examples/04_数据库操作.yaml)** - 数据库 CRUD 操作
+- **[07_高级断言验证.yaml](examples/07_高级断言验证.yaml)** - 高级断言验证
+- **[08_环境配置切换.yaml](examples/08_环境配置切换.yaml)** - 环境配置切换
+- **[09_重试机制.yaml](examples/09_重试机制.yaml)** - 重试机制
+- **[10_步骤控制.yaml](examples/10_步骤控制.yaml)** - 步骤控制
+- **[11_等待机制.yaml](examples/11_等待机制.yaml)** - 等待机制
 
 ### ⭐⭐⭐⭐ 高级
 
-- **[05_步骤控制.yaml](examples/05_步骤控制.yaml)** - 条件执行、依赖管理
-- **[06_等待和循环.yaml](examples/06_等待和循环.yaml)** - 等待、循环控制
+- **[12_循环控制.yaml](examples/12_循环控制.yaml)** - 循环控制
+- **[13_并发执行.yaml](examples/13_并发执行.yaml)** - 并发执行
+- **[14_数据驱动测试.yaml](examples/14_数据驱动测试.yaml)** - 数据驱动测试
 
 ### ⭐⭐⭐⭐⭐ 专家级
 
-- **[07_数据驱动测试.yaml](examples/07_数据驱动测试.yaml)** - CSV 数据驱动
+- **[15_数据库操作.yaml](examples/15_数据库操作.yaml)** - 数据库操作
+- **[16_脚本执行.yaml](examples/16_脚本执行.yaml)** - 脚本执行
+- **[17_完整流程测试.yaml](examples/17_完整流程测试.yaml)** - 完整流程测试
+- **[18_输出格式配置.yaml](examples/18_输出格式配置.yaml)** - 输出格式配置
+- **[19_Mock服务器测试.yaml](examples/19_Mock服务器测试.yaml)** - Mock 服务器测试
+- **[20_WebSocket实时推送.yaml](examples/20_WebSocket实时推送.yaml)** - WebSocket 实时推送
+- **[21_性能测试.yaml](examples/21_性能测试.yaml)** - 性能测试
+- **[00_最佳实践.yaml](examples/22_最佳实践.yaml)** - 最佳实践示例
 
-### 📁 辅助目录
-
-- **[demo_data/](examples/demo_data/)** - 测试数据文件（如 CSV）
-- **[demo_script/](examples/demo_script/)** - Python 演示脚本
+### 📁 目录结构
 
 <details>
 <summary>查看完整示例列表和运行方式</summary>
-
-#### 目录结构
-
-```
-examples/
-├── 01_最简案例.yaml
-├── 02_HTTP请求测试.yaml
-├── 03_完整流程测试.yaml
-├── 04_数据库操作.yaml
-├── 05_步骤控制.yaml
-├── 06_等待和循环.yaml
-├── 07_数据驱动测试.yaml
-├── demo_data/
-│   └── 数据驱动测试.csv
-└── demo_script/
-    ├── 重试机制演示.py
-    └── 等待循环演示.py
-```
 
 #### 运行 YAML 测试用例
 
 ```bash
 # 验证所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-engine --validate "$file"
+    sisyphus-api-validate "$file"
 done
 
 # 运行所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-engine --cases "$file"
+    sisyphus-api-engine --cases "$file"
 done
-```
-
-#### 运行 Python 演示脚本
-
-```bash
-# 演示重试机制
-python examples/demo_script/重试机制演示.py
-
-# 演示等待和循环
-python examples/demo_script/等待循环演示.py
 ```
 
 #### 学习路径
 
-1. 从 `01_最简案例.yaml` 开始理解基本结构
-2. 学习 `02_HTTP请求测试.yaml` 掌握 HTTP 测试
-3. 通过 `03_完整流程测试.yaml` 学习环境配置
-4. 实践 `04_数据库操作.yaml` 掌握数据库集成
-5. 进阶 `05_步骤控制.yaml` 学习流程控制
-6. 掌握 `06_等待和循环.yaml` 处理异步场景
-7. 精通 `07_数据驱动测试.yaml` 实现数据驱动
-8. 运行 `demo_script/重试机制演示.py` 深入理解重试机制
-9. 运行 `demo_script/等待循环演示.py` 深入理解等待和循环
+1. 从 `01_HTTP请求方法.yaml` 开始理解基本结构
+2. 学习 `02_请求参数配置.yaml` 掌握请求定制
+3. 通过 `03_变量基础语法.yaml` 学习变量系统
+4. 实践 `04_内置模板函数.yaml` 掌握模板函数
+5. 进阶 `05_变量提取器.yaml` 学习数据提取
+6. 掌握 `06_基础断言验证.yaml` 理解验证机制
+7. 精通 `07_高级断言验证.yaml` 掌握复杂验证
+8. 学习 `08_环境配置切换.yaml` 理解多环境管理
+9. 实践 `09_重试机制.yaml` 掌握重试策略
+10. 学习 `10_步骤控制.yaml` 理解流程控制
+11. 实践 `11_等待机制.yaml` 掌握异步处理
+12. 学习 `12_循环控制.yaml` 掌握循环逻辑
+13. 实践 `13_并发执行.yaml` 理解并发测试
+14. 学习 `14_数据驱动测试.yaml` 掌握数据驱动
+15. 实践 `15_数据库操作.yaml` 掌握数据库集成
+16. 学习 `16_脚本执行.yaml` 理解脚本扩展
+17. 通过 `17_完整流程测试.yaml` 综合运用所学
+18. 学习 `18_输出格式配置.yaml` 掌握结果导出
+19. 实践 `19_Mock服务器测试.yaml` 理解 Mock 服务
+20. 学习 `20_WebSocket实时推送.yaml` 掌握实时推送
+21. 通过 `21_性能测试.yaml` 理解性能测试
+22. 最后学习 `00_最佳实践.yaml` 掌握生产级实践
 
 </details>
 
@@ -359,12 +387,6 @@ config:
 - **[输入协议规范](docs/API-Engine输入协议规范.md)** - 完整的 YAML 语法和配置说明
 - **[输出协议规范](docs/API-Engine输出协议规范.md)** - 测试结果输出格式
 
-### 开发文档
-
-- **[CLAUDE.md](CLAUDE.md)** - 代码架构和开发指南
-- **[开发计划](docs/开发计划任务列表.md)** - 功能开发路线图
-- **[任务进度](docs/任务进度列表.md)** - 当前任务进度
-
 ---
 
 ## 🔧 开发指南
@@ -381,6 +403,8 @@ Sisyphus-api-engine/
 │   ├── extractor/      # 变量提取器
 │   ├── data_driven/    # 数据驱动测试
 │   ├── result/         # 结果收集器
+│   ├── mock/           # Mock 服务器
+│   ├── websocket/      # WebSocket 实时推送
 │   └── utils/          # 工具函数
 ├── examples/           # 示例用例
 ├── docs/               # 项目文档
@@ -518,8 +542,8 @@ sisyphus-api-engine --cases test.yaml -v
 steps:
   - name: "创建用户"
     body:
-      username: "user_{{now().strftime('%Y%m%d%H%M%S')}}"
-      email: "{{random_string(10)}}@example.com"
+      username: "user_${now().strftime('%Y%m%d%H%M%S')}"
+      email: "${random_string(10)}@example.com"
 ```
 
 </details>
@@ -543,23 +567,53 @@ config:
 
 ## 📝 更新日志
 
-### v1.0.0 (2026-01-28)
+### v1.0.0 (2026-01-29)
 
-**首次发布**
-- 🎉 企业级 API 自动化测试引擎
+#### 核心功能
 - ✨ YAML 声明式测试语法
-- ✨ 多环境配置管理
-- ✨ HTTP/HTTPS 请求支持
-- ✨ 数据库操作支持（MySQL/PostgreSQL/SQLite）
+- ✨ 多环境配置管理（dev/test/prod）
 - ✨ 强大的变量系统（Jinja2 模板）
-- ✨ 多种验证器（JSONPath、正则、类型检查等）
-- ✨ 变量提取（JSONPath、正则、Header、Cookie）
+- ✨ 17 种内置模板函数
+- ✨ 多层级变量作用域
+
+#### HTTP 测试
+- ✨ HTTP/HTTPS 全方法支持（GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS）
+- ✨ 完整的请求定制（headers/params/body/cookies）
+- ✨ 17 种验证器（eq/ne/gt/lt/contains/regex/type/len_eq 等）
+- ✨ 4 种变量提取器（JSONPath/正则/Header/Cookie）
 - ✨ 增强的重试机制（固定/指数退避/线性策略）
-- ✨ 步骤控制（条件执行、依赖管理）
-- ✨ 流程控制（等待、For循环、While循环）
+
+#### 数据库集成
+- ✨ MySQL/PostgreSQL/SQLite 支持
+- ✨ 查询和执行操作
+- ✨ 参数化查询防 SQL 注入
+
+#### 高级特性
+- ✨ 步骤控制（skip_if/only_if/depends_on）
+- ✨ 流程控制（Wait/For 循环/While 循环）
 - ✨ 数据驱动测试（CSV/JSON/数据库）
+- ✨ 并发测试（多线程并发执行）
+- ✨ 脚本执行（Python 安全沙箱）
+- ✨ Mock 服务器（接口模拟）
+- ✨ WebSocket 实时推送
 - ✨ 钩子函数（setup/teardown）
-- 📚 完整的文档和示例
+
+#### 结果输出
+- ✨ 多种格式（JSON/CSV/HTML/JUnit XML/Allure）
+- ✨ 详细性能指标（DNS/TCP/TLS/服务器处理时间）
+- ✨ 智能错误分类和诊断
+- ✨ 变量追踪（调试模式）
+
+#### 质量保证
+- ✨ 510+ 单元测试，100% 通过
+- ✨ 完整的集成测试覆盖
+- ✨ 22 个示例测试用例
+- ✨ 详细的文档和最佳实践
+
+#### 代码规范
+- ✨ Google Python Style Guide
+- ✨ 完整的类型注解和文档字符串
+- ✨ Black、isort、flake8、mypy、pylint 配置
 
 ---
 
