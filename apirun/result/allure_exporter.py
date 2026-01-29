@@ -239,6 +239,11 @@ class AllureExporter:
                 if response_data:
                     allure_step["attachments"].append(response_data)
 
+            # Add variables snapshot attachment (especially for failed steps)
+            variables_data = self._format_variables_attachment(step_result)
+            if variables_data:
+                allure_step["attachments"].append(variables_data)
+
             # Add validation results
             if step_result.validation_results:
                 for idx, validation in enumerate(step_result.validation_results):
@@ -284,35 +289,62 @@ class AllureExporter:
         if not step_result.response or not isinstance(step_result.response, dict):
             return None
 
-        # Extract request information from response (if available)
-        request_data = {
-            "name": "HTTP Request",
-            "source": f"request-{uuid.uuid4()}.txt",
-            "type": "text/plain",
-        }
-
         # Build request text
         request_lines = []
+        request_lines.append("=" * 80)
+        request_lines.append("HTTP Request Details")
+        request_lines.append("=" * 80)
+
+        # Method and URL
         if "method" in step_result.response:
-            request_lines.append(f"Method: {step_result.response['method']}")
+            request_lines.append(f"\nMethod: {step_result.response['method']}")
         if "url" in step_result.response:
             request_lines.append(f"URL: {step_result.response['url']}")
 
+        # Request information
         if "request" in step_result.response:
             request = step_result.response["request"]
             if isinstance(request, dict):
+                # Headers
                 if "headers" in request:
-                    request_lines.append("\nHeaders:")
+                    request_lines.append("\n--- Request Headers ---")
                     for k, v in request["headers"].items():
+                        # Mask sensitive headers
+                        if self.mask_sensitive and any(
+                            pattern in k.lower() for pattern in self.sensitive_patterns
+                        ):
+                            v = "***"
                         request_lines.append(f"  {k}: {v}")
+
+                # Query Parameters
+                if "params" in request:
+                    request_lines.append("\n--- Query Parameters ---")
+                    for k, v in request["params"].items():
+                        request_lines.append(f"  {k}: {v}")
+
+                # Body
                 if "body" in request:
-                    request_lines.append("\nBody:")
-                    request_lines.append(json.dumps(request["body"], indent=2, ensure_ascii=False))
+                    request_lines.append("\n--- Request Body ---")
+                    try:
+                        body_text = json.dumps(request["body"], indent=2, ensure_ascii=False)
+                        # Mask sensitive fields in body
+                        if self.mask_sensitive:
+                            body_text = self._mask_sensitive_data(body_text)
+                        request_lines.append(body_text)
+                    except (TypeError, ValueError):
+                        request_lines.append(str(request["body"]))
 
-        if request_lines:
-            return request_data
+        request_lines.append("\n" + "=" * 80)
 
-        return None
+        # Save to file
+        request_content = "\n".join(request_lines)
+        attachment_filename = self.save_attachment(request_content, f"request-{uuid.uuid4()}.txt")
+
+        return {
+            "name": "HTTP Request",
+            "source": attachment_filename,
+            "type": "text/plain",
+        }
 
     def _format_response_attachment(self, step_result: StepResult) -> Optional[Dict[str, Any]]:
         """Format HTTP response as Allure attachment.
@@ -326,13 +358,70 @@ class AllureExporter:
         if not step_result.response or not isinstance(step_result.response, dict):
             return None
 
-        response_data = {
-            "name": "HTTP Response",
-            "source": f"response-{uuid.uuid4()}.json",
-            "type": "application/json",
-        }
+        # Build response text
+        response_lines = []
+        response_lines.append("=" * 80)
+        response_lines.append("HTTP Response Details")
+        response_lines.append("=" * 80)
 
-        return response_data
+        # Status Code
+        if "status_code" in step_result.response:
+            response_lines.append(f"\nStatus Code: {step_result.response['status_code']}")
+
+        # Response Time
+        if "response_time" in step_result.response:
+            response_lines.append(f"Response Time: {step_result.response['response_time']:.2f}ms")
+
+        # Response Size
+        if "size" in step_result.response:
+            response_lines.append(f"Response Size: {step_result.response['size']} bytes")
+
+        # Headers
+        if "headers" in step_result.response:
+            response_lines.append("\n--- Response Headers ---")
+            headers = step_result.response["headers"]
+            if isinstance(headers, dict):
+                for k, v in headers.items():
+                    response_lines.append(f"  {k}: {v}")
+
+        # Response Body
+        if "body" in step_result.response:
+            response_lines.append("\n--- Response Body ---")
+            body = step_result.response["body"]
+            try:
+                if isinstance(body, (dict, list)):
+                    body_text = json.dumps(body, indent=2, ensure_ascii=False)
+                else:
+                    body_text = str(body)
+
+                # Truncate very large responses for readability
+                if len(body_text) > 10000:
+                    body_text = body_text[:10000] + "\n\n... (Response truncated, too large) ..."
+
+                response_lines.append(body_text)
+            except Exception as e:
+                response_lines.append(f"[Unable to format response body: {e}]")
+                response_lines.append(str(body)[:500])
+
+        # Cookies
+        if "cookies" in step_result.response:
+            response_lines.append("\n--- Cookies ---")
+            cookies = step_result.response["cookies"]
+            if isinstance(cookies, dict):
+                for k, v in cookies.items():
+                    response_lines.append(f"  {k}: {v}")
+
+        response_lines.append("\n" + "=" * 80)
+
+        # Save to file
+        response_content = "\n".join(response_lines)
+        attachment_filename = self.save_attachment(response_content, f"response-{uuid.uuid4()}.txt")
+
+        return {
+            "name": "HTTP Response",
+            "source": attachment_filename,
+            "type": "text/plain",
+        }
 
     def _format_status_details(self, error_info: ErrorInfo) -> Dict[str, str]:
         """Format error information for Allure.
@@ -349,11 +438,41 @@ class AllureExporter:
             "flaky": False,
         }
 
-        if error_info.message:
-            details["message"] = error_info.message
+        # Build comprehensive error message
+        message_parts = []
 
-        if error_info.trace:
-            details["trace"] = error_info.trace
+        # Add error type and category
+        if error_info.type:
+            message_parts.append(f"[{error_info.type}]")
+
+        if error_info.category:
+            message_parts.append(f"Category: {error_info.category.value}")
+
+        # Add main message
+        if error_info.message:
+            message_parts.append(error_info.message)
+
+        # Add suggestion if available
+        if error_info.suggestion:
+            message_parts.append(f"\n💡 Suggestion: {error_info.suggestion}")
+
+        # Add context information if available
+        if error_info.context:
+            message_parts.append("\n\nContext:")
+            for key, value in error_info.context.items():
+                # Mask sensitive context
+                if self.mask_sensitive and any(
+                    pattern in key.lower() for pattern in self.sensitive_patterns
+                ):
+                    value = "***"
+
+                message_parts.append(f"  {key}: {value}")
+
+        details["message"] = "\n".join(message_parts)
+
+        # Add trace for debugging
+        if error_info.stack_trace:
+            details["trace"] = error_info.stack_trace
 
         return details
 
@@ -500,6 +619,147 @@ class AllureExporter:
 
         with open(categories_file, "w", encoding="utf-8") as f:
             json.dump(categories, f, ensure_ascii=False, indent=2)
+
+    def _mask_sensitive_data(self, data: str) -> str:
+        """Mask sensitive data in JSON string.
+
+        Args:
+            data: JSON string containing potentially sensitive data
+
+        Returns:
+            JSON string with sensitive values masked
+        """
+        import re
+
+        try:
+            # Parse JSON
+            obj = json.loads(data)
+
+            # Recursively mask sensitive keys
+            def mask_recursive(item):
+                if isinstance(item, dict):
+                    masked = {}
+                    for key, value in item.items():
+                        if any(pattern in key.lower() for pattern in self.sensitive_patterns):
+                            masked[key] = "***"
+                        elif isinstance(value, (dict, list)):
+                            masked[key] = mask_recursive(value)
+                        else:
+                            masked[key] = value
+                    return masked
+                elif isinstance(item, list):
+                    return [mask_recursive(i) if isinstance(i, (dict, list)) else i for i in item]
+                else:
+                    return item
+
+            masked_obj = mask_recursive(obj)
+            return json.dumps(masked_obj, indent=2, ensure_ascii=False)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # If parsing fails, return original
+            return data
+
+    def _format_variables_attachment(self, step_result: StepResult) -> Optional[Dict[str, Any]]:
+        """Format variables snapshot as Allure attachment.
+
+        Args:
+            step_result: Step execution result
+
+        Returns:
+            Attachment object or None
+        """
+        # Only create variables attachment for failed steps or when variables changed
+        has_variables = (
+            step_result.variables_snapshot or
+            step_result.variables_after or
+            step_result.variables_delta
+        )
+
+        if not has_variables:
+            return None
+
+        # Build variables text
+        var_lines = []
+        var_lines.append("=" * 80)
+        var_lines.append("Variables Snapshot")
+        var_lines.append("=" * 80)
+
+        # Variables before execution
+        if step_result.variables_snapshot:
+            var_lines.append("\n--- Variables Before Execution ---")
+            for key, value in sorted(step_result.variables_snapshot.items()):
+                # Mask sensitive values
+                if self.mask_sensitive and any(
+                    pattern in key.lower() for pattern in self.sensitive_patterns
+                ):
+                    value = "***"
+
+                # Format value
+                try:
+                    if isinstance(value, (dict, list)):
+                        value_str = json.dumps(value, ensure_ascii=False)
+                    else:
+                        value_str = str(value)
+                except Exception:
+                    value_str = str(type(value).__name__)
+
+                # Truncate long values
+                if len(value_str) > 200:
+                    value_str = value_str[:200] + "..."
+
+                var_lines.append(f"  {key}: {value_str}")
+
+        # Variables delta (what changed)
+        if step_result.variables_delta:
+            var_lines.append("\n--- Variables Changed ---")
+            for key, value in sorted(step_result.variables_delta.items()):
+                if isinstance(value, dict) and "before" in value and "after" in value:
+                    before_val = value["before"]
+                    after_val = value["after"]
+
+                    # Mask sensitive values
+                    if self.mask_sensitive and any(
+                        pattern in key.lower() for pattern in self.sensitive_patterns
+                    ):
+                        before_val = "***"
+                        after_val = "***"
+
+                    var_lines.append(f"  {key}:")
+                    var_lines.append(f"    before: {before_val}")
+                    var_lines.append(f"    after:  {after_val}")
+                else:
+                    var_lines.append(f"  {key}: {value}")
+
+        # Extracted variables
+        if step_result.extracted_vars:
+            var_lines.append("\n--- Extracted Variables ---")
+            for key, value in sorted(step_result.extracted_vars.items()):
+                # Mask sensitive values
+                if self.mask_sensitive and any(
+                    pattern in key.lower() for pattern in self.sensitive_patterns
+                ):
+                    value = "***"
+
+                try:
+                    if isinstance(value, (dict, list)):
+                        value_str = json.dumps(value, ensure_ascii=False)
+                    else:
+                        value_str = str(value)
+                except Exception:
+                    value_str = str(type(value).__name__)
+
+                var_lines.append(f"  {key}: {value_str}")
+
+        var_lines.append("\n" + "=" * 80)
+
+        # Save to file
+        var_content = "\n".join(var_lines)
+        attachment_filename = self.save_attachment(var_content, f"variables-{uuid.uuid4()}.txt")
+
+        return {
+            "name": "Variables Snapshot",
+            "source": attachment_filename,
+            "type": "text/plain",
+        }
 
     def save_attachment(self, content: str, filename: str = None) -> str:
         """Save attachment content and return reference.
