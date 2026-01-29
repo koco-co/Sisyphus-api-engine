@@ -1,0 +1,233 @@
+# ==============================================================================
+# Sisyphus API Engine - HTTP 请求方法测试
+# ==============================================================================
+# 功能说明：演示所有 HTTP 请求方法的使用
+# - GET: 查询资源
+# - POST: 创建资源
+# - PUT: 完整更新资源
+# - PATCH: 部分更新资源
+# - DELETE: 删除资源
+# - HEAD: 获取响应头信息
+# - OPTIONS: 获取服务器支持的方法
+# ==============================================================================
+
+name: "HTTP请求方法测试"
+description: "演示所有HTTP请求方法（GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS）"
+
+config:
+  # 基础URL配置
+  name: "测试配置"
+  # 超时时间（秒）
+  timeout: 30
+  # 重试次数
+  retry_times: 0
+
+  # 环境配置
+  profiles:
+    # 生产环境
+    prod:
+      base_url: "https://httpbin.org"
+
+  # 当前激活的环境（可选值: prod）
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: GET 请求
+  # 用途：从服务器获取数据
+  # ----------------------------------------------------------------------------
+  - name: "GET请求示例"
+    description: "使用GET方法查询资源"
+    # 步骤类型：request表示HTTP请求（可选值: request/database/wait/loop/concurrent/script）
+    type: request
+    # HTTP方法：GET表示查询（可选值: GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS）
+    method: GET
+    # 请求URL（使用变量引用: ${base_url}）
+    url: "${config.profiles.prod.base_url}/get"
+    # 验证规则
+    validations:
+      # 验证HTTP状态码等于200
+      - type: status_code  # 状态码验证类型（可选值: status_code/eq/ne/gt/lt/contains等）
+        path: "$.status_code"
+        expect: "200"  # 状态码期望值（字符串格式）
+        description: "验证状态码为200"
+      # 验证响应URL正确
+      - type: contains  # 包含验证
+        path: "$.url"  # JSONPath表达式：$.url 表示响应body中的url字段
+        expect: "/get"
+        description: "验证URL包含/get"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: POST 请求
+  # 用途：向服务器提交数据创建新资源
+  # ----------------------------------------------------------------------------
+  - name: "POST请求示例"
+    description: "使用POST方法创建资源"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    # 请求头（可选值：自定义键值对）
+    headers:
+      Content-Type: "application/json"  # 内容类型：JSON格式
+      User-Agent: "Sisyphus-Test-Runner"  # 用户代理标识
+    # 请求体（JSON格式数据）
+    body:
+      username: "testuser"
+      password: "testpass"
+      email: "test@example.com"
+      age: 25
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      # 验证请求体数据被正确回显（$.json表示响应body中的json字段）
+      - type: eq
+        path: "$.json.username"
+        expect: "testuser"
+        description: "验证username正确"
+      - type: eq
+        path: "$.json.age"
+        expect: 25
+        description: "验证age正确"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: PUT 请求
+  # 用途：完整更新资源（替换整个资源）
+  # ----------------------------------------------------------------------------
+  - name: "PUT请求示例"
+    description: "使用PUT方法完整更新资源"
+    type: request
+    method: PUT
+    url: "${config.profiles.prod.base_url}/put"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # PUT 通常包含完整的资源数据
+      user_id: "10086"
+      username: "updated_user"
+      email: "updated@example.com"
+      age: 30
+      status: "active"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.username"
+        expect: "updated_user"
+        description: "验证username已更新"
+      - type: eq
+        path: "$.json.age"
+        expect: 30
+        description: "验证age已更新"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: PATCH 请求
+  # 用途：部分更新资源（只更新指定的字段）
+  # ----------------------------------------------------------------------------
+  - name: "PATCH请求示例"
+    description: "使用PATCH方法部分更新资源"
+    type: request
+    method: PATCH
+    url: "${config.profiles.prod.base_url}/patch"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # PATCH 通常只包含需要更新的字段
+      age: 31
+      status: "inactive"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.age"
+        expect: 31
+        description: "验证age已更新"
+      - type: eq
+        path: "$.json.status"
+        expect: "inactive"
+        description: "验证status已更新"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: DELETE 请求
+  # 用途：删除指定资源
+  # ----------------------------------------------------------------------------
+  - name: "DELETE请求示例"
+    description: "使用DELETE方法删除资源"
+    type: request
+    method: DELETE
+    url: "${config.profiles.prod.base_url}/delete"
+    headers:
+      Content-Type: "application/json"
+    # DELETE 请求通常可以携带请求体（虽然不常见）
+    body:
+      resource_id: "12345"
+      reason: "用户请求删除"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证删除成功"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: HEAD 请求
+  # 用途：获取响应头信息（不返回响应体，只返回响应头）
+  # ----------------------------------------------------------------------------
+  - name: "HEAD请求示例"
+    description: "使用HEAD方法获取响应头信息"
+    type: request
+    method: HEAD
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: OPTIONS 请求
+  # 用途：获取服务器支持的HTTP方法和配置选项
+  # ----------------------------------------------------------------------------
+  - name: "OPTIONS请求示例"
+    description: "使用OPTIONS方法查询服务器支持的方法"
+    type: request
+    method: OPTIONS
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: 综合测试 - 使用多种方法
+  # ----------------------------------------------------------------------------
+  - name: "综合方法测试"
+    description: "验证不同方法对同一端点的响应"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/anything/test"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.url"
+        expect: "/anything/test"
+        description: "验证完整URL"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "基础"
+  - "http"
+  - "入门"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

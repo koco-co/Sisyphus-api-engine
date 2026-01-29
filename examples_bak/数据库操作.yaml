@@ -1,0 +1,105 @@
+name: "数据库操作测试"
+description: "测试数据库查询和更新功能"
+
+config:
+  timeout: 30
+  retry_times: 0
+  variables:
+    db_path: "/tmp/test_sisyphus.db"
+
+steps:
+  - 创建测试表:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: script
+      sql: |
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username VARCHAR(50) NOT NULL,
+          email VARCHAR(100) NOT NULL,
+          age INTEGER
+        );
+        DELETE FROM users;
+
+  - 插入测试数据:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: exec
+      sql: "INSERT INTO users (username, email, age) VALUES (:username, :email, :age)"
+      params:
+        username: "test_user"
+        email: "test@example.com"
+        age: 25
+
+  - 批量插入数据:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: executemany
+      sql: "INSERT INTO users (username, email, age) VALUES (:username, :email, :age)"
+      params:
+        - username: "user1"
+          email: "user1@example.com"
+          age: 30
+        - username: "user2"
+          email: "user2@example.com"
+          age: 35
+
+  - 查询所有用户:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: query
+      sql: "SELECT * FROM users WHERE age > :min_age"
+      params:
+        min_age: 20
+      validations:
+        - type: length_eq
+          path: "$.data"
+          expect: 3
+          description: "应该返回3条用户记录"
+        - type: contains
+          path: "$.data[0].username"
+          expect: "test_user"
+          description: "第一条记录的username应该是test_user"
+      extractors:
+        - name: first_user_id
+          type: jsonpath
+          path: "$.data[0].id"
+
+  - 更新用户数据:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: exec
+      sql: "UPDATE users SET age = :new_age WHERE username = :username"
+      params:
+        username: "test_user"
+        new_age: 26
+      validations:
+        - type: eq
+          path: "$.rowcount"
+          expect: 1
+          description: "应该更新1条记录"
+
+  - 删除测试数据:
+      type: database
+      database:
+        type: sqlite
+        path: "${db_path}"
+      operation: exec
+      sql: "DELETE FROM users WHERE username = :username"
+      params:
+        username: "user2"
+      validations:
+        - type: eq
+          path: "$.rowcount"
+          expect: 1
+          description: "应该删除1条记录"

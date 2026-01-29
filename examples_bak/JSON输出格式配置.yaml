@@ -1,0 +1,53 @@
+name: "JSON输出格式配置示例"
+description: "演示如何在YAML中配置输出格式"
+
+config:
+  name: "JSON输出配置"
+  timeout: 30
+
+  # 输出配置
+  output:
+    format: json              # 输出格式：text（默认）或 json
+    path: "result.json"       # 结果保存路径
+
+steps:
+  # 步骤1: GET请求
+  - name: "获取用户信息"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get"
+    headers:
+      Accept: "application/json"
+    validations:
+      - type: status_code
+        expect: 200
+    extractors:
+      - name: origin
+        type: jsonpath
+        path: "$.origin"
+
+  # 步骤2: POST请求
+  - name: "创建用户"
+    type: request
+    method: POST
+    url: "https://httpbin.org/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      name: "测试用户"
+      email: "test@example.com"
+    validations:
+      - type: status_code
+        expect: 200
+      - type: eq
+        path: "$.json.name"
+        expect: "测试用户"
+
+  # 步骤3: 使用提取的变量
+  - name: "使用提取的origin"
+    type: request
+    method: GET
+    url: "https://httpbin.org/headers"
+    validations:
+      - type: status_code
+        expect: 200

@@ -1,0 +1,236 @@
+# ==============================================================================
+# Sisyphus API Engine - 变量基础语法测试
+# ==============================================================================
+# 功能说明：演示变量系统的基本语法和用法
+# - 全局变量（config.variables）
+# - 环境变量引用（config.profiles）
+# - 变量渲染语法 ${variable_name}
+# - 嵌套变量引用
+# - 变量的作用域优先级
+# ==============================================================================
+
+name: "变量基础语法测试"
+description: "演示变量系统的基本语法和用法"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  # ============================================================
+  # 环境配置（profiles）
+  # 用途：定义不同环境的配置（开发、测试、生产等）
+  # ============================================================
+  profiles:
+    # 开发环境
+    dev:
+      base_url: "https://httpbin.org"
+      api_version: "v1"
+      env_name: "development"
+
+    # 生产环境
+    prod:
+      base_url: "https://httpbin.org"
+      api_version: "v2"
+      env_name: "production"
+
+  # 当前激活的环境（可选值: dev/prod）
+  active_profile: "dev"
+
+  # ============================================================
+  # 全局变量（variables）
+  # 用途：定义在整个测试用例中可用的变量
+  # 注意：步骤中可以直接引用这些变量，使用 ${变量名} 语法
+  # ============================================================
+  variables:
+    # 基础变量
+    base_endpoint: "/get"
+    test_user: "testuser"
+    test_password: "testpass123"
+    current_env: "development"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: 使用全局变量
+  # 用途：在请求中引用 config.variables 中定义的变量
+  # ----------------------------------------------------------------------------
+  - name: "使用全局变量"
+    description: "在URL和参数中使用全局变量"
+    type: request
+    method: GET
+    # 组合使用环境变量和全局变量
+    url: "${config.profiles.dev.base_url}${base_endpoint}"
+    params:
+      username: "${test_user}"  # 引用全局变量 test_user
+      env: "${current_env}"  # 引用全局变量 current_env
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.args.username"
+        expect: "testuser"
+        description: "验证username参数使用了全局变量"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 直接引用环境配置
+  # 用途：不通过全局变量，直接引用 profiles 中的配置
+  # ----------------------------------------------------------------------------
+  - name: "直接引用环境配置"
+    description: "直接使用 config.profiles 引用环境变量"
+    type: request
+    method: GET
+    # 直接引用环境配置中的字段
+    url: "${config.profiles.dev.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.url"
+        expect: "httpbin.org"
+        description: "验证URL包含httpbin.org"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 变量的动态组合
+  # 用途：演示多个变量的组合使用
+  # ----------------------------------------------------------------------------
+  - name: "变量组合示例"
+    description: "多个变量组合形成最终的值"
+    type: request
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 组合多个变量
+      user_info:
+        username: "${test_user}"
+        password: "${test_password}"
+      endpoint: "${base_endpoint}"
+      environment: "${current_env}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.user_info.username"
+        expect: "testuser"
+        description: "验证嵌套对象的变量"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 变量作用域演示
+  # 用途：演示不同作用域变量的优先级
+  # 优先级从低到高：全局变量 < 环境变量 < 提取变量（本章不涉及）
+  # ----------------------------------------------------------------------------
+  - name: "变量作用域示例"
+    description: "演示变量的作用域和优先级"
+    type: request
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    params:
+      # 全局变量
+      global_var: "${test_user}"
+      # 环境配置变量
+      env_var: "${config.profiles.dev.env_name}"
+      # 直接使用字符串
+      literal: "literal_value"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 变量在请求体中的使用
+  # 用途：演示变量在JSON请求体中的各种使用方式
+  # ----------------------------------------------------------------------------
+  - name: "请求体中的变量"
+    description: "在JSON请求体的不同位置使用变量"
+    type: request
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      # 在请求头中使用变量
+      X-Api-Version: "${config.profiles.dev.api_version}"
+    body:
+      # 对象字段值使用变量
+      username: "${test_user}"
+      # 在数组元素中使用变量
+      tags:
+        - "${current_env}"
+        - "tag2"
+      # 在嵌套对象中使用变量
+      metadata:
+        version: "${config.profiles.dev.api_version}"
+        endpoint: "${base_endpoint}"
+      # 在字符串中拼接变量
+      full_info: "User: ${test_user}, Env: ${current_env}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.full_info"
+        expect: "User: testuser"
+        description: "验证字符串拼接"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 特殊字符和转义
+  # 用途：演示变量中包含特殊字符的处理
+  # ----------------------------------------------------------------------------
+  - name: "特殊字符变量示例"
+    description: "变量值中的特殊字符和转义"
+    type: request
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    params:
+      # 包含空格的变量
+      spaced_value: "hello world test"
+      # 包含特殊字符的变量
+      special_chars: "test@#$%&*"
+      # URL编码的变量（引擎会自动处理）
+      url_encoded: "https://example.com/path?query=value"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: 变量多次引用
+  # 用途：演示同一变量在多个地方被引用
+  # ----------------------------------------------------------------------------
+  - name: "变量多次引用示例"
+    description: "同一变量在不同位置被多次引用"
+    type: request
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-Username: "${test_user}"  # 第1次引用
+    body:
+      username: "${test_user}"  # 第2次引用
+      confirm_username: "${test_user}"  # 第3次引用
+      user_list:
+        - "${test_user}"  # 第4次引用
+        - "${test_user}"  # 第5次引用
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.username"
+        expect: "testuser"
+        description: "验证第2次引用"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "变量"
+
+enabled: true

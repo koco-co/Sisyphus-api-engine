@@ -1,0 +1,346 @@
+# ==============================================================================
+# Sisyphus API Engine - 内置模板函数测试
+# ==============================================================================
+# 功能说明：演示内置模板函数的使用
+# - random() / randint() - 随机整数
+# - random_str() - 随机字符串
+# - uuid() / uuid4() - UUID生成
+# - timestamp() / timestamp_ms() - 时间戳
+# - date() - 格式化日期
+# - now() - datetime对象
+# - choice() - 随机选择
+# ==============================================================================
+
+name: "内置模板函数测试"
+description: "演示内置模板函数的使用（random/uuid/timestamp/date/choice）"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+  # 在全局变量中使用内置函数
+  variables:
+    # 生成随机用户ID（0-1000000之间的随机整数）
+    random_user_id: "${random()}"
+
+    # 生成指定范围的随机数（100-999之间的随机整数）
+    random_code: "${random(100, 999)}"
+
+    # 生成8位随机字符串
+    random_str_val: "${random_str()}"
+
+    # 生成16位随机字符串
+    random_str_long: "${random_str(16)}"
+
+    # 生成UUID（无横线）
+    request_uuid: "${uuid()}"
+
+    # 生成标准UUID v4（带横线）
+    request_uuid4: "${uuid4()}"
+
+    # 生成当前时间戳（秒）
+    current_ts: "${timestamp()}"
+
+    # 生成当前时间戳（毫秒）
+    current_ts_ms: "${timestamp_ms()}"
+
+    # 生成格式化日期
+    current_date: "${date('%Y-%m-%d')}"
+    current_datetime: "${date('%Y-%m-%d %H:%M:%S')}"
+
+    # 动态表名（使用随机数）
+    dynamic_table: "table_${random()}"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: random() 函数测试
+  # 用途：生成随机整数
+  # 语法：${random()} 或 ${random(min, max)}
+  # ----------------------------------------------------------------------------
+  - name: "random函数测试"
+    description: "测试random()函数生成随机整数"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用全局变量中定义的随机值
+      user_id: "${random_user_id}"
+      code: "${random_code}"
+      # 在参数中直接调用函数
+      inline_random: "${random()}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: exists
+        path: "$.args.user_id"
+        description: "验证user_id参数存在"
+      - type: exists
+        path: "$.args.inline_random"
+        description: "验证inline_random参数存在"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: random_str() 函数测试
+  # 用途：生成随机字符串
+  # 语法：${random_str()} 或 ${random_str(length, chars)}
+  # ----------------------------------------------------------------------------
+  - name: "random_str函数测试"
+    description: "测试random_str()函数生成随机字符串"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用全局变量中定义的随机字符串
+      short_str: "${random_str_val}"
+      long_str: "${random_str_long}"
+      # 在参数中直接生成随机字符串
+      inline_str: "${random_str()}"
+      custom_str: "${random_str(10)}"  # 10位随机字符串
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: length_eq
+        path: "$.args.inline_str"
+        expect: 8
+        description: "验证默认长度为8"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: uuid() 函数测试
+  # 用途：生成UUID标识符
+  # 语法：${uuid()} （无横线）或 ${uuid4()} （标准格式）
+  # ----------------------------------------------------------------------------
+  - name: "uuid函数测试"
+    description: "测试uuid()和uuid4()函数"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用全局变量中定义的UUID
+      request_id: "${request_uuid}"
+      request_id4: "${request_uuid4}"
+      # 在参数中直接生成UUID
+      inline_uuid: "${uuid()}"
+      inline_uuid4: "${uuid4()}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: length_eq
+        path: "$.args.inline_uuid"
+        expect: 32
+        description: "验证uuid()生成32位字符串（无横线）"
+      - type: contains
+        path: "$.args.inline_uuid4"
+        expect: "-"
+        description: "验证uuid4()包含横线"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: timestamp() 函数测试
+  # 用途：生成Unix时间戳
+  # 语法：${timestamp()} （秒）或 ${timestamp_ms()} （毫秒）
+  # ----------------------------------------------------------------------------
+  - name: "timestamp函数测试"
+    description: "测试timestamp()和timestamp_ms()函数"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用全局变量中定义的时间戳
+      ts: "${current_ts}"
+      ts_ms: "${current_ts_ms}"
+      # 在参数中直接生成时间戳
+      inline_ts: "${timestamp()}"
+      inline_ts_ms: "${timestamp_ms()}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: exists
+        path: "$.args.inline_ts"
+        description: "验证时间戳存在"
+      - type: exists
+        path: "$.args.inline_ts_ms"
+        description: "验证毫秒时间戳存在"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: date() 函数测试
+  # 用途：生成格式化的日期时间字符串
+  # 语法：${date(format)} 其中format为strftime格式字符串
+  # ----------------------------------------------------------------------------
+  - name: "date函数测试"
+    description: "测试date()函数生成格式化日期"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用全局变量中定义的日期
+      date_only: "${current_date}"
+      full_datetime: "${current_datetime}"
+      # 在参数中直接生成日期
+      year: "${date('%Y')}"
+      month: "${date('%m')}"
+      day: "${date('%d')}"
+      # 自定义格式
+      custom_format: "${date('%Y%m%d_%H%M%S')}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: length_eq
+        path: "$.args.year"
+        expect: 4
+        description: "验证年份为4位数字"
+      - type: length_eq
+        path: "$.args.month"
+        expect: 2
+        description: "验证月份为2位数字"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: now() 函数测试
+  # 用途：获取当前datetime对象，可以进行链式调用
+  # 语法：${now()} 返回datetime对象，可以调用其方法
+  # ----------------------------------------------------------------------------
+  - name: "now函数测试"
+    description: "测试now()函数获取datetime对象"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # now()返回datetime对象，可以调用strftime方法
+      iso_format: "${now().strftime('%Y-%m-%dT%H:%M:%S')}"
+      # 获取年月日
+      now_year: "${now().year}"
+      now_month: "${now().month}"
+      now_day: "${now().day}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.args.iso_format"
+        expect: "T"
+        description: "验证ISO格式包含T"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: choice() 函数测试
+  # 用途：从列表中随机选择一个元素
+  # 语法：${choice(list)} 其中list为Python列表
+  # ----------------------------------------------------------------------------
+  - name: "choice函数测试"
+    description: "测试choice()函数随机选择"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 从列表中随机选择
+      random_status: "${choice(['pending', 'processing', 'completed'])}"
+      random_priority: "${choice(['low', 'medium', 'high'])}"
+      random_number: "${choice([1, 2, 3, 4, 5])}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: in_list
+        path: "$.args.random_status"
+        expect: ["pending", "processing", "completed"]
+        description: "验证random_status在预期列表中"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: 复合函数调用测试
+  # 用途：演示在字符串中嵌入多个函数调用
+  # ----------------------------------------------------------------------------
+  - name: "复合函数调用测试"
+    description: "在字符串中组合多个函数调用"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 在字符串中嵌入动态值
+      table_name: "${dynamic_table}"
+      # 组合多个函数
+      composite_key: "user_${uuid()}_${timestamp()}"
+      # 嵌套函数调用
+      random_date: "${date('%Y-%m-%d')}_${random_str(4)}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.args.table_name"
+        expect: "table_"
+        description: "验证table_name包含前缀"
+
+  # ----------------------------------------------------------------------------
+  # 步骤9: 在请求体中使用函数
+  # 用途：演示在JSON请求体中使用内置函数
+  # ----------------------------------------------------------------------------
+  - name: "请求体中的函数调用"
+    description: "在JSON请求体中使用内置函数"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 使用函数生成的值
+      request_id: "${uuid4()}"
+      timestamp: "${timestamp()}"
+      random_code: "${random(1000, 9999)}"
+      # 在对象中使用
+      user:
+        id: "${random()}"
+        username: "user_${random_str(8)}"
+      # 在数组中使用
+      tags:
+        - "${date('%Y%m%d')}"
+        - "${random_str(4)}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.user.username"
+        expect: "user_"
+        description: "验证username包含前缀"
+
+  # ----------------------------------------------------------------------------
+  # 步骤10: 在请求头中使用函数
+  # 用途：演示在HTTP请求头中使用内置函数
+  # ----------------------------------------------------------------------------
+  - name: "请求头中的函数调用"
+    description: "在HTTP请求头中使用内置函数"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    headers:
+      Content-Type: "application/json"
+      # 生成唯一的请求ID
+      X-Request-ID: "${uuid4()}"
+      # 生成时间戳
+      X-Timestamp: "${timestamp()}"
+      # 生成随机追踪ID
+      X-Trace-ID: "trace_${random_str(16)}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "函数"
+
+enabled: true

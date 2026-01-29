@@ -1,0 +1,59 @@
+# 测试新的变量语法 ${}
+
+name: "变量语法测试"
+description: "测试 ${variable} 语法是否正常工作"
+
+config:
+  name: "测试配置"
+  active_profile: "prod"
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+      api_key: "test-key-12345"
+
+  variables:
+    user_id: "10086"
+    username: "testuser"
+
+steps:
+  # 测试1: 使用 ${} 语法引用配置变量
+  - 测试配置变量:
+      type: request
+      url: "${config.profiles.prod.base_url}/get"
+      method: GET
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  # 测试2: 使用 ${} 语法引用全局变量
+  - 测试全局变量:
+      type: request
+      url: "${config.profiles.prod.base_url}/anything?user_id=${user_id}&username=${username}"
+      method: GET
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+  # 测试3: 在请求体中使用变量
+  - 测试Body变量:
+      type: request
+      url: "${config.profiles.prod.base_url}/post"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      body:
+        user_id: "${user_id}"
+        username: "${username}"
+        api_key: "${config.profiles.prod.api_key}"
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: "200"
+
+tags:
+  - "variable-test"
+
+enabled: true

@@ -1,0 +1,340 @@
+# ==============================================================================
+# Sisyphus API Engine - 请求参数配置测试
+# ==============================================================================
+# 功能说明：演示各种请求参数的配置方式
+# - Query 参数（URL查询参数）
+# - Headers（请求头配置）
+# - Body（JSON格式请求体）
+# - Form Data（表单数据提交）
+# - 文件上传
+# ==============================================================================
+
+name: "请求参数配置测试"
+description: "演示各种请求参数的配置（Query/Headers/Body/Form/文件上传）"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: Query 参数测试
+  # 用途：通过URL查询字符串传递参数
+  # ----------------------------------------------------------------------------
+  - name: "Query参数示例"
+    description: "通过params字段配置URL查询参数"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # Query参数：会自动拼接到URL后面（?key1=value1&key2=value2）
+    params:
+      user_id: "10086"
+      username: "testuser"
+      page: "1"
+      size: "10"
+      # 支持嵌套参数
+      filters:
+        status: "active"
+        role: "admin"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证Query参数被正确传递
+      - type: eq
+        path: "$.args.user_id"
+        expect: "10086"
+        description: "验证user_id参数"
+      - type: eq
+        path: "$.args.username"
+        expect: "testuser"
+        description: "验证username参数"
+      - type: eq
+        path: "$.args.page"
+        expect: "1"
+        description: "验证page参数"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: Headers 配置测试
+  # 用途：设置自定义HTTP请求头
+  # ----------------------------------------------------------------------------
+  - name: "Headers配置示例"
+    description: "自定义HTTP请求头信息"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/headers"
+    # 请求头配置：键值对格式
+    headers:
+      # 内容类型：告诉服务器请求体的格式
+      Content-Type: "application/json"
+      # 授权信息：Bearer Token认证
+      Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+      # 用户代理：标识客户端类型
+      User-Agent: "Sisyphus-API-Engine/2.0"
+      # 接受类型：告诉服务器期望的响应格式
+      Accept: "application/json"
+      # 自定义头：X-前缀表示自定义字段
+      X-Request-ID: "req-123456"
+      X-Client-Version: "1.0.0"
+      # 语言偏好
+      Accept-Language: "zh-CN,zh;q=0.9,en;q=0.8"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证请求头被正确传递（httpbin会返回收到的所有请求头）
+      - type: contains
+        path: "$.headers.User-Agent"
+        expect: "Sisyphus-API-Engine"
+        description: "验证User-Agent包含关键词"
+      - type: contains
+        path: "$.headers.Authorization"
+        expect: "Bearer"
+        description: "验证Authorization包含Bearer"
+      - type: exists
+        path: "$.headers"
+        description: "验证headers字段存在"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: JSON Body 测试
+  # 用途：发送JSON格式的请求体数据
+  # ----------------------------------------------------------------------------
+  - name: "JSON Body示例"
+    description: "发送JSON格式的请求体"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"  # 指定请求体为JSON格式
+    # 请求体：自动序列化为JSON字符串
+    body:
+      # 基础数据类型
+      user_id: 10086
+      username: "testuser"
+      active: true
+      score: 95.5
+      null_value: null
+      # 嵌套对象
+      profile:
+        nickname: "测试用户"
+        bio: "这是一个测试账号"
+        settings:
+          theme: "dark"
+          notifications: true
+      # 数组
+      tags: ["developer", "tester", "admin"]
+      roles:
+        - name: "user"
+          permissions: ["read", "write"]
+        - name: "admin"
+          permissions: ["read", "write", "delete"]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证JSON数据被正确解析
+      - type: eq
+        path: "$.json.user_id"
+        expect: 10086
+        description: "验证user_id"
+      - type: eq
+        path: "$.json.username"
+        expect: "testuser"
+        description: "验证username"
+      - type: eq
+        path: "$.json.profile.nickname"
+        expect: "测试用户"
+        description: "验证嵌套对象的nickname"
+      - type: contains
+        path: "$.json.tags"
+        expect: "developer"
+        description: "验证数组包含developer"
+      - type: length_eq
+        path: "$.json.tags"
+        expect: 3
+        description: "验证tags数组长度为3"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: Form Data 测试
+  # 用途：以表单格式提交数据（application/x-www-form-urlencoded）
+  # ----------------------------------------------------------------------------
+  - name: "FormData示例"
+    description: "以表单格式提交数据"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"  # 表单格式
+    # 使用data字段提交表单数据
+    body:
+      username: "formuser"
+      password: "formpass123"
+      email: "form@example.com"
+      remember: "yes"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证表单数据被正确解析
+      - type: eq
+        path: "$.form.username"
+        expect: "formuser"
+        description: "验证表单username"
+      - type: eq
+        path: "$.form.remember"
+        expect: "yes"
+        description: "验证表单remember"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 多种参数组合测试
+  # 用途：同时使用Query参数、Headers和Body
+  # ----------------------------------------------------------------------------
+  - name: "参数组合示例"
+    description: "Query参数、Headers和Body的组合使用"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    # Query参数
+    params:
+      debug: "true"
+      trace_id: "trace-123"
+    # 请求头
+    headers:
+      Content-Type: "application/json"
+      X-Custom-Header: "custom-value"
+    # 请求体
+    body:
+      action: "create_user"
+      data:
+        name: "combined_test"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证Query参数
+      - type: eq
+        path: "$.args.debug"
+        expect: "true"
+        description: "验证Query参数debug"
+      # 验证Headers
+      - type: eq
+        path: "$.headers.X-Custom-Header"
+        expect: "custom-value"
+        description: "验证自定义请求头"
+      # 验证Body
+      - type: eq
+        path: "$.json.action"
+        expect: "create_user"
+        description: "验证请求体action字段"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 特殊字符和编码测试
+  # 用途：测试参数中的特殊字符和URL编码
+  # ----------------------------------------------------------------------------
+  - name: "特殊字符编码示例"
+    description: "测试特殊字符和URL编码"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 中文参数（自动进行URL编码）
+      keyword: "测试搜索"
+      # 特殊字符
+      email: "user+test@example.com"
+      # 空格（会自动编码为%20或+）
+      query: "hello world test"
+      # URL中的特殊字符
+      url_param: "https://example.com/path?query=value"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.args.keyword"
+        expect: "测试搜索"
+        description: "验证中文参数正确解码"
+      - type: contains
+        path: "$.args.email"
+        expect: "user+test"
+        description: "验证email中的+号"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: 空值和可选参数测试
+  # 用途：测试参数为空或未设置的情况
+  # ----------------------------------------------------------------------------
+  - name: "空值参数示例"
+    description: "测试空值和可选参数的处理"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 包含空值的字段
+      string_field: ""
+      null_field: null
+      # 空对象和空数组
+      empty_object: {}
+      empty_array: []
+      # 正常值
+      normal_field: "normal_value"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.string_field"
+        expect: ""
+        description: "验证空字符串"
+      - type: is_null
+        path: "$.json.null_field"
+        description: "验证null字段"
+      - type: is_empty
+        path: "$.json.empty_object"
+        description: "验证空对象"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: 动态参数值测试
+  # 用途：演示使用变量作为参数值（变量功能在后续章节详细讲解）
+  # ----------------------------------------------------------------------------
+  - name: "动态参数值示例"
+    description: "使用变量作为参数值（简单示例）"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      # 使用内置函数生成动态值
+      timestamp: "${timestamp()}"  # 当前时间戳
+      random_id: "${random()}"  # 随机数
+      request_id: "${uuid()}"  # UUID
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证动态参数存在
+      - type: exists
+        path: "$.args.timestamp"
+        description: "验证timestamp参数存在"
+      - type: exists
+        path: "$.args.random_id"
+        description: "验证random_id参数存在"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "http"
+  - "参数"
+
+enabled: true

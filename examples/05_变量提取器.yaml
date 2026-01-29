@@ -1,0 +1,189 @@
+# ==============================================================================
+# Sisyphus API Engine - 变量提取器测试
+# ==============================================================================
+# 功能说明：演示从响应中提取变量并在后续步骤中使用
+# - JSONPath提取器：从JSON响应中提取数据
+# - Header提取器：从响应头中提取数据
+# ==============================================================================
+
+name: "变量提取器测试"
+description: "演示从响应中提取变量并在后续步骤中使用"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: JSONPath提取器 - 基础字段提取
+  # 用途：从JSON响应中提取简单字段
+  # 提取器类型：jsonpath
+  # 路径语法：$.field
+  # ----------------------------------------------------------------------------
+  - name: "JSONPath基础提取"
+    description: "使用JSONPath提取JSON响应中的基础字段"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 变量提取器配置
+    extractors:
+      # 提取完整的响应URL
+      - name: response_url  # 提取后的变量名
+        type: jsonpath  # 提取器类型：jsonpath/regex/header/cookie
+        path: "$.url"  # JSONPath表达式
+        description: "提取响应URL"
+      # 提取origin字段
+      - name: response_origin
+        type: jsonpath
+        path: "$.origin"
+        description: "提取origin字段"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 使用提取的变量
+  # 用途：在后续步骤中使用之前提取的变量
+  # 变量引用语法：${变量名}
+  # ----------------------------------------------------------------------------
+  - name: "使用提取的变量"
+    description: "在请求中使用上一步提取的变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 使用上一步提取的变量
+      original_url: "${response_url}"
+      original_origin: "${response_origin}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.original_url"
+        expect: "httpbin.org"
+        description: "验证提取的URL包含httpbin.org"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: Header提取器
+  # 用途：从HTTP响应头中提取数据
+  # 提取器类型：header
+  # ----------------------------------------------------------------------------
+  - name: "Header提取器"
+    description: "从HTTP响应头中提取数据"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/headers"
+    extractors:
+      # 提取响应头中的Content-Type
+      - name: content_type
+        type: header
+        path: "Content-Type"
+        description: "提取Content-Type响应头"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 使用提取的Header变量
+  # 用途：在后续请求中使用提取的Header变量
+  # ----------------------------------------------------------------------------
+  - name: "使用提取的Header变量"
+    description: "在请求中使用提取的Header变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      original_content_type: "${content_type}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.original_content_type"
+        expect: "json"
+        description: "验证content_type包含json"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 综合提取示例
+  # 用途：演示从响应中提取多个不同类型的变量
+  # ----------------------------------------------------------------------------
+  - name: "综合提取示例"
+    description: "从响应中提取多个变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-Custom-Header: "custom_value_12345"
+    body:
+      order_id: "ORD-2024-001"
+      customer_name: "张三"
+      amount: 999.99
+    extractors:
+      # 提取完整的请求URL
+      - name: request_url
+        type: jsonpath
+        path: "$.url"
+        description: "提取请求URL"
+      # 提取自定义请求头
+      - name: custom_header
+        type: header
+        path: "X-Custom-Header"
+        description: "提取自定义请求头"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 使用综合提取的变量
+  # 用途：在后续步骤中使用所有提取的变量
+  # ----------------------------------------------------------------------------
+  - name: "使用综合提取的变量"
+    description: "验证所有提取的变量都可用"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      summary:
+        url: "${request_url}"
+        header: "${custom_header}"
+        # 使用之前步骤提取的变量
+        original_url: "${response_url}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.summary.url"
+        expect: "httpbin.org"
+        description: "验证URL包含httpbin.org"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "提取器"
+  - "变量"
+
+enabled: true

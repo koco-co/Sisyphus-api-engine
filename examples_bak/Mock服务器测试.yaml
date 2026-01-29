@@ -1,0 +1,210 @@
+name: "Mock服务器测试示例"
+description: "演示如何使用内置Mock服务器进行API测试"
+
+config:
+  profiles:
+    mock:
+      base_url: "http://localhost:8888"
+  active_profile: "mock"
+  variables:
+    mock_server_port: 8888
+
+steps:
+  - name: "1. 健康检查"
+    type: request
+    method: GET
+    url: "${base_url}/_mock/health"
+    description: "检查Mock服务器是否运行"
+    validations:
+      - type: eq
+        path: "$.status"
+        expect: "ok"
+        description: "验证服务器状态正常"
+      - type: eq
+        path: "$.running"
+        expect: true
+        description: "验证服务器正在运行"
+
+  - name: "2. 获取用户列表"
+    type: request
+    method: GET
+    url: "${base_url}/api/users"
+    description: "获取所有用户列表"
+    validations:
+      - type: eq
+        path: "$.users"
+        expect: [{"id": 1, "name": "John"}, {"id": 2, "name": "Jane"}]
+        description: "验证返回用户列表"
+
+  - name: "3. 获取单个用户"
+    type: request
+    method: GET
+    url: "${base_url}/api/users/1"
+    description: "获取ID为1的用户信息"
+    validations:
+      - type: eq
+        path: "$.id"
+        expect: 1
+        description: "验证用户ID"
+      - type: eq
+        path: "$.name"
+        expect: "John"
+        description: "验证用户名"
+
+  - name: "4. 正则匹配用户ID"
+    type: request
+    method: GET
+    url: "${base_url}/api/users/999"
+    description: "测试正则表达式路径匹配"
+    validations:
+      - type: eq
+        path: "$.id"
+        expect: 123
+        description: "验证正则匹配规则生效"
+
+  - name: "5. 创建用户"
+    type: request
+    method: POST
+    url: "${base_url}/api/users"
+    body:
+      name: "Alice"
+      email: "alice@example.com"
+    headers:
+      Content-Type: "application/json"
+    description: "创建新用户"
+    validations:
+      - type: eq
+        path: "$.id"
+        expect: 123
+        description: "验证用户创建成功"
+
+  - name: "6. 带查询参数的请求"
+    type: request
+    method: GET
+    url: "${base_url}/api/search"
+    params:
+      q: "test"
+      page: "1"
+    description: "测试查询参数匹配"
+    validations:
+      - type: eq
+        path: "$.results"
+        expect: []
+        description: "验证查询结果"
+
+  - name: "7. 测试自定义响应头"
+    type: request
+    method: GET
+    url: "${base_url}/api/custom"
+    description: "测试自定义响应头"
+    extractors:
+      - name: custom_header
+        type: header
+        path: "X-Custom-Header"
+      - name: api_version
+        type: header
+        path: "X-Api-Version"
+    validations:
+      - type: eq
+        path: "$"
+        expect: {}
+        description: "验证响应体为空"
+
+  - name: "8. 测试延迟响应"
+    type: request
+    method: GET
+    url: "${base_url}/api/delay"
+    description: "测试响应延迟模拟（0.2秒）"
+    validations:
+      - type: eq
+        path: "$.delayed"
+        expect: true
+        description: "验证延迟响应"
+
+  - name: "9. 测试错误响应"
+    type: request
+    method: GET
+    url: "${base_url}/api/error"
+    description: "测试HTTP错误模拟"
+    expected_status: [500]
+    validations:
+      - type: eq
+        path: "$.error"
+        expect: "Internal Server Error"
+        description: "验证错误信息"
+
+  - name: "10. 测试不存在的路径"
+    type: request
+    method: GET
+    url: "${base_url}/api/nonexistent"
+    description: "测试无匹配规则的请求"
+    expected_status: [404]
+    validations:
+      - type: exists
+        path: "$.error"
+        description: "验证返回错误信息"
+
+  - name: "11. 列出所有Mock规则"
+    type: request
+    method: GET
+    url: "${base_url}/_mock/rules"
+    description: "获取所有已配置的Mock规则"
+    validations:
+      - type: type
+        path: "$"
+        expect: "list"
+        description: "验证返回规则列表"
+
+  - name: "12. 测试需要认证的接口"
+    type: request
+    method: GET
+    url: "${base_url}/api/protected"
+    headers:
+      Authorization: "Bearer token123"
+    description: "测试带有Header匹配规则的接口"
+    validations:
+      - type: eq
+        path: "$.authenticated"
+        expect: true
+        description: "验证认证成功"
+
+  - name: "13. 测试优先级规则"
+    type: request
+    method: GET
+    url: "${base_url}/api/priority"
+    description: "测试高优先级规则优先匹配"
+    validations:
+      - type: eq
+        path: "$.priority"
+        expect: "high"
+        description: "验证高优先级规则生效"
+
+  - name: "14. 测试Body匹配"
+    type: request
+    method: POST
+    url: "${base_url}/api/users"
+    body:
+      name: "John Doe"
+      email: "john@example.com"
+    description: "测试请求体匹配"
+    validations:
+      - type: eq
+        path: "$.created"
+        expect: true
+        description: "验证Body匹配成功"
+
+  - name: "15. 测试复杂匹配条件"
+    type: request
+    method: POST
+    url: "${base_url}/api/complex?validate=true"
+    body:
+      test: "data"
+    headers:
+      Content-Type: "application/json"
+    description: "测试包含多种匹配条件的请求"
+    expected_status: [201]
+    validations:
+      - type: eq
+        path: "$.created"
+        expect: true
+        description: "验证复杂匹配成功"
