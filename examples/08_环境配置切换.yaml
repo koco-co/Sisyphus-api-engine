@@ -1,0 +1,406 @@
+# ==============================================================================
+# Sisyphus API Engine - 环境配置切换测试
+# ==============================================================================
+# 功能说明：演示多环境配置和环境切换功能
+# - profiles: 定义多个环境的配置
+# - active_profile: 激活指定环境
+# - 环境变量引用: ${config.profiles.{env}.xxx}
+# ==============================================================================
+
+name: "环境配置切换测试"
+description: "演示多环境配置、环境切换和环境变量引用"
+
+config:
+  name: "测试配置"
+  timeout: 30
+
+  # ========================================================================
+  # 多环境配置（profiles）
+  # 用途：为不同环境（开发、测试、预发布、生产）定义不同的配置
+  # ========================================================================
+  profiles:
+    # 开发环境配置
+    dev:
+      base_url: "https://httpbin.org"
+      timeout: 10
+      # 环境特定变量
+      variables:
+        env_name: "开发环境"
+        db_host: "dev-db.example.com"
+        max_retry: 3
+        debug_mode: true
+        api_version: "v1"
+
+    # 测试环境配置
+    test:
+      base_url: "https://httpbin.org"
+      timeout: 15
+      variables:
+        env_name: "测试环境"
+        db_host: "test-db.example.com"
+        max_retry: 5
+        debug_mode: true
+        api_version: "v1"
+
+    # 预发布环境配置
+    staging:
+      base_url: "https://httpbin.org"
+      timeout: 20
+      variables:
+        env_name: "预发布环境"
+        db_host: "staging-db.example.com"
+        max_retry: 3
+        debug_mode: false
+        api_version: "v2"
+
+    # 生产环境配置
+    prod:
+      base_url: "https://httpbin.org"
+      timeout: 30
+      variables:
+        env_name: "生产环境"
+        db_host: "prod-db.example.com"
+        max_retry: 1
+        debug_mode: false
+        api_version: "v2"
+
+  # 当前激活的环境（可选值: dev/test/staging/prod）
+  active_profile: "dev"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: 使用开发环境配置
+  # 激活环境: dev
+  # 验证点: 验证环境变量正确引用
+  # ----------------------------------------------------------------------------
+  - name: "使用开发环境配置"
+    description: "验证开发环境的配置和变量"
+    type: request
+    method: POST
+    # 引用开发环境的base_url
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-API-Version: "${config.profiles.dev.variables.api_version}"
+      X-Environment-Type: "dev"
+    body:
+      env_type: "dev"
+      env_name: "${config.profiles.dev.variables.env_name}"
+      db_host: "${config.profiles.dev.variables.db_host}"
+      max_retry: "${config.profiles.dev.variables.max_retry}"
+      debug_mode: "${config.profiles.dev.variables.debug_mode}"
+      timeout: "${config.profiles.dev.timeout}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+      # 验证环境类型
+      - type: eq
+        path: "$.json.env_type"
+        expect: "dev"
+        description: "验证环境类型为dev"
+      # 验证环境名称
+      - type: eq
+        path: "$.json.env_name"
+        expect: "开发环境"
+        description: "验证环境名称为开发环境"
+      # 验证数据库主机
+      - type: contains
+        path: "$.json.db_host"
+        expect: "dev-db"
+        description: "验证数据库主机包含dev-db"
+      # 验证最大重试次数
+      - type: eq
+        path: "$.json.max_retry"
+        expect: "3"
+        description: "验证最大重试次数为3"
+      # 验证调试模式
+      - type: eq
+        path: "$.json.debug_mode"
+        expect: "True"
+        description: "验证调试模式为true"
+      # 验证超时时间
+      - type: eq
+        path: "$.json.timeout"
+        expect: "10"
+        description: "验证超时时间为10秒"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 使用测试环境配置
+  # 激活环境: test
+  # 验证点: 验证测试环境的变量值
+  # ----------------------------------------------------------------------------
+  - name: "使用测试环境配置"
+    description: "验证测试环境的配置和变量"
+    type: request
+    method: POST
+    url: "${config.profiles.test.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-Environment-Type: "test"
+    body:
+      env_type: "test"
+      env_name: "${config.profiles.test.variables.env_name}"
+      db_host: "${config.profiles.test.variables.db_host}"
+      max_retry: "${config.profiles.test.variables.max_retry}"
+      debug_mode: "${config.profiles.test.variables.debug_mode}"
+      timeout: "${config.profiles.test.timeout}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证环境类型
+      - type: eq
+        path: "$.json.env_type"
+        expect: "test"
+        description: "验证环境类型为test"
+      # 验证环境名称
+      - type: eq
+        path: "$.json.env_name"
+        expect: "测试环境"
+        description: "验证环境名称为测试环境"
+      # 验证数据库主机
+      - type: contains
+        path: "$.json.db_host"
+        expect: "test-db"
+        description: "验证数据库主机包含test-db"
+      # 验证最大重试次数（测试环境应该更多）
+      - type: eq
+        path: "$.json.max_retry"
+        expect: "5"
+        description: "验证最大重试次数为5"
+      # 验证调试模式
+      - type: eq
+        path: "$.json.debug_mode"
+        expect: "True"
+        description: "验证调试模式为true"
+      # 验证超时时间
+      - type: eq
+        path: "$.json.timeout"
+        expect: "15"
+        description: "验证超时时间为15秒"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 使用预发布环境配置
+  # 激活环境: staging
+  # 验证点: 验证预发布环境的配置（API版本升级为v2）
+  # ----------------------------------------------------------------------------
+  - name: "使用预发布环境配置"
+    description: "验证预发布环境的配置和变量"
+    type: request
+    method: POST
+    url: "${config.profiles.staging.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-API-Version: "${config.profiles.staging.variables.api_version}"
+      X-Environment-Type: "staging"
+    body:
+      env_type: "staging"
+      env_name: "${config.profiles.staging.variables.env_name}"
+      db_host: "${config.profiles.staging.variables.db_host}"
+      max_retry: "${config.profiles.staging.variables.max_retry}"
+      debug_mode: "${config.profiles.staging.variables.debug_mode}"
+      timeout: "${config.profiles.staging.timeout}"
+      api_version: "${config.profiles.staging.variables.api_version}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证环境类型
+      - type: eq
+        path: "$.json.env_type"
+        expect: "staging"
+        description: "验证环境类型为staging"
+      # 验证环境名称
+      - type: eq
+        path: "$.json.env_name"
+        expect: "预发布环境"
+        description: "验证环境名称为预发布环境"
+      # 验证API版本（预发布环境使用v2）
+      - type: eq
+        path: "$.json.api_version"
+        expect: "v2"
+        description: "验证API版本为v2"
+      # 验证调试模式关闭
+      - type: eq
+        path: "$.json.debug_mode"
+        expect: "False"
+        description: "验证调试模式为false"
+      # 验证最大重试次数
+      - type: eq
+        path: "$.json.max_retry"
+        expect: "3"
+        description: "验证最大重试次数为3"
+      # 验证超时时间
+      - type: eq
+        path: "$.json.timeout"
+        expect: "20"
+        description: "验证超时时间为20秒"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 使用生产环境配置
+  # 激活环境: prod
+  # 验证点: 验证生产环境的最小化配置（调试模式关闭、重试次数最少）
+  # ----------------------------------------------------------------------------
+  - name: "使用生产环境配置"
+    description: "验证生产环境的配置和变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-API-Version: "${config.profiles.prod.variables.api_version}"
+      X-Environment-Type: "prod"
+    body:
+      env_type: "prod"
+      env_name: "${config.profiles.prod.variables.env_name}"
+      db_host: "${config.profiles.prod.variables.db_host}"
+      max_retry: "${config.profiles.prod.variables.max_retry}"
+      debug_mode: "${config.profiles.prod.variables.debug_mode}"
+      timeout: "${config.profiles.prod.timeout}"
+      api_version: "${config.profiles.prod.variables.api_version}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证环境类型
+      - type: eq
+        path: "$.json.env_type"
+        expect: "prod"
+        description: "验证环境类型为prod"
+      # 验证环境名称
+      - type: eq
+        path: "$.json.env_name"
+        expect: "生产环境"
+        description: "验证环境名称为生产环境"
+      # 验证数据库主机
+      - type: contains
+        path: "$.json.db_host"
+        expect: "prod-db"
+        description: "验证数据库主机包含prod-db"
+      # 验证API版本为v2
+      - type: eq
+        path: "$.json.api_version"
+        expect: "v2"
+        description: "验证API版本为v2"
+      # 验证调试模式关闭
+      - type: eq
+        path: "$.json.debug_mode"
+        expect: "False"
+        description: "验证调试模式为false"
+      # 验证最大重试次数最少（生产环境快速失败）
+      - type: eq
+        path: "$.json.max_retry"
+        expect: "1"
+        description: "验证最大重试次数为1"
+      # 验证超时时间最长（生产环境需要更长等待）
+      - type: eq
+        path: "$.json.timeout"
+        expect: "30"
+        description: "验证超时时间为30秒"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 环境配置对比
+  # 用途：在同一请求中对比不同环境的配置
+  # ----------------------------------------------------------------------------
+  - name: "环境配置对比"
+    description: "对比所有环境的配置差异"
+    type: request
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      dev_env: "${config.profiles.dev.variables.env_name}"
+      test_env: "${config.profiles.test.variables.env_name}"
+      staging_env: "${config.profiles.staging.variables.env_name}"
+      prod_env: "${config.profiles.prod.variables.env_name}"
+      dev_timeout: "${config.profiles.dev.timeout}"
+      prod_timeout: "${config.profiles.prod.timeout}"
+      dev_debug: "${config.profiles.dev.variables.debug_mode}"
+      prod_debug: "${config.profiles.prod.variables.debug_mode}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证所有环境名称
+      - type: contains
+        path: "$.json.dev_env"
+        expect: "开发"
+        description: "验证dev环境名称"
+      - type: contains
+        path: "$.json.test_env"
+        expect: "测试"
+        description: "验证test环境名称"
+      - type: contains
+        path: "$.json.staging_env"
+        expect: "预发布"
+        description: "验证staging环境名称"
+      - type: contains
+        path: "$.json.prod_env"
+        expect: "生产"
+        description: "验证prod环境名称"
+      # 验证开发环境超时时间小于生产环境
+      - type: lt
+        path: "$.json.dev_timeout"
+        expect: "30"
+        description: "验证开发环境超时时间小于生产环境"
+      # 验证开发环境调试模式
+      - type: eq
+        path: "$.json.dev_debug"
+        expect: "True"
+        description: "验证开发环境调试模式开启"
+      # 验证生产环境调试模式
+      - type: eq
+        path: "$.json.prod_debug"
+        expect: "False"
+        description: "验证生产环境调试模式关闭"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 环境变量动态切换
+  # 用途：演示如何根据active_profile动态选择环境
+  # 注意：实际使用时，可以通过CLI参数 --profile 切换环境
+  # ----------------------------------------------------------------------------
+  - name: "环境变量动态切换"
+    description: "演示使用active_profile动态引用环境"
+    type: request
+    method: POST
+    # 使用active_profile动态引用当前激活的环境
+    url: "${config.profiles[config.active_profile].base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-Active-Profile: "${config.active_profile}"
+    body:
+      active_profile: "${config.active_profile}"
+      base_url: "${config.profiles[config.active_profile].base_url}"
+      env_name: "${config.profiles[config.active_profile].variables.env_name}"
+      timeout: "${config.profiles[config.active_profile].timeout}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证active_profile
+      - type: eq
+        path: "$.json.active_profile"
+        expect: "dev"
+        description: "验证当前激活的环境为dev"
+      # 验证环境名称
+      - type: eq
+        path: "$.json.env_name"
+        expect: "开发环境"
+        description: "验证环境名称为开发环境"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "环境配置"
+  - "多环境"
+  - "profiles"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

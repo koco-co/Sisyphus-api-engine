@@ -282,33 +282,53 @@ class Comparators:
 
     @staticmethod
     def is_empty(actual: Any, expected: Any = None) -> bool:
-        """Check if actual is empty.
+        """Check if actual is empty or not empty based on expected.
 
         Args:
             actual: Actual value
-            expected: Ignored (for API consistency)
+            expected: True to check if empty, False to check if not empty
 
         Returns:
-            True if actual is empty, False otherwise
+            True if actual matches expected emptiness, False otherwise
         """
+        is_actually_empty = False
         if actual is None:
-            return True
-        if isinstance(actual, (str, list, dict, tuple)):
-            return len(actual) == 0
-        return False
+            is_actually_empty = True
+        elif isinstance(actual, (str, list, dict, tuple)):
+            is_actually_empty = len(actual) == 0
+
+        # If expected is True, check if actually empty
+        # If expected is False, check if not empty
+        if expected is True:
+            return is_actually_empty
+        elif expected is False:
+            return not is_actually_empty
+        else:
+            # Backward compatibility: if expected is None, return emptiness status
+            return is_actually_empty
 
     @staticmethod
     def is_null(actual: Any, expected: Any = None) -> bool:
-        """Check if actual is None.
+        """Check if actual is None or not None based on expected.
 
         Args:
             actual: Actual value
-            expected: Ignored (for API consistency)
+            expected: True to check if null, False to check if not null
 
         Returns:
-            True if actual is None, False otherwise
+            True if actual matches expected nullness, False otherwise
         """
-        return actual is None
+        is_actually_null = actual is None
+
+        # If expected is True, check if actually null
+        # If expected is False, check if not null
+        if expected is True:
+            return is_actually_null
+        elif expected is False:
+            return not is_actually_null
+        else:
+            # Backward compatibility: if expected is None, return null status
+            return is_actually_null
 
     @staticmethod
     def status_code(actual: Any, expected: Any) -> bool:
@@ -341,20 +361,32 @@ class Comparators:
 
     @staticmethod
     def exists(actual: Any, expected: Any = None) -> bool:
-        """Check if actual exists (not None and not empty).
+        """Check if actual exists or not exists based on expected.
 
         Args:
             actual: Actual value
-            expected: Ignored (for API consistency)
+            expected: True to check if exists, False to check if not exists
 
         Returns:
-            True if actual exists, False otherwise
+            True if actual matches expected existence, False otherwise
         """
+        actually_exists = False
         if actual is None:
-            return False
-        if isinstance(actual, (str, list, dict, tuple)):
-            return len(actual) > 0
-        return True
+            actually_exists = False
+        elif isinstance(actual, (str, list, dict, tuple)):
+            actually_exists = len(actual) > 0
+        else:
+            actually_exists = True
+
+        # If expected is True, check if actually exists
+        # If expected is False, check if not exists
+        if expected is True:
+            return actually_exists
+        elif expected is False:
+            return not actually_exists
+        else:
+            # Backward compatibility: if expected is None, return existence status
+            return actually_exists
 
     @staticmethod
     def between(actual: Any, expected: Any) -> bool:

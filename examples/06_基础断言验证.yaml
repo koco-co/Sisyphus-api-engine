@@ -1,0 +1,484 @@
+# ==============================================================================
+# Sisyphus API Engine - 基础断言验证测试
+# ==============================================================================
+# 功能说明：演示基础比较器的使用
+# - eq: 等于
+# - ne: 不等于
+# - gt: 大于
+# - lt: 小于
+# - ge: 大于等于
+# - le: 小于等于
+# - contains: 包含
+# ==============================================================================
+
+name: "基础断言验证测试"
+description: "演示基础比较器的使用（eq/ne/gt/lt/ge/le/contains）"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  # 当前激活的环境（可选值: prod）
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: eq 比较器 - 等于验证
+  # 用途：验证实际值等于期望值
+  # 比较器类型：eq
+  # 适用场景：验证精确匹配的值（字符串、数字、布尔值等）
+  # ----------------------------------------------------------------------------
+  - name: "eq等于验证-字符串"
+    description: "验证字符串等于期望值"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      # 验证URL包含httpbin.org（使用eq比较器）
+      - type: eq  # 比较器类型：等于（可选值: eq/ne/gt/lt/ge/le/contains等）
+        path: "$.url"  # JSONPath表达式
+        expect: "https://httpbin.org/get"  # 期望值
+        description: "验证URL等于期望值"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: eq 比较器 - 数字验证
+  # 用途：验证数字类型的等于比较
+  # ----------------------------------------------------------------------------
+  - name: "eq等于验证-数字"
+    description: "验证数字等于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      price: 99.99
+      quantity: 100
+      rating: 5
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证价格字段等于99.99
+      - type: eq
+        path: "$.json.price"
+        expect: 99.99
+        description: "验证价格等于99.99"
+      # 验证数量字段等于100
+      - type: eq
+        path: "$.json.quantity"
+        expect: 100
+        description: "验证数量等于100"
+      # 验证评分等于5
+      - type: eq
+        path: "$.json.rating"
+        expect: 5
+        description: "验证评分等于5"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: eq 比较器 - 布尔值验证
+  # 用途：验证布尔类型的等于比较
+  # ----------------------------------------------------------------------------
+  - name: "eq等于验证-布尔值"
+    description: "验证布尔值等于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      is_active: true
+      is_verified: false
+      has_permission: true
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证is_active字段等于true
+      - type: eq
+        path: "$.json.is_active"
+        expect: true  # 布尔值true
+        description: "验证is_active为true"
+      # 验证is_verified字段等于false
+      - type: eq
+        path: "$.json.is_verified"
+        expect: false  # 布尔值false
+        description: "验证is_verified为false"
+      # 验证has_permission字段等于true
+      - type: eq
+        path: "$.json.has_permission"
+        expect: true
+        description: "验证has_permission为true"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: ne 比较器 - 不等于验证
+  # 用途：验证实际值不等于期望值
+  # 比较器类型：ne
+  # 适用场景：排除某些不期望的值
+  # ----------------------------------------------------------------------------
+  - name: "ne不等于验证"
+    description: "验证值不等于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      status: "active"
+      error_code: 0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证status字段不等于"inactive"
+      - type: ne  # 比较器类型：不等于
+        path: "$.json.status"
+        expect: "inactive"
+        description: "验证status不等于inactive"
+      # 验证error_code不等于-1
+      - type: ne
+        path: "$.json.error_code"
+        expect: -1
+        description: "验证error_code不等于-1"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: gt 比较器 - 大于验证
+  # 用途：验证实际值大于期望值
+  # 比较器类型：gt
+  # 适用场景：验证数值下限（如年龄、金额、数量等）
+  # ----------------------------------------------------------------------------
+  - name: "gt大于验证"
+    description: "验证数值大于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      age: 25
+      balance: 1000.50
+      score: 85.5
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证年龄大于18
+      - type: gt  # 比较器类型：大于
+        path: "$.json.age"
+        expect: 18
+        description: "验证年龄大于18"
+      # 验证余额大于0
+      - type: gt
+        path: "$.json.balance"
+        expect: 0
+        description: "验证余额大于0"
+      # 验证分数大于60
+      - type: gt
+        path: "$.json.score"
+        expect: 60
+        description: "验证分数大于60"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: lt 比较器 - 小于验证
+  # 用途：验证实际值小于期望值
+  # 比较器类型：lt
+  # 适用场景：验证数值上限（如温度、延迟、限制等）
+  # ----------------------------------------------------------------------------
+  - name: "lt小于验证"
+    description: "验证数值小于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      temperature: 35.5
+      response_time: 200
+      attempts: 3
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证温度小于100
+      - type: lt  # 比较器类型：小于
+        path: "$.json.temperature"
+        expect: 100
+        description: "验证温度小于100"
+      # 验证响应时间小于500毫秒
+      - type: lt
+        path: "$.json.response_time"
+        expect: 500
+        description: "验证响应时间小于500"
+      # 验证尝试次数小于5
+      - type: lt
+        path: "$.json.attempts"
+        expect: 5
+        description: "验证尝试次数小于5"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: ge 比较器 - 大于等于验证
+  # 用途：验证实际值大于或等于期望值
+  # 比较器类型：ge
+  # 适用场景：验证最小值限制（包括边界值）
+  # ----------------------------------------------------------------------------
+  - name: "ge大于等于验证"
+    description: "验证数值大于或等于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      min_price: 50
+      stock_count: 100
+      pass_score: 60
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证最低价格大于等于10
+      - type: ge  # 比较器类型：大于等于
+        path: "$.json.min_price"
+        expect: 10
+        description: "验证最低价格大于等于10"
+      # 验证库存数量大于等于50
+      - type: ge
+        path: "$.json.stock_count"
+        expect: 50
+        description: "验证库存数量大于等于50"
+      # 验证及格分数大于等于60
+      - type: ge
+        path: "$.json.pass_score"
+        expect: 60
+        description: "验证及格分数大于等于60"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: le 比较器 - 小于等于验证
+  # 用途：验证实际值小于或等于期望值
+  # 比较器类型：le
+  # 适用场景：验证最大值限制（包括边界值）
+  # ----------------------------------------------------------------------------
+  - name: "le小于等于验证"
+    description: "验证数值小于或等于期望值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      max_users: 1000
+      discount_rate: 0.8
+      daily_limit: 5000
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证最大用户数小于等于10000
+      - type: le  # 比较器类型：小于等于
+        path: "$.json.max_users"
+        expect: 10000
+        description: "验证最大用户数小于等于10000"
+      # 验证折扣率小于等于1.0
+      - type: le
+        path: "$.json.discount_rate"
+        expect: 1.0
+        description: "验证折扣率小于等于1.0"
+      # 验证每日限额小于等于10000
+      - type: le
+        path: "$.json.daily_limit"
+        expect: 10000
+        description: "验证每日限额小于等于10000"
+
+  # ----------------------------------------------------------------------------
+  # 步骤9: contains 比较器 - 包含验证（字符串）
+  # 用途：验证实际值包含期望值
+  # 比较器类型：contains
+  # 适用场景：验证字符串包含子串、列表包含元素、字典包含键
+  # ----------------------------------------------------------------------------
+  - name: "contains包含验证-字符串"
+    description: "验证字符串包含子串"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证URL包含"httpbin"
+      - type: contains  # 比较器类型：包含
+        path: "$.url"
+        expect: "httpbin"
+        description: "验证URL包含httpbin"
+      # 验证URL包含"/get"
+      - type: contains
+        path: "$.url"
+        expect: "/get"
+        description: "验证URL包含/get"
+
+  # ----------------------------------------------------------------------------
+  # 步骤10: contains 比较器 - 列表包含元素
+  # 用途：验证列表包含指定元素
+  # ----------------------------------------------------------------------------
+  - name: "contains包含验证-列表"
+    description: "验证列表包含指定元素"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      tags: ["python", "api", "testing", "automation"]
+      categories: ["software", "development"]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证tags列表包含"python"
+      - type: contains
+        path: "$.json.tags"
+        expect: "python"
+        description: "验证tags包含python"
+      # 验证tags列表包含"testing"
+      - type: contains
+        path: "$.json.tags"
+        expect: "testing"
+        description: "验证tags包含testing"
+      # 验证categories列表包含"software"
+      - type: contains
+        path: "$.json.categories"
+        expect: "software"
+        description: "验证categories包含software"
+
+  # ----------------------------------------------------------------------------
+  # 步骤11: 综合比较器示例
+  # 用途：综合使用多个比较器进行复杂验证
+  # ----------------------------------------------------------------------------
+  - name: "综合比较器验证"
+    description: "综合使用多个比较器验证数据"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        username: "testuser"
+        age: 28
+        balance: 1500.75
+        status: "active"
+        roles: ["user", "admin"]
+        is_premium: true
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证用户名等于testuser
+      - type: eq
+        path: "$.json.user.username"
+        expect: "testuser"
+        description: "验证用户名正确"
+      # 验证年龄大于等于18
+      - type: ge
+        path: "$.json.user.age"
+        expect: 18
+        description: "验证年龄成年"
+      # 验证年龄小于等于100
+      - type: le
+        path: "$.json.user.age"
+        expect: 100
+        description: "验证年龄合理"
+      # 验证余额大于1000
+      - type: gt
+        path: "$.json.user.balance"
+        expect: 1000
+        description: "验证余额充足"
+      # 验证状态不等于inactive
+      - type: ne
+        path: "$.json.user.status"
+        expect: "inactive"
+        description: "验证状态非inactive"
+      # 验证状态包含"active"
+      - type: contains
+        path: "$.json.user.status"
+        expect: "active"
+        description: "验证状态为active"
+      # 验证角色包含"admin"
+      - type: contains
+        path: "$.json.user.roles"
+        expect: "admin"
+        description: "验证具有管理员角色"
+      # 验证是否为高级用户
+      - type: eq
+        path: "$.json.user.is_premium"
+        expect: true
+        description: "验证为高级用户"
+
+  # ----------------------------------------------------------------------------
+  # 步骤12: 数值范围验证（综合使用 gt 和 lt）
+  # 用途：验证数值在指定范围内
+  # ----------------------------------------------------------------------------
+  - name: "数值范围验证"
+    description: "使用gt和lt组合验证数值范围"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      temperature: 25.5
+      humidity: 65
+      ph_level: 7.2
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证温度在0-50之间（大于0且小于50）
+      - type: gt
+        path: "$.json.temperature"
+        expect: 0
+        description: "验证温度大于0"
+      - type: lt
+        path: "$.json.temperature"
+        expect: 50
+        description: "验证温度小于50"
+      # 验证湿度在30-90之间（大于等于30且小于等于90）
+      - type: ge
+        path: "$.json.humidity"
+        expect: 30
+        description: "验证湿度大于等于30"
+      - type: le
+        path: "$.json.humidity"
+        expect: 90
+        description: "验证湿度小于等于90"
+      # 验证PH值在0-14之间（大于0且小于14）
+      - type: gt
+        path: "$.json.ph_level"
+        expect: 0
+        description: "验证PH值大于0"
+      - type: lt
+        path: "$.json.ph_level"
+        expect: 14
+        description: "验证PH值小于14"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "基础"
+  - "断言"
+  - "验证"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

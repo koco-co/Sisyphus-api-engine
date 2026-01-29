@@ -1,0 +1,210 @@
+# ==============================================================================
+# Sisyphus API Engine - 步骤控制测试
+# ==============================================================================
+# 功能说明：演示步骤控制功能
+# - skip_if: 条件为真时跳过步骤
+# - only_if: 条件为真时执行步骤
+# - depends_on: 依赖的前置步骤列表
+# ==============================================================================
+
+name: "步骤控制测试"
+description: "演示条件执行（skip_if/only_if）和依赖（depends_on）"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  variables:
+    # 控制变量
+    should_skip: true
+    should_execute: true
+    feature_enabled: false
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: 基础步骤（设置变量）
+  # 用途：为后续步骤提供依赖
+  # ----------------------------------------------------------------------------
+  - name: "步骤1-设置基础变量"
+    description: "设置基础变量供后续步骤使用"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      step: 1
+      status: "completed"
+    extractors:
+      # 提取响应数据作为变量
+      - type: jsonpath
+        name: step1_url
+        path: "$.url"
+        description: "提取URL作为变量"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 使用skip_if跳过步骤
+  # 用途：演示条件跳过功能
+  # 配置：skip_if: "${config.variables.should_skip}"
+  # 说明：当should_skip为true时，此步骤将被跳过
+  # ----------------------------------------------------------------------------
+  - name: "步骤2-将被跳过"
+    description: "此步骤会被skip_if跳过"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 条件跳过（可选值：布尔表达式）
+    skip_if: "${config.variables.should_skip}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 使用only_if执行步骤
+  # 用途：演示条件执行功能
+  # 配置：only_if: "${config.variables.should_execute}"
+  # 说明：只有当should_execute为true时，此步骤才会执行
+  # ----------------------------------------------------------------------------
+  - name: "步骤3-条件执行"
+    description: "此步骤会因only_if条件满足而执行"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 条件执行（可选值：布尔表达式）
+    only_if: "${config.variables.should_execute}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 使用depends_on依赖步骤
+  # 用途：演示步骤依赖关系
+  # 配置：depends_on: ["步骤1-设置基础变量"]
+  # 说明：此步骤依赖于步骤1，只有步骤1成功后才会执行
+  # ----------------------------------------------------------------------------
+  - name: "步骤4-依赖前置步骤"
+    description: "此步骤依赖步骤1，验证依赖关系"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      step: 4
+      depends_on_step1: true
+      previous_url: "${step1_url}"
+    # 步骤依赖（可选值：步骤名称列表）
+    depends_on:
+      - "步骤1-设置基础变量"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      - type: contains
+        path: "$.json.previous_url"
+        expect: "httpbin"
+        description: "验证引用了步骤1的变量"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 使用only_if跳过（条件不满足）
+  # 用途：演示only_if条件不满足时跳过
+  # 配置：only_if: "${config.variables.feature_enabled}"
+  # 说明：feature_enabled为false，此步骤将被跳过
+  # ----------------------------------------------------------------------------
+  - name: "步骤5-功能未启用"
+    description: "此步骤因only_if条件不满足而跳过"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 条件执行（feature_enabled为false，不执行）
+    only_if: "${config.variables.feature_enabled}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 多重依赖
+  # 用途：演示多个依赖关系
+  # 配置：depends_on: ["步骤1-设置基础变量", "步骤3-条件执行"]
+  # 说明：此步骤依赖于步骤1和步骤3，都成功后才会执行
+  # ----------------------------------------------------------------------------
+  - name: "步骤6-多重依赖"
+    description: "此步骤依赖步骤1和步骤3"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      step: 6
+      multiple_dependencies: true
+    # 多重依赖
+    depends_on:
+      - "步骤1-设置基础变量"
+      - "步骤3-条件执行"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: 复杂条件表达式
+  # 用途：演示复杂的条件判断
+  # 配置：only_if: "${should_execute} and ${skip_this} == false"
+  # 注意：实际条件表达式可能需要根据模板引擎支持调整
+  # ----------------------------------------------------------------------------
+  - name: "步骤7-复杂条件"
+    description: "演示复杂条件表达式"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 简单条件：只检查should_execute
+    only_if: "${config.variables.should_execute}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: 无依赖步骤
+  # 用途：演示无依赖的独立步骤
+  # ----------------------------------------------------------------------------
+  - name: "步骤8-独立步骤"
+    description: "此步骤不依赖任何其他步骤"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      - type: eq
+        path: "$.url"
+        expect: "https://httpbin.org/get"
+        description: "验证URL正确"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "步骤控制"
+  - "条件执行"
+  - "依赖关系"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

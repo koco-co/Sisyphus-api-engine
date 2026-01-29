@@ -1,0 +1,367 @@
+# ==============================================================================
+# Sisyphus API Engine - Mock服务器测试
+# ==============================================================================
+# 功能说明：演示Mock服务器的配置和使用
+# - Mock服务器启动
+# - Mock路由配置
+# - Mock响应设置
+# - Mock服务器停止
+# ==============================================================================
+
+name: "Mock服务器测试"
+description: "演示Mock服务器的配置和使用"
+
+config:
+  name: "Mock服务器配置"
+  timeout: 60
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: Mock服务器配置说明
+  # 用途：说明Mock服务器的基本配置
+  # ----------------------------------------------------------------------------
+  - name: "Mock服务器配置说明"
+    description: "演示Mock服务器的配置格式和参数"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      feature: "Mock Server"
+      description: "模拟HTTP服务器响应"
+      configuration:
+        # Mock服务器配置
+        mock_server:
+          # 服务器地址
+          host: "localhost"
+          # 服务器端口
+          port: 8888
+          # 是否启用HTTPS
+          https: false
+        # Mock路由配置
+        routes:
+          - path: "/api/users"
+            method: "GET"
+            response:
+              status_code: 200
+              body:
+                users:
+                  - id: 1
+                    name: "Mock User 1"
+                  - id: 2
+                    name: "Mock User 2"
+          - path: "/api/users/{id}"
+            method: "GET"
+            response:
+              status_code: 200
+              body:
+                id: "{id}"
+                name: "Mock User"
+      features:
+        - "快速原型开发"
+        - "独立测试环境"
+        - "模拟各种响应场景"
+        - "无需依赖后端服务"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      - type: eq
+        path: "$.json.feature"
+        expect: "Mock Server"
+        description: "验证功能名称"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: Mock GET请求示例
+  # 用途：演示Mock GET请求的配置
+  # ----------------------------------------------------------------------------
+  - name: "Mock GET请求配置"
+    description: "演示Mock GET请求的路由和响应配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      mock_route:
+        # 请求路径
+        path: "/api/users"
+        # 请求方法
+        method: "GET"
+        # 响应配置
+        response:
+          # HTTP状态码
+          status_code: 200
+          # 响应头
+          headers:
+            Content-Type: "application/json"
+            X-Mock: "true"
+          # 响应体
+          body:
+            code: 0
+            message: "success"
+            data:
+              users:
+                - id: 1
+                  username: "mock_user_1"
+                  email: "mock1@example.com"
+                - id: 2
+                  username: "mock_user_2"
+                  email: "mock2@example.com"
+      usage_example:
+        description: "当访问 http://localhost:8888/api/users 时返回模拟数据"
+        curl_command: "curl http://localhost:8888/api/users"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: Mock POST请求示例
+  # 用途：演示Mock POST请求的配置
+  # ----------------------------------------------------------------------------
+  - name: "Mock POST请求配置"
+    description: "演示Mock POST请求的路由和响应配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      mock_route:
+        path: "/api/users"
+        method: "POST"
+        response:
+          status_code: 201
+          headers:
+            Content-Type: "application/json"
+          body:
+            code: 0
+            message: "User created successfully"
+            data:
+              id: 100
+              username: "new_user"
+              created_at: "2025-01-29T00:00:00Z"
+      features:
+        - "支持创建资源"
+        - "返回201状态码"
+        - "包含创建的资源信息"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: Mock动态响应示例
+  # 用途：演示根据请求参数动态生成响应
+  # ----------------------------------------------------------------------------
+  - name: "Mock动态响应配置"
+    description: "演示根据请求参数动态生成Mock响应"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      mock_route:
+        path: "/api/users/{user_id}"
+        method: "GET"
+        response:
+          status_code: 200
+          # 动态响应：使用路径参数
+          body:
+            id: "${path_params.user_id}"
+            username: "mock_user_${path_params.user_id}"
+            email: "mock${path_params.user_id}@example.com"
+      advanced_features:
+        - "路径参数提取"
+        - "查询参数处理"
+        - "请求体解析"
+        - "条件响应"
+        - "延迟响应模拟"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: Mock错误响应示例
+  # 用途：演示Mock各种错误响应场景
+  # ----------------------------------------------------------------------------
+  - name: "Mock错误响应配置"
+    description: "演示Mock各种错误响应场景的配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      error_scenarios:
+        # 404错误
+        - route: "/api/users/999"
+          method: "GET"
+          response:
+            status_code: 404
+            body:
+              code: 404
+              message: "User not found"
+        # 500错误
+        - route: "/api/error"
+          method: "GET"
+          response:
+            status_code: 500
+            body:
+              code: 500
+              message: "Internal server error"
+        # 401错误
+        - route: "/api/protected"
+          method: "GET"
+          response:
+            status_code: 401
+            body:
+              code: 401
+              message: "Unauthorized"
+      error_testing:
+        description: "使用Mock服务器测试各种错误场景"
+        benefits:
+          - "无需实际后端"
+          - "快速验证错误处理"
+          - "测试边界条件"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      - type: length_eq
+        path: "$.json.error_scenarios"
+        expect: 3
+        description: "验证配置了3种错误场景"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: Mock延迟响应示例
+  # 用途：演示模拟慢速API响应
+  # ----------------------------------------------------------------------------
+  - name: "Mock延迟响应配置"
+    description: "演示Mock服务器延迟响应配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      mock_route:
+        path: "/api/slow"
+        method: "GET"
+        response:
+          status_code: 200
+          delay: 5000  # 延迟5秒（毫秒）
+          body:
+            code: 0
+            message: "Slow response"
+      use_cases:
+        - "测试超时处理"
+        - "测试加载状态"
+        - "测试重试机制"
+        - "测试用户体验"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: Mock综合示例
+  # 用途：演示完整的Mock服务器配置
+  # ----------------------------------------------------------------------------
+  - name: "Mock服务器综合配置"
+    description: "演示完整的Mock服务器配置和使用流程"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      mock_server_config:
+        # 服务器配置
+        server:
+          host: "localhost"
+          port: 8888
+          # 日志级别
+          log_level: "debug"
+        # 路由配置
+        routes:
+          # 用户列表
+          - path: "/api/users"
+            method: GET
+            response:
+              status_code: 200
+              body:
+                users: []
+          # 用户详情
+          - path: "/api/users/{id}"
+            method: GET
+            response:
+              status_code: 200
+              body:
+                id: "${path_params.id}"
+                name: "User ${path_params.id}"
+          # 创建用户
+          - path: "/api/users"
+            method: POST
+            response:
+              status_code: 201
+              body:
+                id: 101
+                message: "Created"
+          # 更新用户
+          - path: "/api/users/{id}"
+            method: PUT
+            response:
+              status_code: 200
+              body:
+                id: "${path_params.id}"
+                message: "Updated"
+          # 删除用户
+          - path: "/api/users/{id}"
+            method: DELETE
+            response:
+              status_code: 204
+              body: null
+      usage_workflow:
+        step1: "启动Mock服务器"
+        step2: "配置Mock路由"
+        step3: "执行测试用例"
+        step4: "验证响应结果"
+        step5: "停止Mock服务器"
+      benefits:
+        - "隔离测试环境"
+        - "提高测试速度"
+        - "模拟边缘情况"
+        - "降低测试成本"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "Mock服务器"
+  - "mock"
+  - "模拟响应"
+  - "测试隔离"
+
+enabled: true

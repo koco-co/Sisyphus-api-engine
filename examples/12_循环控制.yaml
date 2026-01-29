@@ -1,0 +1,153 @@
+# ==============================================================================
+# Sisyphus API Engine - 循环控制测试
+# ==============================================================================
+# 功能说明：演示循环控制功能
+# - for循环：固定次数循环
+# - while循环：条件循环
+# ==============================================================================
+
+name: "循环控制测试"
+description: "演示for循环和while循环"
+
+config:
+  name: "测试配置"
+  timeout: 120
+  variables:
+    loop_count: 0
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: for循环（固定次数）
+  # 类型: loop
+  # 用途：演示固定次数的循环
+  # ----------------------------------------------------------------------------
+  - name: "for循环-执行3次"
+    description: "演示for循环，执行3次"
+    type: loop
+    # 循环类型：for（固定次数）
+    loop_type: for
+    # 循环次数
+    loop_count: 3
+    # 循环变量名（可选）
+    loop_variable: "iteration"
+    # 循环执行的步骤
+    loop_steps:
+      - name: "循环内的请求"
+        type: request
+        method: POST
+        url: "${config.profiles.prod.base_url}/post"
+        headers:
+          Content-Type: "application/json"
+        body:
+          iteration: "${iteration}"
+          message: "这是第${iteration}次迭代"
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: while循环（条件判断）
+  # 类型: loop
+  # 用途：演示条件循环
+  # 注意：此示例演示配置格式
+  # ----------------------------------------------------------------------------
+  - name: "while循环示例"
+    description: "演示while循环配置"
+    type: loop
+    # 循环类型：while（条件循环）
+    loop_type: while
+    # 循环条件
+    loop_condition: "${loop_count} < 3"
+    # 循环变量
+    loop_variable: "loop_count"
+    # 循环执行的步骤
+    loop_steps:
+      - name: "while循环内的步骤"
+        type: request
+        method: POST
+        url: "${config.profiles.prod.base_url}/post"
+        headers:
+          Content-Type: "application/json"
+        body:
+          count: "${loop_count}"
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+      # 更新循环变量
+      - name: "更新循环变量"
+        type: script
+        script_type: python
+        script: |
+          current_count = get_var('loop_count')
+          set_var('loop_count', current_count + 1)
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 嵌套循环示例
+  # 用途：演示循环中可以包含多个步骤
+  # ----------------------------------------------------------------------------
+  - name: "多步骤循环"
+    description: "演示循环中执行多个步骤"
+    type: loop
+    loop_type: for
+    loop_count: 2
+    loop_variable: "i"
+    loop_steps:
+      # 步骤1：发送请求
+      - name: "发送请求-${i}"
+        type: request
+        method: POST
+        url: "${config.profiles.prod.base_url}/post"
+        headers:
+          Content-Type: "application/json"
+        body:
+          index: "${i}"
+          step: 1
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+      # 步骤2：验证响应
+      - name: "验证响应-${i}"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/get"
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 循环后验证
+  # 用途：验证循环执行完成
+  # ----------------------------------------------------------------------------
+  - name: "循环后验证"
+    description: "验证所有循环都已执行完成"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.url"
+        expect: "https://httpbin.org/get"
+        description: "验证URL正确"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "循环控制"
+  - "for循环"
+  - "while循环"
+
+enabled: true

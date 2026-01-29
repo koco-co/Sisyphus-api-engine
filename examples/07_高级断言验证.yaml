@@ -1,0 +1,695 @@
+# ==============================================================================
+# Sisyphus API Engine - 高级断言验证测试
+# ==============================================================================
+# 功能说明：演示高级比较器的使用
+# - regex: 正则表达式匹配
+# - type: 类型检查
+# - in_list: 在列表内
+# - not_in_list: 不在列表内
+# - length_eq/length_gt/length_lt: 长度比较
+# - is_empty: 为空检查
+# - is_null: 为null检查
+# - exists: 存在性检查
+# - between: 区间判断
+# ==============================================================================
+
+name: "高级断言验证测试"
+description: "演示高级比较器的使用（regex/type/in/length/status_code/between）"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  # 当前激活的环境（可选值: prod）
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: regex 比较器 - 正则表达式匹配（邮箱验证）
+  # 用途：验证字符串是否匹配指定的正则表达式模式
+  # 比较器类型：regex
+  # 适用场景：验证格式（如邮箱、手机号、IP地址、日期等）
+  # ----------------------------------------------------------------------------
+  - name: "regex正则匹配-邮箱验证"
+    description: "使用正则表达式验证邮箱格式"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      email: "user@example.com"
+      backup_email: "admin@test.org"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证email字段符合邮箱格式（正则表达式）
+      - type: regex  # 比较器类型：正则匹配（可选值: regex/type/in/length/exists等）
+        path: "$.json.email"
+        expect: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"  # 邮箱正则表达式
+        description: "验证email符合邮箱格式"
+      # 验证backup_email字段符合邮箱格式
+      - type: regex
+        path: "$.json.backup_email"
+        expect: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        description: "验证backup_email符合邮箱格式"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: regex 比较器 - URL验证
+  # 用途：验证URL格式是否正确
+  # ----------------------------------------------------------------------------
+  - name: "regex正则匹配-URL验证"
+    description: "使用正则表达式验证URL格式"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      website: "https://www.example.com"
+      api_endpoint: "http://api.test.com/v1/users"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证website字段符合URL格式
+      - type: regex
+        path: "$.json.website"
+        expect: "^https?://[a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})?(\\/.*)?$"  # URL正则表达式
+        description: "验证website符合URL格式"
+      # 验证api_endpoint字段符合URL格式
+      - type: regex
+        path: "$.json.api_endpoint"
+        expect: "^https?://[a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})?(\\/.*)?$"
+        description: "验证api_endpoint符合URL格式"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: regex 比较器 - 手机号验证
+  # 用途：验证手机号格式（中国手机号）
+  # ----------------------------------------------------------------------------
+  - name: "regex正则匹配-手机号验证"
+    description: "使用正则表达式验证手机号格式"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      phone: "13800138000"
+      mobile: "15912345678"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证phone字段符合中国手机号格式（1开头，第二位3-9，共11位）
+      - type: regex
+        path: "$.json.phone"
+        expect: "^1[3-9]\\d{9}$"  # 中国手机号正则表达式
+        description: "验证phone符合手机号格式"
+      # 验证mobile字段符合手机号格式
+      - type: regex
+        path: "$.json.mobile"
+        expect: "^1[3-9]\\d{9}$"
+        description: "验证mobile符合手机号格式"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: regex 比较器 - 日期时间验证
+  # 用途：验证日期时间格式
+  # ----------------------------------------------------------------------------
+  - name: "regex正则匹配-日期验证"
+    description: "使用正则表达式验证日期格式"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      created_at: "2024-01-29"
+      updated_at: "2024-12-31 23:59:59"
+      log_time: "2024-06-15T10:30:00Z"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证created_at符合日期格式（YYYY-MM-DD）
+      - type: regex
+        path: "$.json.created_at"
+        expect: "^\\d{4}-\\d{2}-\\d{2}$"  # 日期格式正则表达式
+        description: "验证created_at符合日期格式"
+      # 验证updated_at符合日期时间格式（YYYY-MM-DD HH:MM:SS）
+      - type: regex
+        path: "$.json.updated_at"
+        expect: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"  # 日期时间格式正则表达式
+        description: "验证updated_at符合日期时间格式"
+      # 验证log_time符合ISO 8601格式
+      - type: regex
+        path: "$.json.log_time"
+        expect: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"  # ISO 8601格式正则表达式
+        description: "验证log_time符合ISO 8601格式"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: type 比较器 - 类型检查
+  # 用途：验证值的类型是否正确
+  # 比较器类型：type
+  # 适用场景：验证API返回的数据类型是否符合预期
+  # ----------------------------------------------------------------------------
+  - name: "type类型检查"
+    description: "验证值的类型是否符合预期"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      username: "testuser"
+      age: 25
+      score: 95.5
+      is_active: true
+      tags: ["python", "api"]
+      metadata:
+        key: "value"
+      empty_value: null
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证username字段是字符串类型
+      - type: type  # 比较器类型：类型检查（可选值: str/int/float/bool/list/dict/null）
+        path: "$.json.username"
+        expect: "str"  # 期望类型：字符串（可选值: str/int/float/bool/list/dict/null）
+        description: "验证username是字符串类型"
+      # 验证age字段是整数类型
+      - type: type
+        path: "$.json.age"
+        expect: "int"  # 期望类型：整数
+        description: "验证age是整数类型"
+      # 验证score字段是浮点数类型
+      - type: type
+        path: "$.json.score"
+        expect: "float"  # 期望类型：浮点数
+        description: "验证score是浮点数类型"
+      # 验证is_active字段是布尔类型
+      - type: type
+        path: "$.json.is_active"
+        expect: "bool"  # 期望类型：布尔值
+        description: "验证is_active是布尔类型"
+      # 验证tags字段是列表类型
+      - type: type
+        path: "$.json.tags"
+        expect: "list"  # 期望类型：列表
+        description: "验证tags是列表类型"
+      # 验证metadata字段是字典类型
+      - type: type
+        path: "$.json.metadata"
+        expect: "dict"  # 期望类型：字典
+        description: "验证metadata是字典类型"
+      # 验证empty_value字段是null类型
+      - type: type
+        path: "$.json.empty_value"
+        expect: "null"  # 期望类型：空值
+        description: "验证empty_value是null类型"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: in_list 比较器 - 在列表内检查
+  # 用途：验证值是否在指定的列表中
+  # 比较器类型：in_list
+  # 适用场景：验证枚举值、状态值等
+  # ----------------------------------------------------------------------------
+  - name: "in_list在列表内检查"
+    description: "验证值是否在指定的列表中"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      status: "active"
+      role: "admin"
+      priority: 2
+      category: "software"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证status字段在允许的状态列表中
+      - type: in_list  # 比较器类型：在列表内
+        path: "$.json.status"
+        expect: ["active", "inactive", "pending"]  # 允许的状态列表
+        description: "验证status在允许的状态列表中"
+      # 验证role字段在允许的角色列表中
+      - type: in_list
+        path: "$.json.role"
+        expect: ["user", "admin", "moderator"]
+        description: "验证role在允许的角色列表中"
+      # 验证priority字段在允许的优先级列表中
+      - type: in_list
+        path: "$.json.priority"
+        expect: [1, 2, 3]
+        description: "验证priority在允许的优先级列表中"
+      # 验证category字段在允许的分类列表中
+      - type: in_list
+        path: "$.json.category"
+        expect: ["software", "hardware", "service"]
+        description: "验证category在允许的分类列表中"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: not_in_list 比较器 - 不在列表内检查
+  # 用途：验证值不在指定的列表中
+  # 比较器类型：not_in_list
+  # 适用场景：验证黑名单、禁用值等
+  # ----------------------------------------------------------------------------
+  - name: "not_in_list不在列表内检查"
+    description: "验证值不在指定的列表中"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      username: "validuser"
+      status: "approved"
+      error_code: 0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证username不在保留用户名列表中
+      - type: not_in_list  # 比较器类型：不在列表内
+        path: "$.json.username"
+        expect: ["admin", "root", "system", "test"]  # 禁止使用的用户名列表
+        description: "验证username不在保留用户名列表中"
+      # 验证status不在禁止的状态列表中
+      - type: not_in_list
+        path: "$.json.status"
+        expect: ["banned", "deleted", "suspended"]
+        description: "验证status不在禁止的状态列表中"
+      # 验证error_code不在错误码列表中
+      - type: not_in_list
+        path: "$.json.error_code"
+        expect: [-1, 400, 401, 403, 404, 500]
+        description: "验证error_code不在错误码列表中"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: length_eq/length_gt/length_lt 比较器 - 长度比较
+  # 用途：验证字符串、列表、字典的长度
+  # 比较器类型：length_eq/length_gt/length_lt
+  # 适用场景：验证字段长度、列表大小、数组长度等
+  # ----------------------------------------------------------------------------
+  - name: "length长度比较"
+    description: "验证字符串、列表、字典的长度"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      username: "testuser"
+      password: "password123"
+      tags: ["python", "api", "testing", "automation"]
+      scores: [85, 90, 78, 92, 88]
+      config:
+        key1: "value1"
+        key2: "value2"
+        key3: "value3"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证username长度等于8
+      - type: length_eq  # 比较器类型：长度等于（可选值: length_eq/length_gt/length_lt）
+        path: "$.json.username"
+        expect: 8
+        description: "验证username长度等于8"
+      # 验证password长度大于等于8
+      - type: length_gt
+        path: "$.json.password"
+        expect: 7
+        description: "验证password长度大于7"
+      # 验证tags长度等于4
+      - type: length_eq
+        path: "$.json.tags"
+        expect: 4
+        description: "验证tags列表长度等于4"
+      # 验证scores长度大于等于3
+      - type: length_gt
+        path: "$.json.scores"
+        expect: 2
+        description: "验证scores列表长度大于2"
+      # 验证config长度小于等于5
+      - type: length_lt
+        path: "$.json.config"
+        expect: 5
+        description: "验证config字典长度小于5"
+
+  # ----------------------------------------------------------------------------
+  # 步骤9: is_empty 比较器 - 空值检查
+  # 用途：验证值是否为空（空字符串、空列表、空字典）
+  # 比较器类型：is_empty
+  # 适用场景：验证必填字段、验证空数据等
+  # ----------------------------------------------------------------------------
+  - name: "is_empty空值检查"
+    description: "验证值是否为空"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      empty_string: ""
+      empty_list: []
+      empty_dict: {}
+      non_empty_string: "hello"
+      non_empty_list: [1, 2, 3]
+      non_empty_dict:
+        key: "value"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证empty_string为空
+      - type: is_empty  # 比较器类型：为空检查
+        path: "$.json.empty_string"
+        expect: true  # 期望为空（可选值: true/false）
+        description: "验证empty_string为空"
+      # 验证empty_list为空
+      - type: is_empty
+        path: "$.json.empty_list"
+        expect: true
+        description: "验证empty_list为空"
+      # 验证empty_dict为空
+      - type: is_empty
+        path: "$.json.empty_dict"
+        expect: true
+        description: "验证empty_dict为空"
+      # 验证non_empty_string不为空
+      - type: is_empty
+        path: "$.json.non_empty_string"
+        expect: false  # 期望不为空
+        description: "验证non_empty_string不为空"
+      # 验证non_empty_list不为空
+      - type: is_empty
+        path: "$.json.non_empty_list"
+        expect: false
+        description: "验证non_empty_list不为空"
+      # 验证non_empty_dict不为空
+      - type: is_empty
+        path: "$.json.non_empty_dict"
+        expect: false
+        description: "验证non_empty_dict不为空"
+
+  # ----------------------------------------------------------------------------
+  # 步骤10: is_null 比较器 - null值检查
+  # 用途：验证值是否为null
+  # 比较器类型：is_null
+  # 适用场景：验证可选字段、验证数据缺失等
+  # ----------------------------------------------------------------------------
+  - name: "is_null null值检查"
+    description: "验证值是否为null"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      null_field: null
+      non_null_field: "value"
+      zero_field: 0
+      false_field: false
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证null_field为null
+      - type: is_null  # 比较器类型：null值检查
+        path: "$.json.null_field"
+        expect: true  # 期望为null（可选值: true/false）
+        description: "验证null_field为null"
+      # 验证non_null_field不为null
+      - type: is_null
+        path: "$.json.non_null_field"
+        expect: false  # 期望不为null
+        description: "验证non_null_field不为null"
+      # 验证zero_field不为null（0不是null）
+      - type: is_null
+        path: "$.json.zero_field"
+        expect: false
+        description: "验证zero_field不为null"
+      # 验证false_field不为null（false不是null）
+      - type: is_null
+        path: "$.json.false_field"
+        expect: false
+        description: "验证false_field不为null"
+
+  # ----------------------------------------------------------------------------
+  # 步骤11: exists 比较器 - 存在性检查
+  # 用途：验证值是否存在（不为null且不为空）
+  # 比较器类型：exists
+  # 适用场景：验证必填字段、验证数据完整性等
+  # ----------------------------------------------------------------------------
+  - name: "exists存在性检查"
+    description: "验证值是否存在（不为null且不为空）"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      existing_field: "value"
+      existing_list: [1, 2, 3]
+      existing_dict:
+        key: "value"
+      empty_string: ""
+      empty_list: []
+      empty_dict: {}
+      null_field: null
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证existing_field存在
+      - type: exists  # 比较器类型：存在性检查
+        path: "$.json.existing_field"
+        expect: true  # 期望存在（可选值: true/false）
+        description: "验证existing_field存在"
+      # 验证existing_list存在
+      - type: exists
+        path: "$.json.existing_list"
+        expect: true
+        description: "验证existing_list存在"
+      # 验证existing_dict存在
+      - type: exists
+        path: "$.json.existing_dict"
+        expect: true
+        description: "验证existing_dict存在"
+      # 验证empty_string不存在（空字符串视为不存在）
+      - type: exists
+        path: "$.json.empty_string"
+        expect: false  # 期望不存在
+        description: "验证empty_string不存在"
+      # 验证empty_list不存在（空列表视为不存在）
+      - type: exists
+        path: "$.json.empty_list"
+        expect: false
+        description: "验证empty_list不存在"
+      # 验证empty_dict不存在（空字典视为不存在）
+      - type: exists
+        path: "$.json.empty_dict"
+        expect: false
+        description: "验证empty_dict不存在"
+      # 验证null_field不存在
+      - type: exists
+        path: "$.json.null_field"
+        expect: false
+        description: "验证null_field不存在"
+
+  # ----------------------------------------------------------------------------
+  # 步骤12: between 比较器 - 区间判断
+  # 用途：验证值是否在指定的区间内（包含边界值）
+  # 比较器类型：between
+  # 适用场景：验证数值范围、百分比、评分等
+  # ----------------------------------------------------------------------------
+  - name: "between区间判断"
+    description: "验证值是否在指定的区间内"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      temperature: 25.5
+      humidity: 65
+      percentage: 85.5
+      score: 78
+      rating: 4.5
+      age: 30
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证温度在0-50之间（包含边界值）
+      - type: between  # 比较器类型：区间判断（包含边界值）
+        path: "$.json.temperature"
+        expect: [0, 50]  # 区间格式：[最小值, 最大值]
+        description: "验证温度在0-50之间"
+      # 验证湿度在30-90之间
+      - type: between
+        path: "$.json.humidity"
+        expect: [30, 90]
+        description: "验证湿度在30-90之间"
+      # 验证百分比在0-100之间
+      - type: between
+        path: "$.json.percentage"
+        expect: [0, 100]
+        description: "验证百分比在0-100之间"
+      # 验证分数在60-100之间
+      - type: between
+        path: "$.json.score"
+        expect: [60, 100]
+        description: "验证分数在60-100之间"
+      # 验证评分在1-5之间
+      - type: between
+        path: "$.json.rating"
+        expect: [1, 5]
+        description: "验证评分在1-5之间"
+      # 验证年龄在18-65之间
+      - type: between
+        path: "$.json.age"
+        expect: [18, 65]
+        description: "验证年龄在18-65之间"
+
+  # ----------------------------------------------------------------------------
+  # 步骤13: 综合高级验证示例
+  # 用途：综合使用多个高级比较器进行复杂验证
+  # ----------------------------------------------------------------------------
+  - name: "综合高级验证示例"
+    description: "综合使用多个高级比较器验证用户数据"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        username: "testuser01"
+        email: "test@example.com"
+        phone: "13800138000"
+        age: 25
+        role: "admin"
+        status: "active"
+        score: 85.5
+        tags: ["python", "api", "testing"]
+        created_at: "2024-01-29"
+        last_login: "2024-01-29 10:30:00"
+        website: "https://www.example.com"
+        is_verified: true
+        login_count: 100
+        balance: 1500.75
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 正则验证
+      - type: regex
+        path: "$.json.user.email"
+        expect: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        description: "验证email格式"
+      - type: regex
+        path: "$.json.user.phone"
+        expect: "^1[3-9]\\d{9}$"
+        description: "验证phone格式"
+      - type: regex
+        path: "$.json.user.created_at"
+        expect: "^\\d{4}-\\d{2}-\\d{2}$"
+        description: "验证created_at格式"
+      - type: regex
+        path: "$.json.user.website"
+        expect: "^https?://[a-zA-Z0-9.-]+(\\.[a-zA-Z]{2,})?(\\/.*)?$"
+        description: "验证website格式"
+
+      # 类型验证
+      - type: type
+        path: "$.json.user.username"
+        expect: "str"
+        description: "验证username是字符串"
+      - type: type
+        path: "$.json.user.age"
+        expect: "int"
+        description: "验证age是整数"
+      - type: type
+        path: "$.json.user.score"
+        expect: "float"
+        description: "验证score是浮点数"
+      - type: type
+        path: "$.json.user.is_verified"
+        expect: "bool"
+        description: "验证is_verified是布尔值"
+      - type: type
+        path: "$.json.user.tags"
+        expect: "list"
+        description: "验证tags是列表"
+
+      # 列表验证
+      - type: in_list
+        path: "$.json.user.role"
+        expect: ["user", "admin", "moderator"]
+        description: "验证role在允许列表中"
+      - type: in_list
+        path: "$.json.user.status"
+        expect: ["active", "inactive", "pending"]
+        description: "验证status在允许列表中"
+
+      # 长度验证
+      - type: length_gt
+        path: "$.json.user.username"
+        expect: 4
+        description: "验证username长度大于4"
+      - type: length_eq
+        path: "$.json.user.tags"
+        expect: 3
+        description: "验证tags长度等于3"
+
+      # 区间验证
+      - type: between
+        path: "$.json.user.age"
+        expect: [18, 65]
+        description: "验证age在18-65之间"
+      - type: between
+        path: "$.json.user.score"
+        expect: [0, 100]
+        description: "验证score在0-100之间"
+      - type: between
+        path: "$.json.user.login_count"
+        expect: [0, 1000]
+        description: "验证login_count在0-1000之间"
+
+      # 存在性验证
+      - type: exists
+        path: "$.json.user.email"
+        expect: true
+        description: "验证email存在"
+      - type: exists
+        path: "$.json.user.phone"
+        expect: true
+        description: "验证phone存在"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "基础"
+  - "断言"
+  - "验证"
+  - "高级"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

@@ -1,0 +1,150 @@
+# ==============================================================================
+# Sisyphus API Engine - 数据库操作测试
+# ==============================================================================
+# 功能说明：演示数据库操作功能
+# - SQLite查询
+# - MySQL查询
+# - PostgreSQL查询
+# 注意：此测试用例演示数据库操作配置格式，实际执行需要配置数据库连接
+# ==============================================================================
+
+name: "数据库操作测试"
+description: "演示数据库查询和操作（配置示例）"
+
+config:
+  name: "测试配置"
+  timeout: 60
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: SQLite查询示例
+  # 类型: database
+  # 用途：演示SQLite查询配置
+  # 注意：需要SQLite数据库文件存在
+  # ----------------------------------------------------------------------------
+  - name: "SQLite查询示例"
+    description: "演示SQLite数据库查询配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      database_type: "sqlite"
+      connection_string: "test.db"
+      sql_query: "SELECT * FROM users LIMIT 10"
+      note: "实际使用时，将type改为database，配置db_type和connection"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+      - type: eq
+        path: "$.json.database_type"
+        expect: "sqlite"
+        description: "验证数据库类型"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: MySQL查询示例
+  # 用途：演示MySQL查询配置格式
+  # ----------------------------------------------------------------------------
+  - name: "MySQL查询示例"
+    description: "演示MySQL数据库查询配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      database_type: "mysql"
+      connection_string: "mysql://user:password@localhost:3306/testdb"
+      sql_query: "SELECT * FROM users WHERE status = 'active'"
+      configuration_example:
+        db_type: "mysql"
+        connection: "mysql://user:password@localhost:3306/testdb"
+        operation: "query"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: PostgreSQL查询示例
+  # 用途：演示PostgreSQL查询配置格式
+  # ----------------------------------------------------------------------------
+  - name: "PostgreSQL查询示例"
+    description: "演示PostgreSQL数据库查询配置"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      database_type: "postgresql"
+      connection_string: "postgresql://user:password@localhost:5432/testdb"
+      sql_query: "SELECT COUNT(*) FROM orders"
+      configuration_example:
+        db_type: "postgresql"
+        connection: "postgresql://user:password@localhost:5432/testdb"
+        operation: "query"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 数据库操作类型说明
+  # 用途：说明不同的数据库操作类型
+  # ----------------------------------------------------------------------------
+  - name: "数据库操作类型说明"
+    description: "说明query/exec/executemany/script操作"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      operations:
+        query:
+          description: "执行SELECT查询，返回结果集"
+          example: "SELECT * FROM users"
+        exec:
+          description: "执行单条INSERT/UPDATE/DELETE语句"
+          example: "INSERT INTO users (name) VALUES ('test')"
+        executemany:
+          description: "批量执行多条SQL语句"
+          example: "批量插入或更新"
+        script:
+          description: "执行多行SQL脚本"
+          example: "包含多个SQL语句的脚本文件"
+      database_types:
+        - "sqlite"
+        - "mysql"
+        - "postgresql"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+      - type: length_eq
+        path: "$.json.operations"
+        expect: 4
+        description: "验证4种操作类型"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "数据库"
+  - "database"
+  - "SQL"
+
+enabled: true

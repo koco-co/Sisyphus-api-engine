@@ -1,0 +1,369 @@
+# ==============================================================================
+# Sisyphus API Engine - 性能测试
+# ==============================================================================
+# 功能说明：演示性能测试功能
+# - 响应时间测试
+# - 并发压力测试
+# - 性能基准测试
+# - 性能指标收集
+# ==============================================================================
+
+name: "性能测试"
+description: "演示API性能测试和压力测试"
+
+config:
+  name: "性能测试配置"
+  timeout: 300
+
+  # ========================================================================
+  # 性能测试配置
+  # ========================================================================
+  performance:
+    # 性能基准
+    benchmarks:
+      # 响应时间基准（毫秒）
+      response_time:
+        avg: 500      # 平均响应时间
+        p95: 1000     # 95分位响应时间
+        p99: 2000     # 99分位响应时间
+      # 吞吐量基准（请求/秒）
+      throughput:
+        min: 100      # 最小吞吐量
+        target: 500   # 目标吞吐量
+      # 错误率基准
+      error_rate:
+        max: 0.01     # 最大错误率1%
+
+    # 并发配置
+    concurrency:
+      # 并发用户数
+      users: 10
+      # 每个用户发送的请求数
+      requests_per_user: 100
+      # 请求发送间隔（毫秒）
+      request_interval: 100
+
+    # 持续时间配置
+    duration:
+      # 预热时间（秒）
+      warmup: 10
+      # 测试持续时间（秒）
+      test: 60
+      # 冷却时间（秒）
+      cooldown: 10
+
+    # 性能指标收集
+    metrics:
+      - response_time      # 响应时间
+      - throughput         # 吞吐量
+      - error_rate         # 错误率
+      - cpu_usage          # CPU使用率
+      - memory_usage       # 内存使用率
+      - network_io         # 网络IO
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: 响应时间基准测试
+  # 用途：测量API的平均响应时间
+  # ----------------------------------------------------------------------------
+  - name: "性能测试-响应时间基准"
+    description: "测量API的平均响应时间和P95/P99值"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    # 性能测试配置
+    performance:
+      # 是否启用性能测试
+      enabled: true
+      # 性能基准
+      benchmarks:
+        avg_response_time: 500
+        p95_response_time: 1000
+        p99_response_time: 2000
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+      # 验证响应时间
+      - type: lt
+        path: "$.performance.total_time"
+        expect: 2000
+        description: "验证响应时间小于2秒"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 并发压力测试
+  # 用途：测试API在高并发情况下的表现
+  # ----------------------------------------------------------------------------
+  - name: "性能测试-并发压力"
+    description: "测试API在10个并发请求下的性能表现"
+    type: concurrent
+    max_concurrency: 10
+    concurrent_steps:
+      - name: "并发请求1"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/delay/1"
+        performance:
+          enabled: true
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+          - type: lt
+            path: "$.performance.total_time"
+            expect: 2000
+            description: "验证响应时间小于2秒"
+
+      - name: "并发请求2"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/delay/1"
+        performance:
+          enabled: true
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+      - name: "并发请求3"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/delay/1"
+        performance:
+          enabled: true
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+      - name: "并发请求4"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/delay/1"
+        performance:
+          enabled: true
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+      - name: "并发请求5"
+        type: request
+        method: GET
+        url: "${config.profiles.prod.base_url}/delay/1"
+        performance:
+          enabled: true
+        validations:
+          - type: status_code
+            path: "$.status_code"
+            expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 性能指标收集演示
+  # 用途：说明各种性能指标的收集和展示
+  # ----------------------------------------------------------------------------
+  - name: "性能指标收集"
+    description: "演示各种性能指标的收集和展示"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      performance_metrics:
+        # 时间指标
+        timing:
+          total_time: 1234.56
+          dns_time: 100
+          tcp_time: 50
+          tls_time: 150
+          server_time: 800
+          download_time: 50
+          upload_time: 84.56
+        # 大小指标
+        size:
+          request_size: 1024
+          response_size: 2048
+          download_size: 2048
+          upload_size: 1024
+        # 速率指标
+        rate:
+          download_rate: 16.38
+          upload_rate: 12.08
+      benchmark_comparison:
+        description: "与性能基准对比"
+        benchmarks:
+          avg_response_time: 500
+          p95_response_time: 1000
+          p99_response_time: 2000
+        actual:
+          avg_response_time: 600
+          p95_response_time: 900
+          p99_response_time: 1500
+        status: "passed"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 吞吐量测试演示
+  # 用途：说明API吞吐量的测试方法
+  # ----------------------------------------------------------------------------
+  - name: "吞吐量测试配置"
+    description: "演示吞吐量测试的配置和指标"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      test_type: "throughput_test"
+      configuration:
+        # 测试配置
+        duration: 60  # 测试60秒
+        concurrent_users: 10
+        requests_per_second: 100
+      metrics:
+        # 吞吐量指标
+        throughput:
+          total_requests: 6000
+          requests_per_second: 100
+          successful_requests: 5950
+          failed_requests: 50
+          success_rate: 99.17
+        # 响应时间统计
+        response_time:
+          min: 100
+          avg: 500
+          max: 1500
+          p50: 400
+          p95: 900
+          p99: 1300
+      benchmark:
+        target_throughput: 100
+        actual_throughput: 100
+        status: "passed"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 性能测试报告说明
+  # 用途：说明性能测试报告的内容和格式
+  # ----------------------------------------------------------------------------
+  - name: "性能测试报告"
+    description: "演示性能测试报告的内容和格式"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      report:
+        # 测试摘要
+        summary:
+          test_name: "API性能测试"
+          test_date: "2025-01-29"
+          duration: "60秒"
+          total_requests: 6000
+        # 性能指标
+        metrics:
+          # 响应时间
+          response_time:
+            min: "100ms"
+            avg: "500ms"
+            max: "1500ms"
+            p95: "900ms"
+            p99: "1300ms"
+          # 吞吐量
+          throughput:
+            rps: 100
+            total: 6000
+          # 成功率
+          success_rate:
+            success: 5950
+            failed: 50
+            rate: "99.17%"
+        # 性能基准对比
+        benchmark_comparison:
+          passed: 5
+          failed: 0
+          total: 5
+        # 建议
+        recommendations:
+          - "平均响应时间满足性能要求"
+          - "错误率在可接受范围内"
+          - "建议优化P99响应时间"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 性能测试最佳实践
+  # 用途：说明性能测试的最佳实践
+  # ----------------------------------------------------------------------------
+  - name: "性能测试最佳实践"
+    description: "说明性能测试的最佳实践和注意事项"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      best_practices:
+        # 测试环境
+        environment:
+          - "使用与生产环境相似的配置"
+          - "隔离测试环境，避免干扰"
+          - "预热系统，避免冷启动影响"
+        # 测试数据
+        test_data:
+          - "使用足够的测试数据"
+          - "避免数据不足导致的缓存命中"
+          - "模拟真实的数据分布"
+        # 测试执行
+        execution:
+          - "分阶段执行：基准测试 -> 负载测试 -> 压力测试"
+          - "逐步增加负载，观察系统表现"
+          - "记录系统资源使用情况"
+        # 结果分析
+        analysis:
+          - "关注P95和P99值，而不仅仅是平均值"
+          - "识别性能瓶颈和异常点"
+          - "对比历史数据，发现性能退化"
+      common_pitfalls:
+        - "在测试环境中进行性能测试，结果不准确"
+        - "测试数据太少，导致缓存影响结果"
+        - "只关注平均值，忽略了长尾响应"
+        - "没有进行预热，冷启动影响测试结果"
+        - "测试时间太短，结果不具有代表性"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证状态码为200"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "性能测试"
+  - "压力测试"
+  - "benchmark"
+  - "performance"
+
+enabled: true
