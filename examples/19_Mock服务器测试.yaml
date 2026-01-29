@@ -355,6 +355,146 @@ steps:
         expect: "200"
         description: "验证状态码为200"
 
+  # ----------------------------------------------------------------------------
+  # 步骤6: Mock条件判断 - 基于请求体的条件
+  # 用途：演示根据请求内容返回不同的响应
+  # 场景：金额超限时返回错误，否则返回成功
+  # ----------------------------------------------------------------------------
+  - name: "Mock条件判断示例-请求体条件"
+    description: "演示基于请求体的条件Mock"
+    type: request
+    method: POST
+    url: "http://localhost:8888/payment/create"
+    headers:
+      Content-Type: "application/json"
+    body:
+      amount: 150
+      currency: "USD"
+    # 配置Mock响应
+    mock:
+      enabled: true
+      rules:
+        - name: "payment-amount-check"
+          priority: 10
+          request:
+            method: "POST"
+            url: "/payment/create"
+          # 条件判断：金额大于100时返回错误
+          condition: "${request.body.amount > 100}"
+          response:
+            status_code: 200
+            body:
+              code: 1
+              msg: "金额超限"
+              data: null
+          # 条件为假时的响应
+          else_response:
+            status_code: 200
+            body:
+              code: 0
+              msg: "success"
+              data:
+                payment_id: "MOCK_123"
+    validations:
+      - type: eq
+        path: "$.json.body.code"
+        expect: 1
+        description: "验证返回超限错误"
+
+  # ----------------------------------------------------------------------------
+  # 步骤7: Mock条件判断 - 基于请求路径和方法的条件
+  # 用途：演示根据不同的API版本返回不同的响应
+  # 场景：v1和v2 API返回不同的版本号
+  # ----------------------------------------------------------------------------
+  - name: "Mock条件判断示例-API版本"
+    description: "演示基于API路径的条件Mock"
+    type: request
+    method: POST
+    url: "http://localhost:8888/api/v1/test"
+    headers:
+      Content-Type: "application/json"
+    body:
+      test: "data"
+    # 配置Mock响应
+    mock:
+      enabled: true
+      rules:
+        # v1 API的Mock规则
+        - name: "api-v1-handler"
+          priority: 10
+          request:
+            method: "POST"
+            url: "/api/v1/.*"
+          # 条件：路径匹配v1
+          condition: "'/api/v1/' in request.path"
+          response:
+            status_code: 200
+            body:
+              version: "v1"
+              message: "API v1 response"
+        # v2 API的Mock规则
+        - name: "api-v2-handler"
+          priority: 10
+          request:
+            method: "POST"
+            url: "/api/v2/.*"
+          # 条件：路径匹配v2
+          condition: "'/api/v2/' in request.path"
+          response:
+            status_code: 200
+            body:
+              version: "v2"
+              message: "API v2 response"
+    validations:
+      - type: eq
+        path: "$.json.body.version"
+        expect: "v1"
+        description: "验证返回v1版本"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: Mock条件判断 - 基于请求头的条件
+  # 用途：演示根据请求头返回不同的响应
+  # 场景：带有特殊token的请求返回额外数据
+  # ----------------------------------------------------------------------------
+  - name: "Mock条件判断示例-请求头条件"
+    description: "演示基于请求头的条件Mock"
+    type: request
+    method: GET
+    url: "http://localhost:8888/api/data"
+    headers:
+      Content-Type: "application/json"
+      X-Special-Token: "secret_token"
+    # 配置Mock响应
+    mock:
+      enabled: true
+      rules:
+        - name: "premium-data-handler"
+          priority: 10
+          request:
+            method: "GET"
+            url: "/api/data"
+          # 条件：请求头包含特殊token
+          condition: "request.headers.get('X-Special-Token') == 'secret_token'"
+          response:
+            status_code: 200
+            body:
+              role: "premium"
+              data:
+                field1: "value1"
+                field2: "value2"
+          # 条件为假时的响应（普通用户）
+          else_response:
+            status_code: 200
+            body:
+              role: "guest"
+              data:
+                field1: "limited_value"
+    validations:
+      - type: eq
+        path: "$.json.body.role"
+        expect: "premium"
+        description: "验证返回premium角色"
+
 # ============================================================================
 # 标签
 # ============================================================================
@@ -363,5 +503,6 @@ tags:
   - "mock"
   - "模拟响应"
   - "测试隔离"
+  - "条件判断"
 
 enabled: true

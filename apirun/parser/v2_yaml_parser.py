@@ -304,6 +304,7 @@ class V2YamlParser:
         condition = step_details.get("condition")
         interval = step_details.get("interval")
         max_wait = step_details.get("max_wait")
+        wait_condition = step_details.get("wait_condition")
 
         # Parse loop-specific fields
         loop_type = step_details.get("loop_type")
@@ -375,6 +376,7 @@ class V2YamlParser:
             condition=condition,
             interval=interval,
             max_wait=max_wait,
+            wait_condition=wait_condition,
             loop_type=loop_type,
             loop_count=loop_count,
             loop_condition=loop_condition,

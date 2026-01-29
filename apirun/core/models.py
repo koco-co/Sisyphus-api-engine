@@ -246,6 +246,7 @@ class TestStep:
     condition: Optional[str] = None
     interval: Optional[float] = None
     max_wait: Optional[float] = None
+    wait_condition: Optional[Dict[str, Any]] = None
     # Loop step fields
     loop_type: Optional[str] = None
     loop_count: Optional[int] = None

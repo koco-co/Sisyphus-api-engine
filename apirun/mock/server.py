@@ -187,7 +187,16 @@ class MockServer:
 
         if rule:
             self.logger.debug(f"Matched rule: {rule.name}")
-            return self._create_response(rule.response)
+
+            # Use get_response to evaluate conditions
+            mock_response = rule.get_response(method, full_path, query_params, headers, body)
+
+            # Log condition evaluation if applicable
+            if rule.condition:
+                condition_met = rule.evaluate_condition(method, full_path, query_params, headers, body)
+                self.logger.debug(f"Condition evaluation: {condition_met}")
+
+            return self._create_response(mock_response)
 
         # Use default response if no rule matches
         if self.config.default_response:

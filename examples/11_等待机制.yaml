@@ -103,6 +103,54 @@ steps:
         expect: "https://httpbin.org/get"
         description: "验证URL正确"
 
+  # ----------------------------------------------------------------------------
+  # 步骤7: API条件等待示例
+  # 类型: wait (wait_condition)
+  # 用途：等待API响应满足特定条件
+  # 场景：轮询检查异步任务状态，直到完成
+  # ----------------------------------------------------------------------------
+  - name: "API条件等待示例"
+    description: "等待API响应满足条件（演示配置）"
+    type: wait
+    # 条件等待配置
+    wait_condition:
+      type: "api"  # 类型：api
+      timeout: 30.0  # 最大等待30秒
+      interval: 2.0  # 每2秒轮询一次
+      # API请求配置
+      request:
+        method: "GET"
+        url: "${config.profiles.prod.base_url}/status/200"
+        headers: {}
+      # 检查条件（Jinja2模板表达式）
+      # 可用变量：status_code, body, headers, response
+      check: "${status_code == 200}"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: Database条件等待示例
+  # 类型: wait (wait_condition)
+  # 用途：等待数据库查询结果满足特定条件
+  # 场景：等待数据入库或状态变更
+  # ----------------------------------------------------------------------------
+  - name: "Database条件等待示例"
+    description: "等待数据库查询结果满足条件（演示配置）"
+    type: wait
+    # 条件等待配置
+    wait_condition:
+      type: "database"  # 类型：database
+      timeout: 10.0  # 最大等待10秒
+      interval: 1.0  # 每1秒轮询一次
+      # 数据库配置
+      database:
+        type: "sqlite"
+        connection: "test.db"
+      # SQL查询
+      sql: "SELECT status FROM orders WHERE order_id = %s"
+      params: ["${order_id}"]
+      # 检查条件（Jinja2模板表达式）
+      # 可用变量：result, rows, row
+      check: "${row.status == 'confirmed'}"
+
 # ============================================================================
 # 标签
 # ============================================================================
@@ -110,5 +158,7 @@ tags:
   - "等待机制"
   - "延迟"
   - "条件等待"
+  - "API条件等待"
+  - "Database条件等待"
 
 enabled: true

@@ -243,6 +243,8 @@ class MockRule:
         priority: Rule priority (higher = checked first)
         enabled: Whether the rule is enabled
         description: Rule description
+        condition: Optional Jinja2 expression for conditional matching
+        else_response: Response to use when condition is false (if condition is set)
     """
 
     name: str
@@ -251,6 +253,8 @@ class MockRule:
     priority: int = 0
     enabled: bool = True
     description: str = ""
+    condition: Optional[str] = None
+    else_response: Optional[MockResponse] = None
 
     def matches(
         self,
@@ -276,6 +280,80 @@ class MockRule:
             return False
 
         return self.matcher.matches(method, path, query_params, headers, body)
+
+    def evaluate_condition(
+        self,
+        method: str,
+        path: str,
+        query_params: Optional[Dict[str, str]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        body: Optional[Any] = None,
+    ) -> bool:
+        """Evaluate the condition expression for this rule.
+
+        Args:
+            method: HTTP method
+            path: Request path
+            query_params: Query parameters
+            headers: Request headers
+            body: Request body
+
+        Returns:
+            True if condition evaluates to true or no condition is set
+        """
+        if not self.condition:
+            return True
+
+        from apirun.utils.template import render_template
+
+        # Create context with request data
+        context = {
+            "request": {
+                "method": method,
+                "path": path,
+                "query_params": query_params or {},
+                "headers": headers or {},
+                "body": body,
+            }
+        }
+
+        try:
+            rendered = render_template(self.condition, context)
+            # Check if rendered result is truthy
+            if isinstance(rendered, bool):
+                return rendered
+            return str(rendered).lower() in ("true", "1", "yes", "y")
+        except Exception:
+            return False
+
+    def get_response(
+        self,
+        method: str,
+        path: str,
+        query_params: Optional[Dict[str, str]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        body: Optional[Any] = None,
+    ) -> MockResponse:
+        """Get the appropriate response based on condition evaluation.
+
+        Args:
+            method: HTTP method
+            path: Request path
+            query_params: Query parameters
+            headers: Request headers
+            body: Request body
+
+        Returns:
+            MockResponse to use
+        """
+        if self.condition:
+            condition_met = self.evaluate_condition(method, path, query_params, headers, body)
+            if condition_met:
+                return self.response
+            elif self.else_response:
+                return self.else_response
+
+        return self.response
 
 
 @dataclass
