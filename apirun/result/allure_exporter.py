@@ -131,6 +131,7 @@ class AllureExporter:
             "links": [],
             "parameters": [],
             "attachments": [],
+            "description": self._format_description(test_case, test_result),
         }
 
         # Add status details if failed or has errors
@@ -161,15 +162,93 @@ class AllureExporter:
         Returns:
             Time dictionary with start, stop, duration (in milliseconds)
         """
+        # 确保时间对象是 datetime 类型
         start = test_result.start_time
         end = test_result.end_time
         duration_ms = int(test_result.duration * 1000)
 
+        # 如果时间戳无效或缺失，使用当前时间
+        now_ms = int(datetime.now().timestamp() * 1000)
+
+        if not start or not hasattr(start, 'timestamp'):
+            start = datetime.fromtimestamp(now_ms / 1000)
+
+        if not end or not hasattr(end, 'timestamp'):
+            end = datetime.fromtimestamp((now_ms + max(duration_ms, 1000)) / 1000)
+
         return {
             "start": int(start.timestamp() * 1000),
             "stop": int(end.timestamp() * 1000),
-            "duration": duration_ms,
+            "duration": max(duration_ms, 1),  # 至少 1ms，避免 Unknown
         }
+
+    def _format_description(self, test_case: TestCase, test_result: TestCaseResult) -> str:
+        """Format test case description with rich information.
+
+        Args:
+            test_case: Test case
+            test_result: Test execution result
+
+        Returns:
+            Formatted description in HTML/Markdown format
+        """
+        description_lines = []
+
+        # Test case description
+        if test_case.description:
+            description_lines.append(f"**测试描述**: {test_case.description}\n")
+
+        # Test execution summary
+        description_lines.append("## 执行摘要\n")
+        description_lines.append(f"- **测试状态**: {self._translate_status(test_result.status)}")
+        description_lines.append(f"- **总步骤数**: {test_result.total_steps}")
+        description_lines.append(f"- **通过步骤**: {test_result.passed_steps} ✓")
+        description_lines.append(f"- **失败步骤**: {test_result.failed_steps} ✗")
+        description_lines.append(f"- **跳过步骤**: {test_result.skipped_steps} ⊘")
+        description_lines.append(f"- **执行时长**: {test_result.duration:.2f} 秒")
+        description_lines.append(f"- **通过率**: {(test_result.passed_steps / test_result.total_steps * 100) if test_result.total_steps > 0 else 0:.1f}%\n")
+
+        # Environment information
+        if test_case.config:
+            description_lines.append("## 环境配置\n")
+            if test_case.config.active_profile:
+                description_lines.append(f"- **激活环境**: {test_case.config.active_profile}")
+
+            # Show profile information
+            if test_case.config.active_profile and test_case.config.profiles:
+                active_profile = test_case.config.profiles.get(test_case.config.active_profile)
+                if active_profile and active_profile.variables:
+                    description_lines.append(f"- **环境变量**: {len(active_profile.variables)} 个变量")
+
+            # Data driven testing info
+            if test_case.config.data_iterations:
+                description_lines.append(f"- **数据驱动测试**: {test_case.config.data_iterations} 次迭代")
+
+            description_lines.append("")
+
+        # Tags and labels
+        if test_case.tags:
+            description_lines.append(f"## 标签\n")
+            description_lines.append(f"`{'`, `'.join(test_case.tags)}`\n")
+
+        return "\n".join(description_lines)
+
+    def _translate_status(self, status: str) -> str:
+        """Translate status to Chinese.
+
+        Args:
+            status: Status code
+
+        Returns:
+            Chinese status text
+        """
+        status_map = {
+            "passed": "通过 ✅",
+            "failed": "失败 ❌",
+            "skipped": "跳过 ⏭️",
+            "error": "错误 ⚠️",
+        }
+        return status_map.get(status, status)
 
     def _format_steps(self, test_result: TestCaseResult) -> List[Dict[str, Any]]:
         """Format test steps as Allure steps.
@@ -205,6 +284,7 @@ class AllureExporter:
             }
 
             # Add timing information
+            # 确保步骤有时间信息，如果缺失则使用测试用例的开始/结束时间作为备选
             if step_result.start_time and step_result.end_time:
                 start_ms = int(step_result.start_time.timestamp() * 1000)
                 stop_ms = int(step_result.end_time.timestamp() * 1000)
@@ -212,20 +292,41 @@ class AllureExporter:
                 allure_step["start"] = start_ms
                 allure_step["stop"] = stop_ms
                 allure_step["duration"] = duration_ms
+            else:
+                # 如果步骤没有明确的时间戳，至少设置一个默认的 duration（基于性能指标）
+                if step_result.performance and step_result.performance.total_time > 0:
+                    allure_step["duration"] = int(step_result.performance.total_time)
+                else:
+                    # 如果没有任何时间信息，设置为 1ms 避免 Unknown
+                    allure_step["duration"] = 1
 
-            # Add step type as parameter
+            # Add step type as parameter (中文)
             allure_step["parameters"].append({
-                "name": "step_type",
+                "name": "步骤类型",
                 "value": step_result.name.split(" ")[0] if step_result.name else "unknown"
             })
 
-            # Add performance metrics as parameters
+            # Add performance metrics as parameters (中文)
             if step_result.performance:
                 perf = step_result.performance
-                allure_step["parameters"].extend([
-                    {"name": "total_time", "value": f"{perf.total_time:.2f}ms"},
-                    {"name": "response_size", "value": f"{perf.size} bytes"},
-                ])
+                perf_params = [
+                    {"name": "总耗时", "value": f"{perf.total_time:.2f}ms"},
+                    {"name": "响应大小", "value": f"{perf.size} bytes"},
+                ]
+
+                # Add detailed timing breakdown if available
+                if perf.dns_time and perf.dns_time > 0:
+                    perf_params.append({"name": "DNS解析", "value": f"{perf.dns_time:.2f}ms"})
+                if perf.tcp_time and perf.tcp_time > 0:
+                    perf_params.append({"name": "TCP连接", "value": f"{perf.tcp_time:.2f}ms"})
+                if perf.tls_time and perf.tls_time > 0:
+                    perf_params.append({"name": "TLS握手", "value": f"{perf.tls_time:.2f}ms"})
+                if perf.server_time and perf.server_time > 0:
+                    perf_params.append({"name": "服务器处理", "value": f"{perf.server_time:.2f}ms"})
+                if perf.download_time and perf.download_time > 0:
+                    perf_params.append({"name": "下载耗时", "value": f"{perf.download_time:.2f}ms"})
+
+                allure_step["parameters"].extend(perf_params)
 
             # Add HTTP request/response as attachments
             if step_result.response:
@@ -244,18 +345,18 @@ class AllureExporter:
             if variables_data:
                 allure_step["attachments"].append(variables_data)
 
-            # Add validation results
+            # Add validation results (中文)
             if step_result.validation_results:
                 for idx, validation in enumerate(step_result.validation_results):
                     validation_step = {
-                        "name": f"Validation: {validation.get('type', '')}",
+                        "name": f"验证: {validation.get('type', '')}",
                         "status": "passed" if validation.get("passed", False) else "failed",
                         "stage": "finished",
                         "parameters": [
-                            {"name": "type", "value": validation.get("type", "")},
-                            {"name": "path", "value": validation.get("path", "")},
-                            {"name": "expect", "value": str(validation.get("expect", ""))},
-                            {"name": "actual", "value": str(validation.get("actual", ""))},
+                            {"name": "验证类型", "value": validation.get("type", "")},
+                            {"name": "路径", "value": validation.get("path", "")},
+                            {"name": "期望值", "value": str(validation.get("expect", ""))},
+                            {"name": "实际值", "value": str(validation.get("actual", ""))},
                         ],
                     }
                     allure_step["steps"].append(validation_step)
@@ -266,11 +367,19 @@ class AllureExporter:
                     step_result.error_info
                 )
 
-            # Add retry history as parameters
+            # Add retry history as parameters (中文)
             if step_result.retry_count > 0:
                 allure_step["parameters"].append({
-                    "name": "retry_count",
+                    "name": "重试次数",
                     "value": str(step_result.retry_count)
+                })
+
+            # Add extracted variables as parameters (中文)
+            if step_result.extracted_vars:
+                extracted_count = len(step_result.extracted_vars)
+                allure_step["parameters"].append({
+                    "name": "提取变量数",
+                    "value": str(extracted_count)
                 })
 
             allure_steps.append(allure_step)
@@ -292,14 +401,14 @@ class AllureExporter:
         # Build request text
         request_lines = []
         request_lines.append("=" * 80)
-        request_lines.append("HTTP Request Details")
+        request_lines.append("HTTP 请求详情")
         request_lines.append("=" * 80)
 
         # Method and URL
         if "method" in step_result.response:
-            request_lines.append(f"\nMethod: {step_result.response['method']}")
+            request_lines.append(f"\n请求方法: {step_result.response['method']}")
         if "url" in step_result.response:
-            request_lines.append(f"URL: {step_result.response['url']}")
+            request_lines.append(f"请求地址: {step_result.response['url']}")
 
         # Request information
         if "request" in step_result.response:
@@ -307,7 +416,7 @@ class AllureExporter:
             if isinstance(request, dict):
                 # Headers
                 if "headers" in request:
-                    request_lines.append("\n--- Request Headers ---")
+                    request_lines.append("\n--- 请求头 ---")
                     for k, v in request["headers"].items():
                         # Mask sensitive headers
                         if self.mask_sensitive and any(
@@ -318,13 +427,13 @@ class AllureExporter:
 
                 # Query Parameters
                 if "params" in request:
-                    request_lines.append("\n--- Query Parameters ---")
+                    request_lines.append("\n--- 查询参数 ---")
                     for k, v in request["params"].items():
                         request_lines.append(f"  {k}: {v}")
 
                 # Body
                 if "body" in request:
-                    request_lines.append("\n--- Request Body ---")
+                    request_lines.append("\n--- 请求体 ---")
                     try:
                         body_text = json.dumps(request["body"], indent=2, ensure_ascii=False)
                         # Mask sensitive fields in body
@@ -341,7 +450,7 @@ class AllureExporter:
         attachment_filename = self.save_attachment(request_content, f"request-{uuid.uuid4()}.txt")
 
         return {
-            "name": "HTTP Request",
+            "name": "HTTP 请求",
             "source": attachment_filename,
             "type": "text/plain",
         }
@@ -361,24 +470,26 @@ class AllureExporter:
         # Build response text
         response_lines = []
         response_lines.append("=" * 80)
-        response_lines.append("HTTP Response Details")
+        response_lines.append("HTTP 响应详情")
         response_lines.append("=" * 80)
 
         # Status Code
         if "status_code" in step_result.response:
-            response_lines.append(f"\nStatus Code: {step_result.response['status_code']}")
+            status_code = step_result.response['status_code']
+            status_text = "✅ 成功" if 200 <= status_code < 300 else "❌ 失败"
+            response_lines.append(f"\n状态码: {status_code} {status_text}")
 
         # Response Time
         if "response_time" in step_result.response:
-            response_lines.append(f"Response Time: {step_result.response['response_time']:.2f}ms")
+            response_lines.append(f"响应时间: {step_result.response['response_time']:.2f}ms")
 
         # Response Size
         if "size" in step_result.response:
-            response_lines.append(f"Response Size: {step_result.response['size']} bytes")
+            response_lines.append(f"响应大小: {step_result.response['size']} bytes")
 
         # Headers
         if "headers" in step_result.response:
-            response_lines.append("\n--- Response Headers ---")
+            response_lines.append("\n--- 响应头 ---")
             headers = step_result.response["headers"]
             if isinstance(headers, dict):
                 for k, v in headers.items():
@@ -386,7 +497,7 @@ class AllureExporter:
 
         # Response Body
         if "body" in step_result.response:
-            response_lines.append("\n--- Response Body ---")
+            response_lines.append("\n--- 响应体 ---")
             body = step_result.response["body"]
             try:
                 if isinstance(body, (dict, list)):
@@ -396,11 +507,11 @@ class AllureExporter:
 
                 # Truncate very large responses for readability
                 if len(body_text) > 10000:
-                    body_text = body_text[:10000] + "\n\n... (Response truncated, too large) ..."
+                    body_text = body_text[:10000] + "\n\n... (响应内容过长，已截断) ..."
 
                 response_lines.append(body_text)
             except Exception as e:
-                response_lines.append(f"[Unable to format response body: {e}]")
+                response_lines.append(f"[无法格式化响应体: {e}]")
                 response_lines.append(str(body)[:500])
 
         # Cookies
@@ -418,7 +529,7 @@ class AllureExporter:
         attachment_filename = self.save_attachment(response_content, f"response-{uuid.uuid4()}.txt")
 
         return {
-            "name": "HTTP Response",
+            "name": "HTTP 响应",
             "source": attachment_filename,
             "type": "text/plain",
         }
@@ -441,24 +552,33 @@ class AllureExporter:
         # Build comprehensive error message
         message_parts = []
 
-        # Add error type and category
+        # Add error type and category (中文)
         if error_info.type:
             message_parts.append(f"[{error_info.type}]")
 
         if error_info.category:
-            message_parts.append(f"Category: {error_info.category.value}")
+            category_map = {
+                "ASSERTION": "断言错误",
+                "NETWORK": "网络错误",
+                "TIMEOUT": "超时错误",
+                "PARSING": "解析错误",
+                "BUSINESS": "业务逻辑错误",
+                "SYSTEM": "系统错误",
+            }
+            category_text = category_map.get(error_info.category.value, error_info.category.value)
+            message_parts.append(f"错误类别: {category_text}")
 
         # Add main message
         if error_info.message:
             message_parts.append(error_info.message)
 
-        # Add suggestion if available
+        # Add suggestion if available (中文)
         if error_info.suggestion:
-            message_parts.append(f"\n💡 Suggestion: {error_info.suggestion}")
+            message_parts.append(f"\n💡 建议: {error_info.suggestion}")
 
-        # Add context information if available
+        # Add context information if available (中文)
         if error_info.context:
-            message_parts.append("\n\nContext:")
+            message_parts.append("\n\n上下文信息:")
             for key, value in error_info.context.items():
                 # Mask sensitive context
                 if self.mask_sensitive and any(
@@ -562,7 +682,7 @@ class AllureExporter:
         return parameters
 
     def generate_environment_file(self, env_vars: Dict[str, str] = None):
-        """Generate environment.properties file for Allure report.
+        """Generate environment.properties file for Allure report (中文注释).
 
         Args:
             env_vars: Environment variables to include
@@ -571,47 +691,57 @@ class AllureExporter:
 
         # Default environment info
         properties = {
+            "# 框架信息": "",
             "Framework": "Sisyphus API Engine",
+            "Framework.Version": "1.0.0",
             "Language": "Python",
-            "Generated": datetime.now().isoformat(),
+            "# 生成时间": "",
+            "Generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "# 时区": "",
+            "Timezone": datetime.now().astimezone().tzinfo.tzname(datetime.now().astimezone().dst()) or "UTC",
         }
 
         # Add custom environment variables
         if env_vars:
+            properties["\n# 自定义环境变量"] = ""
             properties.update(env_vars)
 
         # Write to file
         with open(env_file, "w", encoding="utf-8") as f:
             for key, value in properties.items():
-                f.write(f"{key}={value}\n")
+                if key.startswith("#"):
+                    # Comment line
+                    f.write(f"{key}\n")
+                else:
+                    f.write(f"{key}={value}\n")
 
     def generate_categories_file(self):
-        """Generate categories.json file for Allure report."""
+        """Generate categories.json file for Allure report (中文)."""
         categories_file = self.output_dir / "categories.json"
 
         categories = [
             {
-                "name": "Passed tests",
+                "name": "通过的测试 ✅",
                 "matchedStatuses": ["passed"],
                 "flaky": False,
             },
             {
-                "name": "Failed tests",
+                "name": "失败的测试 ❌",
                 "matchedStatuses": ["failed"],
                 "flaky": False,
             },
             {
-                "name": "Broken tests",
+                "name": "出错的测试 ⚠️",
                 "matchedStatuses": ["broken", "error"],
                 "flaky": False,
             },
             {
-                "name": "Skipped tests",
+                "name": "跳过的测试 ⏭️",
                 "matchedStatuses": ["skipped"],
                 "flaky": False,
             },
             {
-                "name": "Flaky tests",
+                "name": "不稳定的测试 🔄",
                 "matchedStatuses": ["passed", "failed", "broken"],
                 "flaky": True,
             },
@@ -680,12 +810,12 @@ class AllureExporter:
         # Build variables text
         var_lines = []
         var_lines.append("=" * 80)
-        var_lines.append("Variables Snapshot")
+        var_lines.append("变量快照")
         var_lines.append("=" * 80)
 
         # Variables before execution
         if step_result.variables_snapshot:
-            var_lines.append("\n--- Variables Before Execution ---")
+            var_lines.append("\n--- 执行前变量 ---")
             for key, value in sorted(step_result.variables_snapshot.items()):
                 # Mask sensitive values
                 if self.mask_sensitive and any(
@@ -710,7 +840,7 @@ class AllureExporter:
 
         # Variables delta (what changed)
         if step_result.variables_delta:
-            var_lines.append("\n--- Variables Changed ---")
+            var_lines.append("\n--- 变量变更 ---")
             for key, value in sorted(step_result.variables_delta.items()):
                 if isinstance(value, dict) and "before" in value and "after" in value:
                     before_val = value["before"]
@@ -724,14 +854,14 @@ class AllureExporter:
                         after_val = "***"
 
                     var_lines.append(f"  {key}:")
-                    var_lines.append(f"    before: {before_val}")
-                    var_lines.append(f"    after:  {after_val}")
+                    var_lines.append(f"    变更前: {before_val}")
+                    var_lines.append(f"    变更后:  {after_val}")
                 else:
                     var_lines.append(f"  {key}: {value}")
 
         # Extracted variables
         if step_result.extracted_vars:
-            var_lines.append("\n--- Extracted Variables ---")
+            var_lines.append("\n--- 提取的变量 ---")
             for key, value in sorted(step_result.extracted_vars.items()):
                 # Mask sensitive values
                 if self.mask_sensitive and any(
@@ -756,7 +886,7 @@ class AllureExporter:
         attachment_filename = self.save_attachment(var_content, f"variables-{uuid.uuid4()}.txt")
 
         return {
-            "name": "Variables Snapshot",
+            "name": "变量快照",
             "source": attachment_filename,
             "type": "text/plain",
         }
