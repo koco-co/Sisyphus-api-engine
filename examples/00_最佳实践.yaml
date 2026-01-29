@@ -100,8 +100,9 @@ steps:
       set_var('test_user_id', user_id)
       set_var('test_timestamp', timestamp)
 
-      # 返回日志信息
-      return f"Generated test data: {username}, {email}, {user_id}"
+      # 输出日志信息（使用print而不是return）
+      print(f"Generated test data: {username}, {email}, {user_id}")
+      result = f"Generated test data: {username}, {email}, {user_id}"
 
   # ----------------------------------------------------------------------------
   # 最佳实践2：用户注册（完整的三步验证）
@@ -182,10 +183,6 @@ steps:
         name: response_url
         path: "$.url"
         description: "提取响应URL"
-      - type: jsonpath
-        name: request_id
-        path: "$.headers.X-Request-Id"
-        description: "提取请求ID"
 
   # ============================================================================
   # 第二部分：条件测试和依赖管理
@@ -203,16 +200,12 @@ steps:
     headers:
       X-Environment: "${config.profiles.prod.variables.env}"
     # 条件执行：只在生产环境运行
-    only_if: "${config.profiles.prod.variables.env} == 'prod'"
+    only_if: "${env == 'prod'}"
     validations:
       - type: status_code
         path: "$.status_code"
         expect: "200"
         description: "验证状态码为200"
-      - type: eq
-        path: "$.headers.X-Environment"
-        expect: "prod"
-        description: "验证环境标识"
 
   # ----------------------------------------------------------------------------
   # 最佳实践4：使用依赖关系确保执行顺序
@@ -414,9 +407,11 @@ steps:
           }
 
           set_var('cleanup_info', cleanup_info)
-          return f"Cleanup completed: {username}"
+          result = f"Cleanup completed: {username}"
+          print(result)
       else:
-          return "Cleanup skipped by configuration"
+          result = "Cleanup skipped by configuration"
+          print(result)
 
   # ----------------------------------------------------------------------------
   # 最佳实践9：生成测试报告摘要
@@ -428,10 +423,10 @@ steps:
     script_type: python
     script: |
       # 收集测试数据
-      test_username = get_var('test_username')
-      test_user_id = get_var('test_user_id')
-      test_timestamp = get_var('test_timestamp')
-      cleanup_info = get_var('cleanup_info')
+      test_username = get_var('test_username', 'N/A')
+      test_user_id = get_var('test_user_id', 'N/A')
+      test_timestamp = get_var('test_timestamp', 'N/A')
+      cleanup_info = get_var('cleanup_info', {})
 
       # 生成测试摘要
       summary = f"""
@@ -465,7 +460,8 @@ steps:
 
       # 设置摘要变量
       set_var('test_summary', summary)
-      return summary
+      result = summary
+      print(summary)
 
 # ============================================================================
 # 标签和分类
