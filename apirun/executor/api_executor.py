@@ -171,7 +171,12 @@ class APIExecutor(StepExecutor):
         # Check if any validation failed
         for val_result in validation_results:
             if not val_result["passed"]:
-                raise AssertionError(f"Validation failed: {val_result['description']}")
+                # Create exception with response data attached for debugging
+                error = AssertionError(f"Validation failed: {val_result['description']}")
+                # Attach response data to exception for Allure reporting
+                error.response = response_data
+                error.validation_results = validation_results
+                raise error
 
         return type(
             "Result",
@@ -192,6 +197,7 @@ class APIExecutor(StepExecutor):
         Returns:
             Parsed response data
         """
+        # Build response data with request information
         result = {
             "status_code": response.status_code,
             "headers": dict(response.headers),
@@ -199,7 +205,32 @@ class APIExecutor(StepExecutor):
             "url": response.url,
         }
 
-        # Try to parse body
+        # Add request information for debugging
+        request_obj = response.request
+        result["request"] = {
+            "method": request_obj.method,
+            "url": request_obj.url,
+            "headers": dict(request_obj.headers),
+        }
+
+        # Add request body if present
+        if request_obj.body:
+            try:
+                # Try to parse as JSON
+                import json
+                result["request"]["body"] = json.loads(request_obj.body)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                # If not JSON, store as string
+                body_str = request_obj.body
+                if isinstance(body_str, bytes):
+                    body_str = body_str.decode('utf-8', errors='replace')
+                result["request"]["body"] = body_str
+
+        # Add request params if available
+        if hasattr(request_obj, 'params') and request_obj.params:
+            result["request"]["params"] = dict(request_obj.params)
+
+        # Try to parse response body
         content_type = response.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -209,5 +240,13 @@ class APIExecutor(StepExecutor):
                 result["body"] = response.text
         else:
             result["body"] = response.text
+
+        # Add response time
+        if hasattr(response, "elapsed"):
+            result["response_time"] = response.elapsed.total_seconds() * 1000
+
+        # Add response size
+        if hasattr(response, "content"):
+            result["size"] = len(response.content)
 
         return result

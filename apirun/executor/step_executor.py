@@ -211,10 +211,19 @@ class StepExecutor(ABC):
                             time.sleep(min(2**attempt, 10))  # Exponential backoff
                         continue
                     else:
-                        # Final attempt failed
+                        # Final attempt failed - but preserve any partial results
                         result.retry_count = attempt
                         if self.retry_manager:
                             result.retry_history = self.retry_manager.get_retry_history()
+
+                        # Try to extract response from the exception if available
+                        # Some exceptions may contain partial response data
+                        if hasattr(e, '__dict__'):
+                            for key, value in e.__dict__.items():
+                                if key == 'response' and value is not None:
+                                    result.response = value
+                                    break
+
                         raise
 
             # Execute teardown hooks
@@ -224,6 +233,14 @@ class StepExecutor(ABC):
             result.status = "failure"
             result.error_info = self._create_error_info(e)
             result.end_time = datetime.now()
+
+            # IMPORTANT: Try to preserve response data even on failure
+            # Check if exception contains response information
+            if hasattr(e, '__dict__') and not result.response:
+                for key, value in e.__dict__.items():
+                    if key == 'response' and value is not None:
+                        result.response = value
+                        break
 
         # Ensure end_time is set
         if result.end_time is None:
