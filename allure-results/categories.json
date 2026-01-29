@@ -1,0 +1,40 @@
+[
+  {
+    "name": "Passed tests",
+    "matchedStatuses": [
+      "passed"
+    ],
+    "flaky": false
+  },
+  {
+    "name": "Failed tests",
+    "matchedStatuses": [
+      "failed"
+    ],
+    "flaky": false
+  },
+  {
+    "name": "Broken tests",
+    "matchedStatuses": [
+      "broken",
+      "error"
+    ],
+    "flaky": false
+  },
+  {
+    "name": "Skipped tests",
+    "matchedStatuses": [
+      "skipped"
+    ],
+    "flaky": false
+  },
+  {
+    "name": "Flaky tests",
+    "matchedStatuses": [
+      "passed",
+      "failed",
+      "broken"
+    ],
+    "flaky": true
+  }
+]

@@ -24,14 +24,14 @@ config:
   # ========================================================================
   profiles:
     dev:
-      base_url: "https://dev-api.example.com"
+      base_url: "https://httpbin.org"
       variables:
         env: "dev"
         timeout: 30
         retry_times: 3
 
     staging:
-      base_url: "https://staging-api.example.com"
+      base_url: "https://httpbin.org"
       variables:
         env: "staging"
         timeout: 20
