@@ -30,7 +30,7 @@ Documentation:
     """,
     "args": {
         "--cases": "Path to YAML test case file or directory",
-        "-o/--output": "Output file path for JSON results",
+        "-o/--output": "Output file path (supports JSON/CSV/HTML/JUnit XML, format determined by extension or --format)",
         "-v/--verbose": "Enable verbose output (show detailed step information)",
         "--validate": "Validate YAML syntax without execution",
         "--profile": "Active profile name (overrides config)",
@@ -48,7 +48,7 @@ Documentation:
 
 # Chinese help messages
 ZH_HELP_MESSAGES = {
-    "description": "Sisyphus API 引擎 - 企业级 API 自动化测试工具",
+    "description": "Sisyphus API Engine - 企业级 API 自动化测试工具",
     "epilog": """
 使用示例:
   # 运行测试用例
@@ -72,7 +72,7 @@ ZH_HELP_MESSAGES = {
     """,
     "args": {
         "--cases": "YAML 测试用例文件或目录路径",
-        "-o/--output": "JSON 结果输出文件路径",
+        "-o/--output": "输出文件路径（支持 JSON/CSV/HTML/JUnit XML，格式由文件扩展名或 --format 决定）",
         "-v/--verbose": "启用详细输出模式（显示步骤详细信息）",
         "--validate": "仅验证 YAML 语法，不执行测试",
         "--profile": "激活的环境配置名称（覆盖配置文件）",
@@ -82,7 +82,7 @@ ZH_HELP_MESSAGES = {
         "--env-prefix": "要加载的环境变量前缀（例如: 'API_'）",
         "--override": "配置覆盖，格式为 'key=value'（可多次使用）",
         "--debug": "启用调试模式，包含变量追踪功能",
-        "--format": "输出格式: text, json, csv, junit, 或 html",
+        "--format": "输出格式: text、json、csv、junit 或 html",
         "--allure": "生成 Allure 报告（保存到 allure-results 目录）",
         "--allure-dir": "Allure 结果目录",
     }

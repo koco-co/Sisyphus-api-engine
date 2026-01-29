@@ -261,6 +261,20 @@ def main() -> int:
         help="Allure results directory",
     )
 
+    parser.add_argument(
+        "--allure-clean",
+        action="store_true",
+        default=True,
+        help="Clean Allure results directory before generating (default: True)",
+    )
+
+    parser.add_argument(
+        "--allure-no-clean",
+        action="store_false",
+        dest="allure_clean",
+        help="Keep previous Allure results (accumulate data)",
+    )
+
     # Check for help flags first before parsing required arguments
     import sys
     if "-H" in sys.argv or "--中文帮助" in sys.argv:
@@ -292,6 +306,7 @@ def main() -> int:
             args.format,
             args.allure,
             args.allure_dir,
+            args.allure_clean,
         )
 
         # Handle output based on format
@@ -702,6 +717,7 @@ def execute_test_case(
     format_type: str = "text",
     allure: bool = False,
     allure_dir: str = "allure-results",
+    allure_clean: bool = True,
 ) -> dict:
     """Execute test case and return results.
 
@@ -719,6 +735,7 @@ def execute_test_case(
         format_type: Output format (text/json, overrides YAML config)
         allure: Generate Allure report (overrides YAML config)
         allure_dir: Allure results directory (overrides YAML config)
+        allure_clean: Clean Allure results before generating (default: True)
 
     Returns:
         Execution result as dictionary
@@ -835,7 +852,7 @@ def execute_test_case(
 
     # Generate Allure report if enabled
     if allure_enabled:
-        _generate_allure_report(test_case, result, allure_output_dir)
+        _generate_allure_report(test_case, result, allure_output_dir, allure_clean)
 
     return result
 
@@ -1201,17 +1218,32 @@ def save_result(result: dict, output_path: str) -> None:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
 
-def _generate_allure_report(test_case, result: dict, allure_dir: str):
+def _generate_allure_report(test_case, result: dict, allure_dir: str, clean: bool = True):
     """Generate Allure report from test result.
 
     Args:
         test_case: Test case object
         result: Test execution result dictionary
         allure_dir: Allure results directory
+        clean: Whether to clean directory before generating (default: True)
     """
+    import shutil
+    from pathlib import Path
+
     from apirun.result.allure_exporter import AllureExporter
     from apirun.result.json_exporter import JSONExporter
     from apirun.core.models import TestCaseResult
+
+    # Clear previous Allure results if requested
+    if clean:
+        allure_path = Path(allure_dir)
+        if allure_path.exists():
+            # Remove all files in the directory
+            for item in allure_path.iterdir():
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    shutil.rmtree(item)
 
     # Create Allure collector
     collector = AllureExporter(output_dir=allure_dir)
@@ -1303,9 +1335,10 @@ def _generate_allure_report(test_case, result: dict, allure_dir: str):
     collector.generate_categories_file()
 
     # Print message
-    print(f"\n✓ Allure report generated: {result_file}")
+    print(f"\n✓ Allure report data generated: {result_file}")
     print(f"  Results directory: {allure_dir}")
-    print(f"  View report: allure open {allure_dir}")
+    print(f"  View report: allure serve {allure_dir}")
+    print(f"  Or generate HTML: allure generate {allure_dir} --clean -o allure-report")
 
 
 if __name__ == "__main__":
