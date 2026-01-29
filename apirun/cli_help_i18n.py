@@ -35,15 +35,14 @@ Documentation:
         "--validate": "Validate YAML syntax without execution",
         "--profile": "Active profile name (overrides config)",
         "--ws-server": "Enable WebSocket server for real-time updates",
-        "--ws-host": "WebSocket server host (default: localhost)",
-        "--ws-port": "WebSocket server port (default: 8765)",
+        "--ws-host": "WebSocket server host",
+        "--ws-port": "WebSocket server port",
         "--env-prefix": "Environment variable prefix to load (e.g., 'API_')",
         "--override": "Configuration overrides in format 'key=value' (can be used multiple times)",
         "--debug": "Enable debug mode with variable tracking",
-        "--format": "Output format: text (default), json, csv, junit, or html",
+        "--format": "Output format: text, json, csv, junit, or html",
         "--allure": "Generate Allure report (saves to allure-results directory)",
-        "--allure-dir": "Allure results directory (default: allure-results)",
-        "-H/--中文帮助": "Show help message in Chinese (显示中文帮助信息)",
+        "--allure-dir": "Allure results directory",
     }
 }
 
@@ -78,15 +77,14 @@ ZH_HELP_MESSAGES = {
         "--validate": "仅验证 YAML 语法，不执行测试",
         "--profile": "激活的环境配置名称（覆盖配置文件）",
         "--ws-server": "启用 WebSocket 服务器进行实时推送",
-        "--ws-host": "WebSocket 服务器主机地址（默认: localhost）",
-        "--ws-port": "WebSocket 服务器端口（默认: 8765）",
+        "--ws-host": "WebSocket 服务器主机地址",
+        "--ws-port": "WebSocket 服务器端口",
         "--env-prefix": "要加载的环境变量前缀（例如: 'API_'）",
         "--override": "配置覆盖，格式为 'key=value'（可多次使用）",
         "--debug": "启用调试模式，包含变量追踪功能",
-        "--format": "输出格式: text（默认）, json, csv, junit, 或 html",
+        "--format": "输出格式: text, json, csv, junit, 或 html",
         "--allure": "生成 Allure 报告（保存到 allure-results 目录）",
-        "--allure-dir": "Allure 结果目录（默认: allure-results）",
-        "-H/--中文帮助": "显示中文帮助信息 (Show help in Chinese)",
+        "--allure-dir": "Allure 结果目录",
     }
 }
 
@@ -154,3 +152,22 @@ def get_validate_help_messages(lang: str = "en") -> dict:
     if lang == "zh":
         return ZH_VALIDATE_HELP
     return EN_VALIDATE_HELP
+
+
+# Mapping from argument names to message keys
+ARGUMENT_MAPPING = {
+    "cases": "--cases",
+    "output": "-o/--output",
+    "verbose": "-v/--verbose",
+    "validate": "--validate",
+    "profile": "--profile",
+    "ws_server": "--ws-server",
+    "ws_host": "--ws-host",
+    "ws_port": "--ws-port",
+    "env_prefix": "--env-prefix",
+    "override": "--override",
+    "debug": "--debug",
+    "format": "--format",
+    "allure": "--allure",
+    "allure_dir": "--allure-dir",
+}

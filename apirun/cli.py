@@ -16,7 +16,7 @@ from apirun.executor.test_case_executor import TestCaseExecutor
 from apirun.core.variable_manager import VariableManager
 from apirun.utils.template import render_template
 from apirun.data_driven.iterator import DataDrivenIterator
-from apirun.cli_help_i18n import get_help_messages, get_validate_help_messages
+from apirun.cli_help_i18n import get_help_messages, get_validate_help_messages, ARGUMENT_MAPPING
 
 
 def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
@@ -29,9 +29,14 @@ def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
     messages = get_help_messages(lang)
 
     print(f"\n{messages['description']}\n")
-    print("用法/Usage:")
-    print("  sisyphus-api-engine --cases <file> [options]\n")
-    print("参数/Arguments:")
+    if lang == "zh":
+        print("用法:")
+        print("  sisyphus-api-engine --cases <文件> [选项]\n")
+        print("参数:")
+    else:
+        print("Usage:")
+        print("  sisyphus-api-engine --cases <file> [options]\n")
+        print("Arguments:")
 
     # Format and display arguments
     for action in parser._actions:
@@ -41,18 +46,28 @@ def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
         # Get option strings
         opts = ", ".join(action.option_strings)
 
-        # Get help text
-        help_text = action.help or ""
+        # Get help text from messages based on language
+        help_text = ""
+        if action.dest in ARGUMENT_MAPPING:
+            arg_key = ARGUMENT_MAPPING[action.dest]
+            help_text = messages["args"].get(arg_key, "")
+        else:
+            # Fallback to action's help text (should be English only)
+            help_text = action.help or ""
 
-        # Format default values (only if not already in help text)
-        if action.default is not None and action.default != "==SUPPRESS==":
+        # Format default values
+        if action.default is not None and action.default != "==SUPPRESS==" and action.default != []:
             if action.dest in ['ws_host', 'ws_port', 'allure_dir', 'format']:
-                # Check if default is not already mentioned in help text
-                if "(默认:" not in help_text and "(default:" not in help_text:
+                if lang == "zh":
                     if isinstance(action.default, str):
                         help_text += f" (默认: {action.default})"
                     elif isinstance(action.default, int):
                         help_text += f" (默认: {action.default})"
+                else:
+                    if isinstance(action.default, str):
+                        help_text += f" (default: {action.default})"
+                    elif isinstance(action.default, int):
+                        help_text += f" (default: {action.default})"
 
         # Display the argument
         if opts:
@@ -61,9 +76,14 @@ def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
     print(f"\n{messages['epilog']}")
 
     # Show additional help options
-    print("帮助选项/Help Options:")
-    print("  -h, --help          显示英文帮助 (Show help in English)")
-    print("  -H, --中文帮助      显示中文帮助 (Show help in Chinese)")
+    if lang == "zh":
+        print("帮助选项:")
+        print("  -h, --help          显示英文帮助")
+        print("  -H, --中文帮助      显示中文帮助")
+    else:
+        print("Help Options:")
+        print("  -h, --help          Show help in English")
+        print("  -H, --中文帮助      Show help in Chinese")
     print()
 
 
@@ -77,9 +97,14 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
     messages = get_validate_help_messages(lang)
 
     print(f"\n{messages['description']}\n")
-    print("用法/Usage:")
-    print("  sisyphus-api-validate <paths>...\n")
-    print("参数/Arguments:")
+    if lang == "zh":
+        print("用法:")
+        print("  sisyphus-api-validate <路径>...\n")
+        print("参数:")
+    else:
+        print("Usage:")
+        print("  sisyphus-api-validate <paths>...\n")
+        print("Arguments:")
 
     # Format and display arguments
     for action in parser._actions:
@@ -92,8 +117,12 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
         else:
             opts = action.dest.upper()
 
-        # Get help text
-        help_text = action.help or ""
+        # Get help text from messages based on language
+        help_text = ""
+        if action.dest == "paths":
+            help_text = messages["args"].get("paths", "")
+        else:
+            help_text = action.help or ""
 
         # Display the argument
         print(f"  {opts.ljust(25)} {help_text}")
@@ -101,9 +130,14 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
     print(f"\n{messages['epilog']}")
 
     # Show additional help options
-    print("帮助选项/Help Options:")
-    print("  -h, --help          显示英文帮助 (Show help in English)")
-    print("  -H, --中文帮助      显示中文帮助 (Show help in Chinese)")
+    if lang == "zh":
+        print("帮助选项:")
+        print("  -h, --help          显示英文帮助")
+        print("  -H, --中文帮助      显示中文帮助")
+    else:
+        print("Help Options:")
+        print("  -h, --help          Show help in English")
+        print("  -H, --中文帮助      Show help in Chinese")
     print()
 
 
@@ -124,86 +158,86 @@ def main() -> int:
     parser.add_argument(
         "-h", "--help",
         action="store_true",
-        help="Show this help message and exit (显示帮助信息)",
+        help="Show help message",
     )
 
     # Add Chinese help
     parser.add_argument(
         "-H", "--中文帮助",
         action="store_true",
-        help="显示中文帮助信息 (Show help in Chinese)",
+        help="Show help in Chinese",
     )
 
     parser.add_argument(
         "--cases",
         type=str,
         required=True,
-        help="Path to YAML test case file or directory (YAML测试用例文件路径)",
+        help="Path to YAML test case file or directory",
     )
 
     parser.add_argument(
         "-o",
         "--output",
         type=str,
-        help="Output file path for JSON results (结果输出文件路径)",
+        help="Output file path for JSON results",
     )
 
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Enable verbose output (启用详细输出)",
+        help="Enable verbose output",
     )
 
     parser.add_argument(
         "--validate",
         action="store_true",
-        help="Validate YAML syntax without execution (验证YAML语法)",
+        help="Validate YAML syntax without execution",
     )
 
     parser.add_argument(
         "--profile",
         type=str,
-        help="Active profile name (激活的环境配置)",
+        help="Active profile name (overrides config)",
     )
 
     parser.add_argument(
         "--ws-server",
         action="store_true",
-        help="Enable WebSocket server for real-time updates (启用WebSocket实时推送)",
+        help="Enable WebSocket server for real-time updates",
     )
 
     parser.add_argument(
         "--ws-host",
         type=str,
         default="localhost",
-        help="WebSocket server host (WebSocket服务器地址)",
+        help="WebSocket server host",
     )
 
     parser.add_argument(
         "--ws-port",
         type=int,
         default=8765,
-        help="WebSocket server port (WebSocket服务器端口)",
+        help="WebSocket server port",
     )
 
     parser.add_argument(
         "--env-prefix",
         type=str,
-        help="Environment variable prefix to load (环境变量前缀)",
+        help="Environment variable prefix to load",
     )
 
     parser.add_argument(
         "--override",
         type=str,
         action="append",
-        help="Configuration overrides in 'key=value' format (配置覆盖, 格式: key=value)",
+        help="Configuration overrides in 'key=value' format",
     )
 
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug mode with variable tracking (启用调试模式)",
+        help="Enable debug mode with variable tracking",
     )
 
     parser.add_argument(
@@ -211,20 +245,20 @@ def main() -> int:
         type=str,
         choices=["text", "json", "csv", "junit", "html"],
         default="text",
-        help="Output format: text/json/csv/junit/html (输出格式)",
+        help="Output format: text/json/csv/junit/html",
     )
 
     parser.add_argument(
         "--allure",
         action="store_true",
-        help="Generate Allure report (生成Allure报告)",
+        help="Generate Allure report",
     )
 
     parser.add_argument(
         "--allure-dir",
         type=str,
         default="allure-results",
-        help="Allure results directory (Allure结果目录)",
+        help="Allure results directory",
     )
 
     # Check for help flags first before parsing required arguments
@@ -272,69 +306,60 @@ def main() -> int:
                 # Full JSON output (all information)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
             else:
-                # Compact JSON output (API responses only)
-                from apirun.result.collector import ResultCollector
-                from apirun.core.models import TestCaseResult
+                # Ultra-compact JSON output (only response content)
+                api_responses = []
 
-                # Reconstruct TestCaseResult from dict (or we could store it)
-                # For simplicity, we'll output the compact version directly
-                compact_result = {
-                    "test_name": result["test_case"]["name"],
-                    "status": result["test_case"]["status"],
-                    "duration": result["test_case"]["duration"],
-                    "timestamp": result["test_case"]["start_time"],
-                    "statistics": result["statistics"],
-                    "api_responses": []
-                }
-
-                # Extract API responses from steps
+                # Extract only response content from steps
                 for step in result.get("steps", []):
                     if step.get("response"):
-                        response_data = {
+                        response_item = {
                             "step": step["name"],
-                            "status": step["status"],
-                            "step_index": len(compact_result["api_responses"]),
+                            "response": step["response"]
                         }
+                        api_responses.append(response_item)
 
-                        # Add response
-                        if "response" in step:
-                            response_data["response"] = step["response"]
-
-                        # Add status code if available
-                        if isinstance(step.get("response"), dict):
-                            if "status_code" in step["response"]:
-                                response_data["status_code"] = step["response"]["status_code"]
-                            if "body" in step["response"]:
-                                response_data["body"] = step["response"]["body"]
-
-                        # Add duration
-                        if step.get("start_time") and step.get("end_time"):
-                            from datetime import datetime
-                            start = datetime.fromisoformat(step["start_time"]) if isinstance(step["start_time"], str) else step["start_time"]
-                            end = datetime.fromisoformat(step["end_time"]) if isinstance(step["end_time"], str) else step["end_time"]
-                            duration = (end - start).total_seconds()
-                            response_data["duration"] = round(duration, 3)
-
-                        # Add error info if failed
-                        if step.get("error_info"):
-                            response_data["error"] = {
-                                "type": step["error_info"]["type"],
-                                "message": step["error_info"]["message"],
-                            }
-
-                        compact_result["api_responses"].append(response_data)
-
-                print(json.dumps(compact_result, ensure_ascii=False, indent=2))
+                print(json.dumps(api_responses, ensure_ascii=False, indent=2))
 
         elif args.format == "csv":
             # CSV output
             from apirun.result.collector import ResultCollector
-            from apirun.core.models import TestCaseResult
+            from apirun.core.models import TestCaseResult, StepResult, PerformanceMetrics
             from datetime import datetime
 
             # Reconstruct TestCaseResult from dict
             start_time = datetime.fromisoformat(result["test_case"]["start_time"]) if result["test_case"].get("start_time") else datetime.now()
             end_time = datetime.fromisoformat(result["test_case"]["end_time"]) if result["test_case"].get("end_time") else datetime.now()
+
+            # Reconstruct step results for CSV
+            step_results = []
+            for step_data in result.get("steps", []):
+                step_start = datetime.fromisoformat(step_data["start_time"]) if step_data.get("start_time") else None
+                step_end = datetime.fromisoformat(step_data["end_time"]) if step_data.get("end_time") else None
+
+                step_perf = None
+                if args.verbose and step_data.get("performance"):
+                    perf_data = step_data["performance"]
+                    step_perf = PerformanceMetrics(
+                        total_time=perf_data.get("total_time", 0),
+                        dns_time=perf_data.get("dns_time", 0),
+                        tcp_time=perf_data.get("tcp_time", 0),
+                        tls_time=perf_data.get("tls_time", 0),
+                        server_time=perf_data.get("server_time", 0),
+                        download_time=perf_data.get("download_time", 0),
+                        size=perf_data.get("size", 0),
+                    )
+
+                step_result = StepResult(
+                    name=step_data["name"],
+                    status=step_data["status"],
+                    start_time=step_start,
+                    end_time=step_end,
+                    response=step_data.get("response"),
+                    performance=step_perf,
+                    error_info=None,
+                )
+
+                step_results.append(step_result)
 
             test_case_result = TestCaseResult(
                 name=result["test_case"]["name"],
@@ -346,7 +371,7 @@ def main() -> int:
                 passed_steps=result["statistics"]["passed_steps"],
                 failed_steps=result["statistics"]["failed_steps"],
                 skipped_steps=result["statistics"]["skipped_steps"],
-                step_results=[],  # CSV doesn't need full step results
+                step_results=step_results,
                 final_variables={},
                 error_info=None,
             )
@@ -547,20 +572,20 @@ def validate_main() -> int:
     parser.add_argument(
         "-h", "--help",
         action="store_true",
-        help="Show this help message and exit (显示帮助信息)",
+        help="Show help message",
     )
 
     parser.add_argument(
         "-H", "--中文帮助",
         action="store_true",
-        help="显示中文帮助信息 (Show help in Chinese)",
+        help="Show help in Chinese",
     )
 
     parser.add_argument(
         "paths",
         type=str,
         nargs="+",
-        help="Path(s) to YAML file(s) or directory (YAML文件或目录路径)",
+        help="Path(s) to YAML file(s) or directory",
     )
 
     # Check for help flags first

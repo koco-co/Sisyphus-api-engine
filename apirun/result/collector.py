@@ -395,15 +395,11 @@ class ResultCollector:
                 "Error Message",
             ]
         else:
-            # Compact mode: only essential fields
+            # Ultra-compact mode: only step name and response info
             header = [
-                "Test Name",
-                "Step Name",
+                "Step",
+                "Status Code",
                 "Status",
-                "Duration (s)",
-                "HTTP Status Code",
-                "Error Type",
-                "Error Message",
             ]
         writer.writerow(header)
 
@@ -436,16 +432,8 @@ class ResultCollector:
                 f"Passed: {result.passed_steps}/{result.total_steps} ({pass_rate:.1f}%)",
             ])
         else:
-            # Compact mode: only essential fields
-            writer.writerow([
-                result.name,
-                "SUMMARY",
-                result.status.upper(),
-                round(result.duration, 3),
-                "",
-                "",
-                f"Passed: {result.passed_steps}/{result.total_steps} ({pass_rate:.1f}%)",
-            ])
+            # Ultra-compact mode: no summary row, only steps
+            pass
 
         # Write step rows
         for idx, step_result in enumerate(result.step_results, start=1):
@@ -457,13 +445,6 @@ class ResultCollector:
             status_code = ""
             if step_result.response and isinstance(step_result.response, dict):
                 status_code = step_result.response.get("status_code", "")
-
-            # Get error info
-            error_type = ""
-            error_message = ""
-            if step_result.error_info:
-                error_type = step_result.error_info.type
-                error_message = step_result.error_info.message
 
             if verbose:
                 # Verbose mode: all fields including performance metrics
@@ -488,6 +469,13 @@ class ResultCollector:
                     server_time = f"{step_result.performance.server_time:.2f}"
                     download_time = f"{step_result.performance.download_time:.2f}"
 
+                # Get error info
+                error_type = ""
+                error_message = ""
+                if step_result.error_info:
+                    error_type = step_result.error_info.type
+                    error_message = step_result.error_info.message
+
                 row = [
                     result.name,
                     step_result.name,
@@ -508,15 +496,11 @@ class ResultCollector:
                     error_message,
                 ]
             else:
-                # Compact mode: only essential fields
+                # Ultra-compact mode: only step and response info
                 row = [
-                    result.name,
                     step_result.name,
-                    step_result.status.upper(),
-                    round(duration, 3),
                     status_code,
-                    error_type,
-                    error_message,
+                    step_result.status.upper(),
                 ]
 
             writer.writerow(row)
