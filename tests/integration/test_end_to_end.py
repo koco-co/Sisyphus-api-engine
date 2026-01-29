@@ -297,7 +297,7 @@ class TestResultFormats:
 
     def test_json_export_format(self):
         """Test JSON export format."""
-        from apirun.result.collector import ResultCollector
+        from apirun.result.json_exporter import JSONExporter
 
         steps = [TestStep(name="step1", type="wait", seconds=0.01)]
         test_case = TestCase(name="json_test", steps=steps)

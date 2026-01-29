@@ -15,7 +15,7 @@ from apirun.executor.wait_executor import WaitExecutor
 from apirun.executor.loop_executor import LoopExecutor
 from apirun.executor.concurrent_executor import ConcurrentExecutor
 from apirun.executor.script_executor import ScriptExecutor
-from apirun.result.collector import ResultCollector
+from apirun.result.json_exporter import JSONExporter
 
 
 class TestCaseExecutor:
@@ -32,7 +32,7 @@ class TestCaseExecutor:
     Attributes:
         test_case: Test case to execute
         variable_manager: Variable manager instance
-        result_collector: Result collector instance
+        result_collector: JSON result exporter instance
         notifier: Optional WebSocket notifier for real-time updates
     """
 
@@ -45,7 +45,7 @@ class TestCaseExecutor:
         """
         self.test_case = test_case
         self.variable_manager = VariableManager()
-        self.result_collector = ResultCollector()
+        self.result_collector = JSONExporter()
         self.notifier = notifier
 
     def execute(self) -> dict:

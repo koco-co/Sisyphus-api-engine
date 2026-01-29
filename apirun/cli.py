@@ -322,7 +322,7 @@ def main() -> int:
 
         elif args.format == "csv":
             # CSV output
-            from apirun.result.collector import ResultCollector
+            from apirun.result.json_exporter import JSONExporter
             from apirun.core.models import TestCaseResult, StepResult, PerformanceMetrics
             from datetime import datetime
 
@@ -376,7 +376,7 @@ def main() -> int:
                 error_info=None,
             )
 
-            collector = ResultCollector()
+            collector = JSONExporter()
             # Determine if we should use verbose mode
             use_verbose = args.verbose
             if not use_verbose and result.get("test_case", {}).get("config", {}).get("verbose"):
@@ -1181,8 +1181,8 @@ def save_result(result: dict, output_path: str) -> None:
 
     # Save based on format
     if output_format == "csv":
-        from apirun.result.collector import ResultCollector
-        collector = ResultCollector()
+        from apirun.result.json_exporter import JSONExporter
+        collector = JSONExporter()
         collector.save_csv(test_case_result, output_path)
 
     elif output_format == "junit":
@@ -1209,12 +1209,12 @@ def _generate_allure_report(test_case, result: dict, allure_dir: str):
         result: Test execution result dictionary
         allure_dir: Allure results directory
     """
-    from apirun.result.allure_collector import AllureResultCollector
-    from apirun.result.collector import ResultCollector
+    from apirun.result.allure_exporter import AllureExporter
+    from apirun.result.json_exporter import JSONExporter
     from apirun.core.models import TestCaseResult
 
     # Create Allure collector
-    collector = AllureResultCollector(output_dir=allure_dir)
+    collector = AllureExporter(output_dir=allure_dir)
 
     # Reconstruct TestCaseResult from dict
     # This is a simplified reconstruction

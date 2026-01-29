@@ -8,7 +8,7 @@ from typing import Any
 from jsonpath import jsonpath
 
 
-class JsonPathExtractor:
+class JSONPathExtractor:
     """Extract values from data using JSONPath expressions.
 
     Supports:

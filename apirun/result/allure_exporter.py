@@ -1,6 +1,6 @@
-"""Allure Result Collector for Sisyphus API Engine.
+"""Allure Exporter for Sisyphus API Engine.
 
-This module implements Allure 2.x JSON format output for test execution results.
+This module implements Allure 2.x JSON format export for test execution results.
 Following Google Python Style Guide.
 """
 
@@ -13,11 +13,21 @@ from pathlib import Path
 
 from apirun.core.models import TestCase, TestCaseResult, StepResult, ErrorInfo
 
+# Default patterns for identifying sensitive data fields
+DEFAULT_SENSITIVE_PATTERNS = [
+    "password",
+    "pwd",
+    "token",
+    "secret",
+    "key",
+    "auth",
+]
 
-class AllureResultCollector:
-    """Collect and format test execution results in Allure 2.x format.
 
-    This collector:
+class AllureExporter:
+    """Export test execution results to Allure 2.x format.
+
+    This exporter:
     - Generates Allure-compatible JSON files
     - Creates allure-results directory structure
     - Supports test steps, attachments, labels, links
@@ -29,7 +39,7 @@ class AllureResultCollector:
     """
 
     def __init__(self, output_dir: str = "allure-results", mask_sensitive: bool = True):
-        """Initialize AllureResultCollector.
+        """Initialize AllureExporter.
 
         Args:
             output_dir: Directory to save Allure results
@@ -37,7 +47,7 @@ class AllureResultCollector:
         """
         self.output_dir = Path(output_dir)
         self.mask_sensitive = mask_sensitive
-        self.sensitive_patterns = ["password", "pwd", "token", "secret", "key", "auth"]
+        self.sensitive_patterns = DEFAULT_SENSITIVE_PATTERNS.copy()
 
     def collect(self, test_case: TestCase, test_result: TestCaseResult) -> str:
         """Collect test result and save as Allure JSON.

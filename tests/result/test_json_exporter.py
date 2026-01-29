@@ -1,6 +1,6 @@
-"""Unit tests for ResultCollector.
+"""Unit tests for JSONExporter.
 
-Tests for result collector in apirun/result/collector.py
+Tests for JSON exporter in apirun/result/json_exporter.py
 Following Google Python Style Guide.
 """
 
@@ -9,16 +9,16 @@ import tempfile
 import os
 import json
 from datetime import datetime
-from apirun.result.collector import ResultCollector
+from apirun.result.json_exporter import JSONExporter
 from apirun.core.models import TestCase, TestCaseResult, StepResult, ErrorInfo, ErrorCategory, PerformanceMetrics
 
 
-class TestResultCollector:
-    """Tests for ResultCollector class."""
+class TestJSONExporter:
+    """Tests for JSONExporter class."""
 
     def test_initialization(self):
-        """Test ResultCollector initialization."""
-        collector = ResultCollector()
+        """Test JSONExporter initialization."""
+        collector = JSONExporter()
 
         assert collector.mask_sensitive is True
         assert "password" in collector.sensitive_patterns
@@ -26,20 +26,20 @@ class TestResultCollector:
 
     def test_initialization_without_masking(self):
         """Test initialization without masking."""
-        collector = ResultCollector(mask_sensitive=False)
+        collector = JSONExporter(mask_sensitive=False)
 
         assert collector.mask_sensitive is False
 
     def test_initialization_custom_patterns(self):
         """Test initialization with custom patterns."""
         patterns = ["custom", "secret"]
-        collector = ResultCollector(sensitive_patterns=patterns)
+        collector = JSONExporter(sensitive_patterns=patterns)
 
         assert collector.sensitive_patterns == patterns
 
     def test_collect_successful_test_case(self):
         """Test collecting successful test case results."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_success", steps=[])
 
@@ -60,7 +60,7 @@ class TestResultCollector:
 
     def test_collect_failed_test_case(self):
         """Test collecting failed test case results."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_failure", steps=[])
 
@@ -87,7 +87,7 @@ class TestResultCollector:
 
     def test_collect_skipped_test_case(self):
         """Test collecting skipped test case results."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_skip", steps=[])
 
@@ -105,7 +105,7 @@ class TestResultCollector:
 
     def test_collect_mixed_results(self):
         """Test collecting mixed step results."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_mixed", steps=[])
 
@@ -147,7 +147,7 @@ class TestResultCollector:
 
     def test_to_v2_json_format(self):
         """Test converting result to v2.0 JSON format."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_json", steps=[])
 
@@ -182,7 +182,7 @@ class TestResultCollector:
 
     def test_mask_variables(self):
         """Test masking sensitive variables."""
-        collector = ResultCollector(mask_sensitive=True)
+        collector = JSONExporter(mask_sensitive=True)
 
         variables = {
             "username": "testuser",
@@ -200,7 +200,7 @@ class TestResultCollector:
 
     def test_mask_variables_disabled(self):
         """Test variables when masking is disabled."""
-        collector = ResultCollector(mask_sensitive=False)
+        collector = JSONExporter(mask_sensitive=False)
 
         variables = {
             "password": "secret123",
@@ -214,7 +214,7 @@ class TestResultCollector:
 
     def test_mask_sensitive_data_dict(self):
         """Test masking sensitive data in dictionary."""
-        collector = ResultCollector(mask_sensitive=True)
+        collector = JSONExporter(mask_sensitive=True)
 
         data = {
             "username": "testuser",
@@ -234,7 +234,7 @@ class TestResultCollector:
 
     def test_mask_sensitive_data_list(self):
         """Test masking sensitive data in list."""
-        collector = ResultCollector(mask_sensitive=True)
+        collector = JSONExporter(mask_sensitive=True)
 
         data = [
             {"username": "user1", "password": "pass1"},
@@ -250,7 +250,7 @@ class TestResultCollector:
 
     def test_format_step_result_with_performance(self):
         """Test formatting step result with performance metrics."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         performance = PerformanceMetrics(
             total_time=1000,
@@ -282,7 +282,7 @@ class TestResultCollector:
 
     def test_format_step_result_with_error(self):
         """Test formatting step result with error."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         error_info = ErrorInfo(
             type="ConnectionError",
@@ -308,7 +308,7 @@ class TestResultCollector:
 
     def test_to_compact_json(self):
         """Test converting to compact JSON format."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         step_result = StepResult(
             name="api_request",
@@ -342,7 +342,7 @@ class TestResultCollector:
 
     def test_to_csv(self):
         """Test converting to CSV format."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         performance = PerformanceMetrics(
             total_time=500,
@@ -386,7 +386,7 @@ class TestResultCollector:
 
     def test_save_json(self):
         """Test saving JSON file."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         step_result = StepResult(
             name="step1",
@@ -425,7 +425,7 @@ class TestResultCollector:
 
     def test_save_csv(self):
         """Test saving CSV file."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         step_result = StepResult(
             name="step1",
@@ -464,7 +464,7 @@ class TestResultCollector:
 
     def test_collect_final_variables(self):
         """Test that final variables are collected."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_vars", steps=[])
 
@@ -491,7 +491,7 @@ class TestResultCollector:
 
     def test_duration_calculation(self):
         """Test duration calculation."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_duration", steps=[])
 
@@ -511,7 +511,7 @@ class TestResultCollector:
 
     def test_format_error_info(self):
         """Test formatting error info."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         error_info = ErrorInfo(
             type="ValueError",
@@ -529,7 +529,7 @@ class TestResultCollector:
 
     def test_collect_with_no_step_results(self):
         """Test collecting with no step results."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="empty_test", steps=[])
 
@@ -541,12 +541,12 @@ class TestResultCollector:
         assert result.status == "skipped"
 
 
-class TestResultCollectorEdgeCases:
-    """Test edge cases for ResultCollector."""
+class TestJSONExporterEdgeCases:
+    """Test edge cases for JSONExporter."""
 
     def test_collect_with_none_times(self):
         """Test collecting with None times."""
-        collector = ResultCollector()
+        collector = JSONExporter()
 
         test_case = TestCase(name="test_no_time", steps=[])
 
@@ -563,7 +563,7 @@ class TestResultCollectorEdgeCases:
 
     def test_mask_data_with_non_dict_values(self):
         """Test masking with non-dict values."""
-        collector = ResultCollector(mask_sensitive=True)
+        collector = JSONExporter(mask_sensitive=True)
 
         # Test with primitive types
         assert collector._mask_sensitive_data("test") == "test"
@@ -573,7 +573,7 @@ class TestResultCollectorEdgeCases:
 
     def test_to_csv_with_sensitive_data(self):
         """Test CSV export with sensitive data masking."""
-        collector = ResultCollector(mask_sensitive=True)
+        collector = JSONExporter(mask_sensitive=True)
 
         step_result = StepResult(
             name="api_call",

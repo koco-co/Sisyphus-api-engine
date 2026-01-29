@@ -8,19 +8,19 @@ Tests the extraction functionality including:
 """
 
 import pytest
-from apirun.extractor.jsonpath_extractor import JsonPathExtractor
+from apirun.extractor.jsonpath_extractor import JSONPathExtractor
 from apirun.extractor.regex_extractor import RegexExtractor
 from apirun.extractor.header_extractor import HeaderExtractor
 from apirun.extractor.cookie_extractor import CookieExtractor
 
 
-class TestJsonPathExtractor:
-    """Tests for JsonPathExtractor."""
+class TestJSONPathExtractor:
+    """Tests for JSONPathExtractor."""
 
     @pytest.fixture
     def extractor(self):
-        """Create JsonPathExtractor instance."""
-        return JsonPathExtractor()
+        """Create JSONPathExtractor instance."""
+        return JSONPathExtractor()
 
     @pytest.fixture
     def sample_data(self):
@@ -342,13 +342,13 @@ class TestExtractorEdgeCases:
 
     def test_jsonpath_extract_empty_data(self):
         """Test JSONPath extraction from empty dict."""
-        extractor = JsonPathExtractor()
+        extractor = JSONPathExtractor()
         with pytest.raises(ValueError):
             extractor.extract("$.key", {})
 
     def test_jsonpath_extract_null_value(self):
         """Test JSONPath extraction when value is null."""
-        extractor = JsonPathExtractor()
+        extractor = JSONPathExtractor()
         data = {"key": None}
         result = extractor.extract("$.key", data)
         assert result is None
@@ -381,7 +381,7 @@ class TestExtractorEdgeCases:
 
     def test_jsonpath_extract_boolean_value(self):
         """Test JSONPath extraction of boolean values."""
-        extractor = JsonPathExtractor()
+        extractor = JSONPathExtractor()
         data = {"active": True, "inactive": False}
         result1 = extractor.extract("$.active", data)
         result2 = extractor.extract("$.inactive", data)
@@ -390,7 +390,7 @@ class TestExtractorEdgeCases:
 
     def test_jsonpath_extract_numeric_value(self):
         """Test JSONPath extraction of numeric values."""
-        extractor = JsonPathExtractor()
+        extractor = JSONPathExtractor()
         data = {"count": 42, "price": 19.99}
         result1 = extractor.extract("$.count", data)
         result2 = extractor.extract("$.price", data)

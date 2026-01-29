@@ -1,6 +1,6 @@
-"""Result Collector for Sisyphus API Engine.
+"""JSON Exporter for Sisyphus API Engine.
 
-This module implements collection and formatting of test execution results.
+This module implements JSON format export for test execution results.
 Following Google Python Style Guide.
 """
 
@@ -12,33 +12,37 @@ from io import StringIO
 
 from apirun.core.models import TestCase, TestCaseResult, StepResult
 
+# Default patterns for identifying sensitive data fields
+DEFAULT_SENSITIVE_PATTERNS = [
+    "password",
+    "pwd",
+    "token",
+    "secret",
+    "key",
+    "auth",
+]
 
-class ResultCollector:
-    """Collect and format test execution results.
 
-    This collector:
+class JSONExporter:
+    """Export test execution results to JSON format.
+
+    This exporter:
     - Aggregates step results
     - Calculates statistics
     - Formats output as v2.0 JSON
     - Masks sensitive data
+    - Supports CSV export
     """
 
     def __init__(self, mask_sensitive: bool = True, sensitive_patterns: List[str] = None):
-        """Initialize ResultCollector.
+        """Initialize JSONExporter.
 
         Args:
             mask_sensitive: Whether to mask sensitive data
             sensitive_patterns: List of patterns to identify sensitive fields
         """
         self.mask_sensitive = mask_sensitive
-        self.sensitive_patterns = sensitive_patterns or [
-            "password",
-            "pwd",
-            "token",
-            "secret",
-            "key",
-            "auth",
-        ]
+        self.sensitive_patterns = sensitive_patterns or DEFAULT_SENSITIVE_PATTERNS.copy()
 
     def collect(
         self, test_case: TestCase, step_results: List[StepResult]

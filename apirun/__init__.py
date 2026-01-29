@@ -26,7 +26,7 @@ from apirun.parser.v2_yaml_parser import V2YamlParser, parse_yaml_file, parse_ya
 from apirun.executor.test_case_executor import TestCaseExecutor
 from apirun.executor.api_executor import APIExecutor
 from apirun.validation.engine import ValidationEngine
-from apirun.result.collector import ResultCollector
+from apirun.result.json_exporter import JSONExporter
 
 __all__ = [
     # Models
@@ -55,5 +55,5 @@ __all__ = [
     # Validation
     "ValidationEngine",
     # Result
-    "ResultCollector",
+    "JSONExporter",
 ]

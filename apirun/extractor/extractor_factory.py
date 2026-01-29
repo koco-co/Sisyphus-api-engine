@@ -6,7 +6,7 @@ Following Google Python Style Guide.
 
 from typing import Dict, Type
 
-from apirun.extractor.jsonpath_extractor import JsonPathExtractor
+from apirun.extractor.jsonpath_extractor import JSONPathExtractor
 from apirun.extractor.regex_extractor import RegexExtractor
 from apirun.extractor.header_extractor import HeaderExtractor
 from apirun.extractor.cookie_extractor import CookieExtractor
@@ -25,7 +25,7 @@ class ExtractorFactory:
     def __init__(self):
         """Initialize ExtractorFactory."""
         self._extractors: Dict[str, Type] = {
-            "jsonpath": JsonPathExtractor,
+            "jsonpath": JSONPathExtractor,
             "regex": RegexExtractor,
             "header": HeaderExtractor,
             "cookie": CookieExtractor,
