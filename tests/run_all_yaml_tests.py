@@ -14,6 +14,10 @@ from typing import List, Dict, Any
 from datetime import datetime
 from pathlib import Path
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR = Path(__file__).parent.absolute()
+PROJECT_ROOT = SCRIPT_DIR.parent
+
 
 class TestCaseRunner:
     """Runner for YAML test cases.
@@ -23,13 +27,23 @@ class TestCaseRunner:
         results: List of test results
     """
 
-    def __init__(self, examples_dir: str = "examples"):
+    def __init__(self, examples_dir: str = None):
         """Initialize TestCaseRunner.
 
         Args:
-            examples_dir: Directory containing YAML test cases
+            examples_dir: Directory containing YAML test cases (relative to project root)
         """
-        self.examples_dir = Path(examples_dir)
+        if examples_dir is None:
+            # 默认使用项目根目录下的 examples 目录
+            self.examples_dir = PROJECT_ROOT / "examples"
+        else:
+            # 如果是相对路径，基于项目根目录解析
+            examples_path = Path(examples_dir)
+            if examples_path.is_absolute():
+                self.examples_dir = examples_path
+            else:
+                self.examples_dir = PROJECT_ROOT / examples_path
+
         self.results: List[Dict[str, Any]] = []
 
     def get_test_cases(self) -> List[Path]:
