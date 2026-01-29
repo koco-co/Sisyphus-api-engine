@@ -139,6 +139,41 @@ steps:
         expect: 4
         description: "验证4种操作类型"
 
+  # ----------------------------------------------------------------------------
+  # 步骤5: db_query模板函数 - 在变量渲染时执行数据库查询
+  # 用途：演示如何在模板中使用db_query()函数查询数据库
+  # 配置：需要在config.variables中配置数据库连接
+  # ----------------------------------------------------------------------------
+  - name: "db_query模板函数示例"
+    description: "演示db_query()模板函数的使用（需要配置数据库）"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      note: "db_query()函数演示"
+      usage_example: |
+        在config.variables中配置数据库连接:
+        variables:
+          database:
+            type: "sqlite"
+            connection: "test.db"
+
+        然后在模板中使用:
+        url: "/api/users/${db_query('SELECT id FROM users WHERE name=%s', 'test')}"
+        body:
+          price: "${db_query('SELECT price FROM products WHERE sku=%s', 'SKU123')}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+      - type: eq
+        path: "$.json.note"
+        expect: "db_query()函数演示"
+        description: "验证note字段"
+
 # ============================================================================
 # 标签
 # ============================================================================
@@ -146,5 +181,6 @@ tags:
   - "数据库"
   - "database"
   - "SQL"
+  - "模板函数"
 
 enabled: true

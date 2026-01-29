@@ -73,8 +73,8 @@ class VariableManager:
             variable_end_string="}"
         )
 
-        # Register built-in template functions
-        template_functions = get_template_functions()
+        # Register built-in template functions (pass self for db_query support)
+        template_functions = get_template_functions(self)
         self._jinja_env.globals.update(template_functions)
 
     def set_profile(self, profile_vars: Dict[str, Any]) -> None:

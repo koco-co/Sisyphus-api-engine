@@ -133,15 +133,20 @@ class ValidationRule:
 
     Attributes:
         type: Comparator type (eq, ne, gt, lt, contains, regex, etc.)
+              or logical operator (and, or, not)
         path: JSONPath expression to extract value
         expect: Expected value
         description: Validation description
+        logical_operator: Logical operator (and/or/not) for complex validations
+        sub_validations: List of sub-validation rules for logical operators
     """
 
     type: str
-    path: str
-    expect: Any
+    path: str = ""
+    expect: Any = None
     description: str = ""
+    logical_operator: Optional[str] = None
+    sub_validations: List["ValidationRule"] = field(default_factory=list)
 
 
 @dataclass

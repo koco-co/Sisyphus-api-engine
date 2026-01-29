@@ -335,14 +335,7 @@ class StepExecutor(ABC):
         if self.step.validations:
             rendered["validations"] = []
             for val in self.step.validations:
-                rendered_val = {
-                    "type": val.type,
-                    "path": val.path,
-                    "expect": render_template(str(val.expect), context)
-                    if isinstance(val.expect, str)
-                    else val.expect,
-                    "description": val.description,
-                }
+                rendered_val = self._render_validation(val, context)
                 rendered["validations"].append(rendered_val)
 
         # Render extractors
@@ -357,6 +350,42 @@ class StepExecutor(ABC):
                 }
 
         return rendered
+
+    def _render_validation(self, val: Any, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Render validation rule with template support.
+
+        Args:
+            val: ValidationRule object
+            context: Template context
+
+        Returns:
+            Rendered validation dictionary
+        """
+        from apirun.core.models import ValidationRule
+
+        if not isinstance(val, ValidationRule):
+            return val
+
+        rendered_val = {
+            "type": val.type,
+            "path": val.path,
+            "expect": render_template(str(val.expect), context)
+            if isinstance(val.expect, str)
+            else val.expect,
+            "description": val.description,
+        }
+
+        # Add logical operator support
+        if val.logical_operator:
+            rendered_val["logical_operator"] = val.logical_operator
+            # Recursively render sub_validations
+            if val.sub_validations:
+                rendered_val["sub_validations"] = []
+                for sub_val in val.sub_validations:
+                    rendered_sub_val = self._render_validation(sub_val, context)
+                    rendered_val["sub_validations"].append(rendered_sub_val)
+
+        return rendered_val
 
     def _extract_variables(self, result: StepResult) -> None:
         """Extract variables from step result.

@@ -119,6 +119,10 @@ class ValidationEngine:
         expect = validation.get("expect")
         description = validation.get("description", "")
 
+        # Check for logical operators
+        if val_type in ("and", "or", "not"):
+            return self._validate_logical(validation, response_data)
+
         try:
             # Extract value using JSONPath
             actual = self._extract_value(path, response_data)
@@ -165,6 +169,89 @@ class ValidationEngine:
                 description=description,
                 error=f"Validation error: {e}",
             )
+
+    def _validate_logical(
+        self, validation: Dict[str, Any], response_data: Dict[str, Any]
+    ) -> ValidationResult:
+        """Execute logical validation (and/or/not).
+
+        Args:
+            validation: Validation rule with logical operator
+            response_data: Response data to validate against
+
+        Returns:
+            ValidationResult object
+        """
+        val_type = validation.get("type")
+        description = validation.get("description", "")
+        sub_validations = validation.get("sub_validations", [])
+
+        if not sub_validations:
+            return ValidationResult(
+                passed=False,
+                type=val_type,
+                path="",
+                actual=None,
+                expected=None,
+                description=description,
+                error=f"Logical operator '{val_type}' requires sub_validations",
+            )
+
+        # Recursively validate sub-validations
+        sub_results = []
+        for sub_val in sub_validations:
+            result = self._validate_single(sub_val, response_data)
+            sub_results.append(result)
+
+        # Apply logical operation
+        if val_type == "and":
+            # All sub-validations must pass
+            passed = all(r.passed for r in sub_results)
+            failed_results = [r for r in sub_results if not r.passed]
+            error = (
+                f"AND validation failed: {len(failed_results)} out of {len(sub_results)} sub-validations failed. "
+                f"Failed: {[r.error for r in failed_results]}"
+                if failed_results
+                else ""
+            )
+
+        elif val_type == "or":
+            # At least one sub-validation must pass
+            passed = any(r.passed for r in sub_results)
+            if not passed:
+                error = f"OR validation failed: All {len(sub_results)} sub-validations failed"
+            else:
+                error = ""
+
+        elif val_type == "not":
+            # All sub-validations must fail
+            passed = not any(r.passed for r in sub_results)
+            passed_results = [r for r in sub_results if r.passed]
+            if passed_results:
+                error = f"NOT validation failed: {len(passed_results)} sub-validations passed when all should fail"
+            else:
+                error = ""
+
+        else:
+            return ValidationResult(
+                passed=False,
+                type=val_type,
+                path="",
+                actual=None,
+                expected=None,
+                description=description,
+                error=f"Unknown logical operator: {val_type}",
+            )
+
+        return ValidationResult(
+            passed=passed,
+            type=val_type,
+            path="",
+            actual=[r.to_dict() for r in sub_results],
+            expected=None,
+            description=description,
+            error=error,
+        )
 
     def _extract_value(self, path: str, data: Any) -> Any:
         """Extract value from data using JSONPath.

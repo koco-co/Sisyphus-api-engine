@@ -682,6 +682,156 @@ steps:
         expect: true
         description: "验证phone存在"
 
+  # ----------------------------------------------------------------------------
+  # 步骤2: 逻辑运算符 - AND验证
+  # 用途：所有子断言都必须通过
+  # 场景：验证用户同时满足多个条件（年龄大于18且已验证）
+  # ----------------------------------------------------------------------------
+  - name: "AND逻辑运算符-所有条件必须满足"
+    description: "演示AND逻辑运算符，所有子断言都必须通过"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        username: "testuser"
+        age: 25
+        is_verified: true
+        status: "active"
+
+    # AND逻辑运算 - 所有子断言必须通过
+    validate:
+      - type: and
+        description: "验证用户年龄大于18且已验证"
+        sub_validations:
+          - type: gt
+            path: "$.json.user.age"
+            expect: 18
+            description: "年龄大于18"
+          - type: eq
+            path: "$.json.user.is_verified"
+            expect: true
+            description: "已验证账户"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 逻辑运算符 - OR验证
+  # 用途：至少一个子断言通过即可
+  # 场景：验证状态值在允许的几个选项中
+  # ----------------------------------------------------------------------------
+  - name: "OR逻辑运算符-至少一个条件满足"
+    description: "演示OR逻辑运算符，至少一个子断言通过即可"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      order:
+        status: "processing"
+
+    # OR逻辑运算 - 至少一个子断言通过
+    validate:
+      - type: or
+        description: "验证订单状态为允许值之一"
+        sub_validations:
+          - type: eq
+            path: "$.json.order.status"
+            expect: "pending"
+            description: "状态为pending"
+          - type: eq
+            path: "$.json.order.status"
+            expect: "processing"
+            description: "状态为processing"
+          - type: eq
+            path: "$.json.order.status"
+            expect: "completed"
+            description: "状态为completed"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 逻辑运算符 - NOT验证
+  # 用途：所有子断言都必须失败
+  # 场景：确保某些条件不成立（如错误码不为特定值）
+  # ----------------------------------------------------------------------------
+  - name: "NOT逻辑运算符-所有条件都不满足"
+    description: "演示NOT逻辑运算符，所有子断言都必须失败"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      response:
+        code: 0
+        error: null
+
+    # NOT逻辑运算 - 所有子断言都必须失败
+    validate:
+      - type: not
+        description: "验证响应中没有错误"
+        sub_validations:
+          - type: eq
+            path: "$.json.response.code"
+            expect: -1
+            description: "错误码不为-1"
+          - type: is_null
+            path: "$.json.response.error"
+            expect: false
+            description: "error字段不为null"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 嵌套逻辑运算符
+  # 用途：组合多个逻辑运算符实现复杂验证逻辑
+  # 场景：(A或B)且(C或D)的复杂组合
+  # ----------------------------------------------------------------------------
+  - name: "嵌套逻辑运算符-复杂组合验证"
+    description: "演示嵌套的AND和OR逻辑运算符"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      product:
+        type: "electronics"
+        price: 299.99
+        stock: 50
+        status: "available"
+
+    # 嵌套逻辑运算：(类型为A或B) 且 (价格>100) 且 (状态不为deprecated)
+    validate:
+      - type: and
+        description: "复杂组合验证：(类型匹配) 且 (价格合理) 且 (状态有效)"
+        sub_validations:
+          # 嵌套OR：类型为electronics或books
+          - type: or
+            description: "类型必须为electronics或books"
+            sub_validations:
+              - type: eq
+                path: "$.json.product.type"
+                expect: "electronics"
+                description: "类型为electronics"
+              - type: eq
+                path: "$.json.product.type"
+                expect: "books"
+                description: "类型为books"
+
+          # 价格必须大于100
+          - type: gt
+            path: "$.json.product.price"
+            expect: 100
+            description: "价格大于100"
+
+          # 嵌套NOT：状态不包含deprecated
+          - type: not
+            description: "状态不应为deprecated"
+            sub_validations:
+              - type: eq
+                path: "$.json.product.status"
+                expect: "deprecated"
+                description: "状态不为deprecated"
+
 # ============================================================================
 # 标签（用于测试用例分类和过滤）
 # ============================================================================
@@ -690,6 +840,7 @@ tags:
   - "断言"
   - "验证"
   - "高级"
+  - "逻辑运算"
 
 # 是否启用此测试用例（可选值: true/false）
 enabled: true

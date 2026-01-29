@@ -405,6 +405,25 @@ class V2YamlParser:
         expect = val_data.get("expect")
         description = val_data.get("description", "")
 
+        # Parse logical operators (and/or/not)
+        if val_type in ("and", "or", "not"):
+            sub_validations_data = val_data.get("sub_validations", [])
+            sub_validations = []
+
+            for sub_val_data in sub_validations_data:
+                sub_val = self._parse_validation(sub_val_data)
+                if sub_val:
+                    sub_validations.append(sub_val)
+
+            return ValidationRule(
+                type=val_type,
+                path="",
+                expect=None,
+                description=description,
+                logical_operator=val_type,
+                sub_validations=sub_validations,
+            )
+
         return ValidationRule(
             type=val_type, path=path, expect=expect, description=description
         )
