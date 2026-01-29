@@ -181,6 +181,10 @@ examples/output/
 logs/
 *.log
 
+# Allure test reports
+allure-results/
+allure-report/
+
 # AGENT INIT FILES
 AGENT.md
 CLAUDE.md
