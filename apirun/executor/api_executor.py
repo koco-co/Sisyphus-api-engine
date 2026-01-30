@@ -207,14 +207,21 @@ class APIExecutor(StepExecutor):
 
         # Add request information for debugging
         request_obj = response.request
+
+        # Try to get request information (handle Mock objects in tests)
+        try:
+            request_headers = dict(request_obj.headers) if hasattr(request_obj.headers, '__iter__') else {}
+        except (TypeError, AttributeError):
+            request_headers = {}
+
         result["request"] = {
-            "method": request_obj.method,
-            "url": request_obj.url,
-            "headers": dict(request_obj.headers),
+            "method": getattr(request_obj, 'method', 'UNKNOWN'),
+            "url": getattr(request_obj, 'url', ''),
+            "headers": request_headers,
         }
 
         # Add request body if present
-        if request_obj.body:
+        if hasattr(request_obj, 'body') and request_obj.body:
             try:
                 # Try to parse as JSON
                 import json
@@ -228,7 +235,10 @@ class APIExecutor(StepExecutor):
 
         # Add request params if available
         if hasattr(request_obj, 'params') and request_obj.params:
-            result["request"]["params"] = dict(request_obj.params)
+            try:
+                result["request"]["params"] = dict(request_obj.params)
+            except (TypeError, AttributeError):
+                result["request"]["params"] = str(request_obj.params)
 
         # Try to parse response body
         content_type = response.headers.get("Content-Type", "")
