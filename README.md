@@ -232,42 +232,134 @@ steps: []                     # 必填：测试步骤列表
 
 项目提供了从入门到精通的完整示例，位于 `examples/` 目录：
 
-### ⭐ 入门级
+### ⭐ 入门级 (1-7)
 
-- **[01_HTTP请求方法.yaml](examples/01_HTTP请求方法.yaml)** - 各种 HTTP 方法
-- **[02_请求参数配置.yaml](examples/02_请求参数配置.yaml)** - 请求参数和 headers
-- **[03_变量基础语法.yaml](examples/03_变量基础语法.yaml)** - 变量基础语法
+- **[01_HTTP请求方法.yaml](examples/01_HTTP请求方法.yaml)** - 各种 HTTP 方法（GET/POST/PUT/PATCH/DELETE等）
+- **[02_请求参数配置.yaml](examples/02_请求参数配置.yaml)** - 请求参数、headers、body配置
+- **[03_变量基础语法.yaml](examples/03_变量基础语法.yaml)** - 变量定义和使用基础
+- **[04_内置模板函数.yaml](examples/04_内置模板函数.yaml)** - 内置函数（random_string/uuid/now/base64等）
+- **[05_基础断言验证.yaml](examples/05_基础断言验证.yaml)** - 常用验证断言（状态码、相等、包含等）
+- **[06_环境配置切换.yaml](examples/06_环境配置切换.yaml)** - 多环境配置（方式一：在用例内定义）
+- **[07_使用全局配置.yaml](examples/07_使用全局配置.yaml)** - 全局配置复用（方式二：!include引入）
 
-### ⭐⭐ 中级
+### ⭐⭐ 中级 (8-13)
 
-- **[04_内置模板函数.yaml](examples/04_内置模板函数.yaml)** - 内置模板函数
-- **[05_变量提取器.yaml](examples/05_变量提取器.yaml)** - 变量提取器
-- **[06_基础断言验证.yaml](examples/06_基础断言验证.yaml)** - 基础断言验证
+- **[08_输出格式配置.yaml](examples/08_输出格式配置.yaml)** - 多种输出格式（JSON/CSV/HTML/JUnit）
+- **[09_变量提取器.yaml](examples/09_变量提取器.yaml)** - 从响应中提取变量（JSONPath/正则/Header等）
+- **[10_高级断言验证.yaml](examples/10_高级断言验证.yaml)** - 复杂验证逻辑（逻辑运算符/嵌套验证）
+- **[11_步骤控制.yaml](examples/11_步骤控制.yaml)** - 条件执行、跳过、依赖关系
+- **[12_重试机制.yaml](examples/12_重试机制.yaml)** - 失败重试策略（固定/指数退避）
+- **[13_等待机制.yaml](examples/13_等待机制.yaml)** - 等待条件满足（固定延迟/条件等待）
 
-### ⭐⭐⭐ 进阶级
+### ⭐⭐⭐ 进阶级 (14-17)
 
-- **[07_高级断言验证.yaml](examples/07_高级断言验证.yaml)** - 高级断言验证
-- **[08_环境配置切换.yaml](examples/08_环境配置切换.yaml)** - 环境配置切换
-- **[09_重试机制.yaml](examples/09_重试机制.yaml)** - 重试机制
-- **[10_步骤控制.yaml](examples/10_步骤控制.yaml)** - 步骤控制
-- **[11_等待机制.yaml](examples/11_等待机制.yaml)** - 等待机制
+- **[14_循环控制.yaml](examples/14_循环控制.yaml)** - 循环执行（for/while循环）
+- **[15_并发执行.yaml](examples/15_并发执行.yaml)** - 并发测试（并发请求）
+- **[16_数据驱动测试.yaml](examples/16_数据驱动测试.yaml)** - 数据驱动（CSV/JSON/数据库）
+- **[17_脚本执行.yaml](examples/17_脚本执行.yaml)** - 自定义脚本（Python/JavaScript）
 
-### ⭐⭐⭐⭐ 高级
+### ⭐⭐⭐⭐ 高级 (18-21)
 
-- **[12_循环控制.yaml](examples/12_循环控制.yaml)** - 循环控制
-- **[13_并发执行.yaml](examples/13_并发执行.yaml)** - 并发执行
-- **[14_数据驱动测试.yaml](examples/14_数据驱动测试.yaml)** - 数据驱动测试
+- **[18_完整流程测试.yaml](examples/18_完整流程测试.yaml)** - 完整业务流程测试
+- **[19_Mock服务器测试.yaml](examples/19_Mock服务器测试.yaml)** - Mock服务测试
+- **[20_WebSocket实时推送.yaml](examples/20_WebSocket实时推送.yaml)** - WebSocket实时推送
+- **[21_性能测试.yaml](examples/21_性能测试.yaml)** - 性能测试与压测
 
-### ⭐⭐⭐⭐⭐ 专家级
+### ⭐⭐⭐⭐⭐ 专家级 (22-23)
 
-- **[15_数据库操作.yaml](examples/15_数据库操作.yaml)** - 数据库操作
-- **[16_脚本执行.yaml](examples/16_脚本执行.yaml)** - 脚本执行
-- **[17_完整流程测试.yaml](examples/17_完整流程测试.yaml)** - 完整流程测试
-- **[18_输出格式配置.yaml](examples/18_输出格式配置.yaml)** - 输出格式配置
-- **[19_Mock服务器测试.yaml](examples/19_Mock服务器测试.yaml)** - Mock 服务器测试
-- **[20_WebSocket实时推送.yaml](examples/20_WebSocket实时推送.yaml)** - WebSocket 实时推送
-- **[21_性能测试.yaml](examples/21_性能测试.yaml)** - 性能测试
-- **[00_最佳实践.yaml](examples/22_最佳实践.yaml)** - 最佳实践示例
+- **[22_数据库操作.yaml](examples/22_数据库操作.yaml)** - 数据库操作（MySQL/PostgreSQL/SQLite）
+- **[23_最佳实践.yaml](examples/23_最佳实践.yaml)** - 综合最佳实践示例
+
+---
+
+## 🌍 环境切换与配置管理
+
+### 为什么需要配置管理?
+
+当项目有大量测试用例时,如果每个用例都单独配置环境信息,会导致:
+- ❌ 配置分散,难以维护
+- ❌ 修改环境需要改动多个文件
+- ❌ 容易出现配置不一致的问题
+
+### 解决方案:全局配置 + 环境切换
+
+**方案一:使用全局配置文件**
+
+创建 `config/global_config.yaml`:
+
+```yaml
+# 全局配置文件
+profiles:
+  dev:
+    base_url: "http://dev-api.example.com"
+    variables:
+      api_key: "dev-key-12345"
+  staging:
+    base_url: "http://staging-api.example.com"
+    variables:
+      api_key: "staging-key-67890"
+  prod:
+    base_url: "https://api.example.com"
+    variables:
+      api_key: "prod-key-abcde"
+
+active_profile: "dev"
+```
+
+在测试用例中引入:
+
+```yaml
+name: "我的测试"
+config: !include ../config/global_config.yaml
+
+steps:
+  - 测试请求:
+      type: request
+      url: "${config.profiles.${active_profile}.base_url}/api/users"
+      headers:
+        X-API-Key: "${config.profiles.${active_profile}.variables.api_key}"
+```
+
+**方案二:使用 `!include` 分层配置**
+
+创建分层配置文件:
+
+```yaml
+# config/environments.yaml (仅环境配置)
+profiles:
+  dev: {base_url: "http://dev.example.com"}
+  prod: {base_url: "https://api.example.com"}
+active_profile: "dev"
+
+# 测试用例文件
+config: !include config/environments.yaml
+```
+
+**一键切换环境:**
+
+```bash
+# 开发环境
+sisyphus-api-engine --cases test.yaml --profile dev
+
+# 预发布环境
+sisyphus-api-engine --cases test.yaml --profile staging
+
+# 生产环境
+sisyphus-api-engine --cases test.yaml --profile prod
+```
+
+### 优势
+
+✅ **配置集中管理** - 所有环境配置在一个文件中
+✅ **一键切换环境** - 通过 `--profile` 参数,无需修改用例
+✅ **配置复用** - 多个用例共享同一配置,修改一处全部生效
+✅ **分层配置** - 支持全局配置 + 用例特定配置
+✅ **敏感信息保护** - 配合环境变量使用,避免硬编码敏感信息
+
+### 示例参考
+
+- **[06_环境配置切换.yaml](examples/06_环境配置切换.yaml)** - 方式一：在测试用例内定义环境配置
+- **[07_使用全局配置.yaml](examples/07_使用全局配置.yaml)** - 方式二：使用 !include 引入全局配置
 
 ### 📁 目录结构
 

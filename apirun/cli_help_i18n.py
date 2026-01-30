@@ -43,6 +43,8 @@ Documentation:
         "--format": "Output format: text, json, csv, junit, or html",
         "--allure": "Generate Allure report (saves to allure-results directory)",
         "--allure-dir": "Allure results directory",
+        "--allure-clean": "Clean Allure results directory before generating",
+        "--allure-no-clean": "Keep previous Allure results (accumulate data)",
     }
 }
 
@@ -85,6 +87,8 @@ ZH_HELP_MESSAGES = {
         "--format": "输出格式: text、json、csv、junit 或 html",
         "--allure": "生成 Allure 报告（保存到 allure-results 目录）",
         "--allure-dir": "Allure 结果目录",
+        "--allure-clean": "生成前清理 Allure 结果目录",
+        "--allure-no-clean": "保留之前的 Allure 结果（累积数据）",
     }
 }
 
@@ -170,4 +174,6 @@ ARGUMENT_MAPPING = {
     "format": "--format",
     "allure": "--allure",
     "allure_dir": "--allure-dir",
+    "allure_clean": "--allure-clean",
+    "allure_no_clean": "--allure-no-clean",
 }

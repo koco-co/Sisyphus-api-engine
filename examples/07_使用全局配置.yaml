@@ -1,0 +1,82 @@
+# ==============================================================================
+# 示例：使用全局配置文件
+# ==============================================================================
+# 本示例展示如何使用 !include 标签引入全局配置
+#
+# 运行方式：
+#   # 使用全局配置中定义的默认环境（dev）
+#   sisyphus-api-engine --cases examples/23_使用全局配置.yaml
+#
+#   # 切换到其他环境
+#   sisyphus-api-engine --cases examples/23_使用全局配置.yaml --profile staging
+#   sisyphus-api-engine --cases examples/23_使用全局配置.yaml --profile prod
+# ==============================================================================
+
+name: "使用全局配置示例"
+description: "展示如何通过 !include 引用全局配置，实现配置复用和环境切换"
+
+# 使用 !include 引入全局配置（相对于当前文件的路径）
+config: !include ../config/global_config.yaml
+
+steps:
+  - 步骤1_测试GET请求:
+      type: request
+      description: "使用全局配置中的 base_url 和 api_key"
+
+      # 直接使用固定 URL 进行测试（实际使用时应根据环境配置）
+      url: "https://httpbin.org/get"
+      method: GET
+      headers:
+        User-Agent: "${config.variables.user_agent}"
+        Content-Type: "${config.variables.content_type}"
+        X-API-Key: "${config.variables.test_username}"
+
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: 200
+          description: "验证状态码为200"
+
+  - 步骤2_测试POST请求:
+      type: request
+      description: "测试 POST 请求"
+
+      url: "https://httpbin.org/post"
+      method: POST
+      headers:
+        User-Agent: "${config.variables.user_agent}"
+        Content-Type: "application/json"
+      body:
+        username: "${config.variables.test_username}"
+        password: "${config.variables.test_password}"
+        environment: "dev"
+
+      validations:
+        - type: status_code
+          path: "$.status_code"
+          expect: 200
+          description: "验证状态码为200"
+
+        - type: eq
+          path: "$.json.username"
+          expect: "${config.variables.test_username}"
+          description: "验证用户名正确"
+
+  - 步骤3_验证环境变量:
+      type: request
+      description: "验证当前使用的环境配置"
+
+      url: "https://httpbin.org/get"
+      method: GET
+
+      extractors:
+        - name: "current_url"
+          type: jsonpath
+          path: "$.url"
+          description: "提取当前请求的完整URL"
+
+      validations:
+        - type: contains
+          path: "$.url"
+          expect: "httpbin.org"
+          description: "验证URL包含httpbin.org"

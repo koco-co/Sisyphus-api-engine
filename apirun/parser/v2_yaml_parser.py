@@ -57,25 +57,21 @@ class V2YamlParser:
         Returns:
             Parsed YAML data
         """
-        from yaml import Loader
+        import yaml
         from yaml_include import Constructor
 
-        # Set up include constructor
+        # Get base directory for relative paths
         base_dir = os.path.dirname(os.path.abspath(yaml_file))
 
-        def include_constructor(loader, node):
-            """Handle !include tag."""
-            filename = loader.construct_scalar(node)
-            if not os.path.isabs(filename):
-                filename = os.path.join(base_dir, filename)
+        # Create include constructor with base_dir
+        constructor = Constructor(base_dir=base_dir)
 
-            with open(filename, "r", encoding="utf-8") as f:
-                return safe_load(f)
+        # Register constructor globally to yaml.FullLoader (recommended)
+        yaml.add_constructor("!include", constructor, yaml.FullLoader)
 
-        Loader.add_constructor("!include", include_constructor)
-
+        # Load YAML with FullLoader
         with open(yaml_file, "r", encoding="utf-8") as f:
-            return safe_load(f)
+            return yaml.load(f, yaml.FullLoader)
 
     def parse(self, yaml_file: str) -> TestCase:
         """Parse YAML file into TestCase object.
@@ -468,8 +464,8 @@ class V2YamlParser:
             return errors
 
         try:
-            with open(yaml_file, "r", encoding="utf-8") as f:
-                data = safe_load(f)
+            # Use _load_yaml_with_include to support !include tag
+            data = self._load_yaml_with_include(yaml_file)
 
             if not data:
                 errors.append("Empty YAML file")

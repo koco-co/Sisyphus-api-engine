@@ -9,10 +9,12 @@ description = "Enterprise-grade API automation testing engine with YAML-based de
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
-author = "koco-co"
-author_email = "kopohub@gmail.com"
-maintainer = "koco-co"
-maintainer_email = "kopohub@gmail.com"
+authors = [
+    {name = "koco-co", email = "kopohub@gmail.com"}
+]
+maintainers = [
+    {name = "koco-co", email = "kopohub@gmail.com"}
+]
 keywords = ["api", "testing", "automation", "yaml", "json", "mock", "concurrent", "allure", "websocket", "ddt", "data-driven"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
