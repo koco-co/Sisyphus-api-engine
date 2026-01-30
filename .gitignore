@@ -188,3 +188,11 @@ allure-report/
 # AGENT INIT FILES
 AGENT.md
 CLAUDE.md
+
+# PyPI configuration (contains sensitive tokens)
+.pypirc
+*.pypirc
+
+# PyPI token environment files (if any)
+.env.pypi
+.pypitoken
