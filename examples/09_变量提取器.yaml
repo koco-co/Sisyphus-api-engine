@@ -40,12 +40,12 @@ steps:
       # 提取完整的响应URL
       - name: response_url  # 提取后的变量名
         type: jsonpath  # 提取器类型：jsonpath/regex/header/cookie
-        path: "$.url"  # JSONPath表达式
+        path: "$.body.url"  # JSONPath表达式
         description: "提取响应URL"
       # 提取origin字段
       - name: response_origin
         type: jsonpath
-        path: "$.origin"
+        path: "$.body.origin"
         description: "提取origin字段"
     validations:
       - type: status_code
@@ -140,7 +140,7 @@ steps:
       # 提取完整的请求URL
       - name: request_url
         type: jsonpath
-        path: "$.url"
+        path: "$.body.url"
         description: "提取请求URL"
       # 提取自定义请求头
       - name: custom_header

@@ -94,7 +94,7 @@ steps:
     extractors:
       - type: jsonpath
         name: user_id
-        path: "$.json.username"
+        path: "$.body.json.username"
         description: "提取用户名"
 
   - name: "步骤3-等待处理"
