@@ -249,6 +249,14 @@ def main() -> int:
     )
 
     parser.add_argument(
+        "--report-lang",
+        type=str,
+        choices=["en", "zh"],
+        default="en",
+        help="Report language: en (English) / zh (中文)",
+    )
+
+    parser.add_argument(
         "--allure",
         action="store_true",
         help="Generate Allure report",
@@ -535,7 +543,7 @@ def main() -> int:
                 error_info=None,
             )
 
-            exporter = HTMLExporter()
+            exporter = HTMLExporter(language=args.report_lang)
             html_output = exporter.to_html(test_case_result)
             print(html_output, end="")
 
@@ -546,7 +554,7 @@ def main() -> int:
             output_path = result["test_case"]["config"]["output"]["path"]
 
         if output_path:
-            save_result(result, output_path)
+            save_result(result, output_path, args.report_lang)
             # Only print save message in text mode
             if args.format in ["text"] and (args.verbose or result.get("test_case", {}).get("config", {}).get("verbose")):
                 print(f"\nResults saved to: {output_path}")
@@ -1093,12 +1101,13 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
     return result
 
 
-def save_result(result: dict, output_path: str) -> None:
+def save_result(result: dict, output_path: str, report_lang: str = "en") -> None:
     """Save result to file (format based on extension or config).
 
     Args:
         result: Result dictionary
         output_path: Output file path
+        report_lang: Report language (en/zh)
     """
     # Determine format from file extension or config
     format_from_config = "json"
@@ -1209,7 +1218,7 @@ def save_result(result: dict, output_path: str) -> None:
 
     elif output_format == "html":
         from apirun.result.html_exporter import HTMLExporter
-        exporter = HTMLExporter()
+        exporter = HTMLExporter(language=report_lang)
         exporter.save_html(test_case_result, output_path)
 
     else:
