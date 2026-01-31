@@ -108,6 +108,30 @@ def timestamp_ms() -> int:
     return int(datetime.now().timestamp() * 1000)
 
 
+def timestamp_us() -> int:
+    """Generate current Unix timestamp in microseconds.
+
+    Returns:
+        Current Unix timestamp in microseconds
+
+    Examples:
+        ${timestamp_us()} -> 1706508000000000
+    """
+    return int(datetime.now().timestamp() * 1000000)
+
+
+def now_us() -> str:
+    """Get current datetime with microsecond precision as formatted string.
+
+    Returns:
+        Current datetime in YYYYMMDDHHMMSS%f format (microseconds)
+
+    Examples:
+        ${now_us()} -> "20260129133045123456"
+    """
+    return datetime.now().strftime('%Y%m%d%H%M%S%f')
+
+
 def date(format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     """Generate formatted current date/time string.
 
@@ -483,8 +507,10 @@ TEMPLATE_FUNCTIONS = {
     "uuid4": uuid4,
     "timestamp": timestamp,
     "timestamp_ms": timestamp_ms,
+    "timestamp_us": timestamp_us,
     "date": date,
     "now": now,
+    "now_us": now_us,
     "choice": choice,
     "db_query": db_query,
 }

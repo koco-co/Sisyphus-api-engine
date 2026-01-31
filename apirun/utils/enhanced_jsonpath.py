@@ -31,7 +31,12 @@ Response structure reference:
 
 import re
 from typing import Any, List
-from jsonpath import jsonpath as base_jsonpath
+from jsonpath_ng import parse
+from jsonpath_ng.ext import parse as parse_ext
+
+
+# Sentinel value to indicate no matches found
+_NO_MATCH = object()
 
 
 class EnhancedJSONPath:
@@ -60,6 +65,13 @@ class EnhancedJSONPath:
     - starts_with(value): Check if starts with value
     - ends_with(value): Check if ends with value
     - matches(pattern): Check if matches regex pattern
+
+    Enhanced Features (using jsonpath-ng):
+    - Filter expressions: $.array[?(@.field > 10)]
+    - Complex filters: $.array[?(@.roleName != 'admin')]
+    - Array slicing: $.array[0:5]
+    - Recursive descent: $..key
+    - Wildcards: $.*
     """
 
     # Function definitions
@@ -100,7 +112,7 @@ class EnhancedJSONPath:
         """Extract value using enhanced JSONPath with function support.
 
         Args:
-            path: JSONPath expression (may include function calls)
+            path: JSONPath expression (may include function calls or filter expressions)
             data: Data to extract from
             index: Index to return if multiple matches (default: 0, -1 for all)
 
@@ -109,6 +121,15 @@ class EnhancedJSONPath:
 
         Raises:
             ValueError: If path is invalid or no match found
+
+        Examples:
+            >>> data = {"users": [{"name": "Alice", "role": "admin"}, {"name": "Bob", "role": "user"}]}
+            >>> extractor.extract("$.users[?(@.role == 'admin')].name", data)
+            "Alice"
+            >>> extractor.extract("$.users.length()", data)
+            2
+            >>> extractor.extract("$.users[*].name", data)
+            ["Alice", "Bob"]
         """
         try:
             # Check if path contains function call at the end
@@ -126,26 +147,16 @@ class EnhancedJSONPath:
                 # Check if base_path also contains function calls (chain)
                 if self.function_pattern.search(base_path):
                     # First resolve the base path with its functions
-                    base_data = self.extract(base_path, data, index)
+                    base_data = self.extract(base_path, data, index=-1)  # Get all matches
                 else:
-                    # Extract base value using standard JSONPath
+                    # Extract base value using standard JSONPath (supporting filters)
                     extract_path = base_path if base_path else "$"
-                    result = base_jsonpath(data, extract_path)
+                    base_data = self._extract_with_jsonpath_ng(extract_path, data, index=-1)
 
-                    if result is False:
-                        raise ValueError(f"Invalid JSONPath expression: {extract_path}")
-
-                    if len(result) == 0:
-                        raise ValueError(f"No value found at path: {extract_path}")
-
-                    # Get the data (all matches for array operations, or single if specified)
-                    if index == -1:
-                        # Return all matches
-                        base_data = result
-                    elif len(result) > 1:
-                        base_data = result
-                    else:
-                        base_data = result[0]
+                    # If we got a single-element list, unwrap it for function operations
+                    # This is needed because jsonpath-ng returns matches in a list
+                    if isinstance(base_data, list) and len(base_data) == 1:
+                        base_data = base_data[0]
 
                 # Apply the current function
                 extracted_data = self._apply_function(func_name, base_data, func_args)
@@ -160,27 +171,74 @@ class EnhancedJSONPath:
                     return extracted_data
 
             else:
-                # No function call, use standard JSONPath
-                result = base_jsonpath(data, path)
+                # No function call, use standard JSONPath with full feature support
+                result = self._extract_with_jsonpath_ng(path, data, index)
 
-                if result is False:
-                    raise ValueError(f"Invalid JSONPath expression: {path}")
-
-                if len(result) == 0:
+                # Check for sentinel value indicating no match
+                if result is _NO_MATCH:
                     raise ValueError(f"No value found at path: {path}")
 
-                if index == -1:
-                    return result
-
-                if index >= len(result):
-                    raise ValueError(
-                        f"Index {index} out of range (found {len(result)} matches)"
-                    )
-
-                return result[index]
+                return result
 
         except Exception as e:
             raise ValueError(f"Enhanced JSONPath extraction failed: {e}")
+
+    def _extract_with_jsonpath_ng(self, path: str, data: Any, index: int = 0) -> Any:
+        """Extract value using jsonpath-ng library with full feature support.
+
+        Args:
+            path: JSONPath expression (supports filters, wildcards, etc.)
+            data: Data to extract from
+            index: Index to return (default: 0, -1 for all)
+
+        Returns:
+            Extracted value, or _NO_MATCH sentinel if no matches found
+
+        Raises:
+            ValueError: If path is invalid
+        """
+        try:
+            # Try to use extended parser first (supports filters and more)
+            try:
+                jsonpath_expr = parse_ext(path)
+            except Exception:
+                # Fall back to standard parser if extended fails
+                jsonpath_expr = parse(path)
+
+            # Find all matches
+            matches = jsonpath_expr.find(data)
+
+            if not matches:
+                # No matches found at all - return sentinel
+                return _NO_MATCH
+
+            # Extract values from matches
+            if index == -1:
+                # Return all matches
+                return [match.value for match in matches]
+            elif index >= len(matches):
+                # Index out of range - special handling for single match that is a list
+                if len(matches) == 1:
+                    value = matches[0].value
+                    # If the single match is a list/tuple and index is beyond its length, raise error
+                    if isinstance(value, (list, tuple)) and index >= len(value):
+                        raise ValueError(
+                            f"Index {index} out of range (array has {len(value)} elements)"
+                        )
+                    return value
+                raise ValueError(
+                    f"Index {index} out of range (found {len(matches)} matches)"
+                )
+            else:
+                # Return specific match
+                return matches[index].value
+
+        except Exception as e:
+            # If parsing fails, provide helpful error message
+            raise ValueError(
+                f"Invalid JSONPath expression '{path}': {e}. "
+                f"Make sure the path syntax is correct."
+            )
 
     def _parse_arguments(self, args_str: str) -> List[str]:
         """Parse function arguments from argument string.
@@ -320,7 +378,7 @@ def extract_value(path: str, data: Any, index: int = 0) -> Any:
     This is a convenience function that uses the global EnhancedJSONPath instance.
 
     Args:
-        path: JSONPath expression (may include function calls)
+        path: JSONPath expression (may include function calls or filter expressions)
         data: Data to extract from
         index: Index to return if multiple matches (default: 0, -1 for all)
 
@@ -336,7 +394,9 @@ def extract_value(path: str, data: Any, index: int = 0) -> Any:
         [{"name": "Alice"}, {"name": "Bob"}]
         >>> extract_value("$.users.length()", data)
         2
-        >>> extract_value("$.users.name", data)
+        >>> extract_value("$.users[0].name", data)
+        "Alice"
+        >>> extract_value("$.users[?(@.name == 'Alice')].name", data)
         "Alice"
     """
     return _enhanced_jsonpath.extract(path, data, index)

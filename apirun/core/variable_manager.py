@@ -137,13 +137,15 @@ class VariableManager:
         merged.update(self.extracted_vars)
         return merged
 
-    def render_string(self, template_str: str) -> str:
+    def render_string(self, template_str: str, max_iterations: int = 10) -> str:
         """Render a template string with current variables.
 
         Supports Jinja2 syntax: ${variable_name}
+        Supports nested variable references (recursive rendering).
 
         Args:
             template_str: Template string to render
+            max_iterations: Maximum recursive rendering iterations (default: 10)
 
         Returns:
             Rendered string
@@ -159,8 +161,24 @@ class VariableManager:
             return template_str
 
         try:
-            template = self._jinja_env.from_string(template_str)
-            return template.render(**self.get_all_variables())
+            # Iteratively render until no more template references are found
+            # This supports nested variable references like "test_${var1}_${var2}"
+            result = template_str
+            for _ in range(max_iterations):
+                template = self._jinja_env.from_string(result)
+                rendered = template.render(**self.get_all_variables())
+
+                # Check if rendering changed the value
+                if rendered == result:
+                    # No more changes, we're done
+                    break
+                result = rendered
+
+                # Check if no more template syntax exists
+                if "${" not in result and "{%" not in result:
+                    break
+
+            return result
         except TemplateError as e:
             raise TemplateError(f"Failed to render template '{template_str}': {e}")
 

@@ -6,7 +6,6 @@ Following Google Python Style Guide.
 
 import re
 from typing import Any
-from jsonpath import jsonpath
 
 
 class ComparatorError(Exception):
@@ -125,7 +124,8 @@ class Comparators:
         """Check if actual contains expected.
 
         For strings: checks if expected is substring of actual
-        For lists/dicts: checks if expected is in actual
+        For lists/tuples: checks if expected is in actual (handles None values)
+        For dicts: checks if expected is in actual keys
 
         Args:
             actual: Actual value
@@ -134,12 +134,30 @@ class Comparators:
         Returns:
             True if actual contains expected, False otherwise
         """
+        # Handle None case
+        if actual is None:
+            return expected is None
+
         if isinstance(actual, str):
-            return expected in actual
+            # For strings, expected must also be a string
+            if expected is None:
+                return False
+            return str(expected) in actual
+
         if isinstance(actual, (list, tuple)):
-            return expected in actual
+            # For lists/tuples, check each element
+            # Handle case where expected might be None
+            for item in actual:
+                if item == expected:
+                    return True
+            return False
+
         if isinstance(actual, dict):
+            # For dicts, check if expected is a key
+            if expected is None:
+                return False
             return expected in actual.keys()
+
         return False
 
     @staticmethod
