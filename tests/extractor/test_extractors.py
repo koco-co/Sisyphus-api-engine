@@ -202,7 +202,7 @@ class TestRegexExtractor:
 
     def test_extract_invalid_regex(self, extractor):
         """Test extracting with invalid regex."""
-        with pytest.raises(ValueError, match="Invalid regex"):
+        with pytest.raises(ValueError, match="无效的正则表达式"):
             extractor.extract(r"(?P<invalid", "test")
 
     def test_extract_group_index_out_of_range(self, extractor):
@@ -239,6 +239,27 @@ class TestRegexExtractor:
         """Test extracting with word boundaries."""
         result = extractor.extract(r"\btest\b", "this is a test string")
         assert result == "test"
+
+    def test_extract_from_dict_with_json_dumps(self, extractor):
+        """Test extracting from dict (should use json.dumps() for proper formatting)."""
+        data = {"userId": 101809, "userName": "wangzai"}
+        # Should use json.dumps() internally, preserving double quotes
+        result = extractor.extract(r'"userId"\s*:\s*(\d+)', data, index=1)
+        assert result == "101809"
+
+    def test_extract_from_list_with_json_dumps(self, extractor):
+        """Test extracting from list (should use json.dumps() for proper formatting)."""
+        data = [{"id": 123}, {"id": 456}]
+        # Should use json.dumps() internally, preserving double quotes
+        result = extractor.extract(r'"id":\s*(\d+)', data, index=1)
+        assert result == "123"
+
+    def test_extract_from_nested_json(self, extractor):
+        """Test extracting from nested JSON structure."""
+        data = {"user": {"id": 101809, "name": "test"}}
+        # Regex should match the JSON string produced by json.dumps()
+        result = extractor.extract(r'"id"\s*:\s*(\d+)', data, index=1)
+        assert result == "101809"
 
 
 class TestHeaderExtractor:

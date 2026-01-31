@@ -550,6 +550,133 @@ steps:
         assert ext.type == "jsonpath"  # default
         assert ext.index == 0  # default
 
+    def test_parse_regex_extractor_with_pattern_group(self):
+        """Test parsing regex extractor with semantic field names (pattern/group)."""
+        yaml_content = """
+name: "Test"
+steps:
+  - name: "Step"
+    type: request
+    method: GET
+    url: "/api/test"
+    extractors:
+      - name: user_id
+        type: regex
+        pattern: '"userId":\\s*(\\d+)'
+        group: 1
+        description: "Extract user ID using pattern/group syntax"
+"""
+        parser = V2YamlParser()
+        test_case = parser.parse_string(yaml_content)
+
+        step = test_case.steps[0]
+        assert len(step.extractors) == 1
+        ext = step.extractors[0]
+        assert ext.name == "user_id"
+        assert ext.type == "regex"
+        assert ext.path == '"userId":\\s*(\\d+)'
+        assert ext.index == 1
+
+    def test_parse_regex_extractor_backward_compatible(self):
+        """Test that regex extractor still supports old path/index syntax."""
+        yaml_content = """
+name: "Test"
+steps:
+  - name: "Step"
+    type: request
+    method: GET
+    url: "/api/test"
+    extractors:
+      - name: user_id
+        type: regex
+        path: '"userId":\\s*(\\d+)'
+        index: 1
+"""
+        parser = V2YamlParser()
+        test_case = parser.parse_string(yaml_content)
+
+        step = test_case.steps[0]
+        assert len(step.extractors) == 1
+        ext = step.extractors[0]
+        assert ext.name == "user_id"
+        assert ext.type == "regex"
+        assert ext.path == '"userId":\\s*(\\d+)'
+        assert ext.index == 1
+
+    def test_parse_regex_extractor_pattern_fallback_to_path(self):
+        """Test that pattern takes precedence over path when both are present."""
+        yaml_content = """
+name: "Test"
+steps:
+  - name: "Step"
+    type: request
+    method: GET
+    url: "/api/test"
+    extractors:
+      - name: user_id
+        type: regex
+        pattern: '"userId":\\s*(\\d+)'
+        group: 1
+        path: '"userId":\\s*"OLD"'
+        index: 0
+"""
+        parser = V2YamlParser()
+        test_case = parser.parse_string(yaml_content)
+
+        step = test_case.steps[0]
+        ext = step.extractors[0]
+        # pattern should take precedence
+        assert ext.path == '"userId":\\s*(\\d+)'
+        assert ext.index == 1
+
+    def test_parse_multiple_extractors(self):
+        """Test parsing multiple extractors in a single step (Bug fix verification)."""
+        yaml_content = """
+name: "Test"
+steps:
+  - name: "Step"
+    type: request
+    method: POST
+    url: "/api/test"
+    extractors:
+      - name: order_id
+        type: jsonpath
+        path: "$.data.orderId"
+      - name: amount
+        type: regex
+        pattern: '"amount":\\s*([\\d.]+)'
+        group: 1
+      - name: user_id
+        type: jsonpath
+        path: "$.data.userId"
+      - name: auth_token
+        type: header
+        path: "Authorization"
+"""
+        parser = V2YamlParser()
+        test_case = parser.parse_string(yaml_content)
+
+        step = test_case.steps[0]
+        # Verify all extractors are parsed (not just the last one)
+        assert len(step.extractors) == 4
+
+        # Verify each extractor
+        extractors_dict = {ext.name: ext for ext in step.extractors}
+        assert "order_id" in extractors_dict
+        assert "amount" in extractors_dict
+        assert "user_id" in extractors_dict
+        assert "auth_token" in extractors_dict
+
+        # Verify types and paths
+        assert extractors_dict["order_id"].type == "jsonpath"
+        assert extractors_dict["order_id"].path == "$.data.orderId"
+        assert extractors_dict["amount"].type == "regex"
+        assert extractors_dict["amount"].path == '"amount":\\s*([\\d.]+)'
+        assert extractors_dict["amount"].index == 1
+        assert extractors_dict["user_id"].type == "jsonpath"
+        assert extractors_dict["user_id"].path == "$.data.userId"
+        assert extractors_dict["auth_token"].type == "header"
+
 
 class TestParseStepControl:
     """Tests for step control parsing."""
