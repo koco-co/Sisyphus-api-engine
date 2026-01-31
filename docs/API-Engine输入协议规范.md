@@ -553,6 +553,70 @@ validations:
     description: "所有ID应该唯一"
 ```
 
+#### 5.3.3 函数链式调用
+
+Sisyphus API Engine 支持函数的链式调用，即在一个 JSONPath 表达式中连续调用多个函数。
+
+**链式调用语法**：`$.path.function1().function2().function3()`
+
+**执行顺序**：从左到右依次执行，前一个函数的输出作为后一个函数的输入。
+
+**常见链式调用组合**：
+
+| 链式调用 | 说明 | 示例结果 |
+|---------|------|----------|
+| `$.ids.unique().length()` | 去重后计数 | 获取唯一值的数量 |
+| `$.numbers.sort().first()` | 排序后取首 | 获取最小值 |
+| `$.numbers.sort().last()` | 排序后取尾 | 获取最大值 |
+| `$.items.flatten().length()` | 展平后计数 | 获取展平后的元素数量 |
+| `$.tags.join(-).upper()` | 连接后转大写 | 获取大写的连接字符串 |
+| `$.text.trim().lower()` | 去空格后转小写 | 获取小写的无空格字符串 |
+
+**实际应用示例**：
+
+```yaml
+# 示例 1: 验证去重后的数组长度
+validations:
+  - type: eq
+    path: "$.body.ids.unique().length()"
+    expect: 10
+    description: "去重后应有 10 个唯一 ID"
+
+# 示例 2: 验证排序后的最小值
+validations:
+  - type: eq
+    path: "$.body.scores.sort().first()"
+    expect: 60
+    description: "最低分应为 60"
+
+# 示例 3: 提取并连接标签
+extractors:
+  - name: "tag_string"
+    path: "$.body.tags.join(-)"
+    description: "提取并连接标签"
+
+# 示例 4: 复杂链式调用
+validations:
+  - type: eq
+    path: "$.body.data.items.flatten().unique().length()"
+    expect: 15
+    description: "展平去重后应有 15 个元素"
+```
+
+**链式调用注意事项**：
+1. **类型兼容性**：确保每个函数的输入输出类型兼容
+   - ✅ `sort()` → `first()`: 数组 → 数组元素
+   - ✅ `join()` → `upper()`: 字符串 → 字符串
+   - ❌ `length()` → `upper()`: 数字 → 字符串（类型错误）
+
+2. **函数顺序**：合理安排函数调用顺序
+   - ✅ `$.items.unique().sort()`: 先去重再排序
+   - ⚠️ `$.items.sort().unique()`: 先排序再去重（去重会打乱排序）
+
+3. **性能考虑**：链式调用会依次执行每个函数
+   - 简单链式（2-3 个函数）：性能影响小
+   - 复杂链式（4+ 个函数）：考虑分步提取或简化逻辑
+
 ---
 
 ## 6. 高级特性
