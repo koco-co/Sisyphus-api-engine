@@ -121,6 +121,46 @@ class TestJSONPathExtractor:
         result = extractor.extract("$.items[*].name", sample_data, index=2)
         assert result == "Item 3"
 
+    def test_extract_deep_nested_array_index(self, extractor):
+        """Test extracting from deeply nested array structure - 用户报告的场景."""
+        # 测试用户报告的路径: $.data.data[1].id
+        data = {
+            "code": "SUCCESS",
+            "data": {
+                "data": [
+                    {"id": 100, "name": "first"},
+                    {"id": 200, "name": "second"},
+                    {"id": 300, "name": "third"}
+                ],
+                "total": 3
+            }
+        }
+        result = extractor.extract("$.data.data[1].id", data)
+        assert result == 200, f"Expected 200, got {result}"
+
+    def test_extract_deep_nested_array_multiple_indices(self, extractor):
+        """Test extracting different indices from deeply nested array."""
+        data = {
+            "response": {
+                "users": [
+                    {"id": 1, "role": "admin"},
+                    {"id": 2, "role": "user"},
+                    {"id": 3, "role": "guest"}
+                ]
+            }
+        }
+        # 测试第一个元素
+        result = extractor.extract("$.response.users[0].role", data)
+        assert result == "admin"
+
+        # 测试中间元素
+        result = extractor.extract("$.response.users[1].id", data)
+        assert result == 2
+
+        # 测试最后一个元素
+        result = extractor.extract("$.response.users[2].role", data)
+        assert result == "guest"
+
 
 class TestRegexExtractor:
     """Tests for RegexExtractor."""

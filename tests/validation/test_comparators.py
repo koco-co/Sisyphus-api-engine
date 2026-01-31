@@ -100,6 +100,39 @@ class TestContainsComparators:
         result = Comparators.not_contains("Hello World", "World")
         assert result is False
 
+    def test_compare_contains_string_list(self):
+        """Test contains comparator with string list - 用户报告的场景."""
+        # 测试用户报告的场景：验证数组包含特定字符串
+        items = ["apple", "banana", "test_param_xxx", "orange"]
+        result = Comparators.contains(items, "test_param_xxx")
+        assert result is True, f"Expected True for 'test_param_xxx' in {items}"
+
+        # 测试不存在的字符串
+        result = Comparators.contains(items, "grape")
+        assert result is False
+
+    def test_compare_contains_list_with_none(self):
+        """Test contains comparator with list containing None values - 边界场景."""
+        # 测试包含 None 值的数组
+        items = [1, None, 3, 4]
+        result = Comparators.contains(items, None)
+        assert result is True, "Expected True for None in list with None values"
+
+        # 测试 None 不在数组中
+        items = [1, 2, 3]
+        result = Comparators.contains(items, None)
+        assert result is False, "Expected False for None not in list"
+
+    def test_compare_contains_mixed_type_list(self):
+        """Test contains comparator with mixed type list."""
+        # 测试混合类型数组
+        items = ["string", 123, True, None, {"key": "value"}]
+        assert Comparators.contains(items, "string") is True
+        assert Comparators.contains(items, 123) is True
+        assert Comparators.contains(items, True) is True
+        assert Comparators.contains(items, None) is True
+        assert Comparators.contains(items, "not_exist") is False
+
 
 class TestRegexComparator:
     """Tests for regex comparator."""

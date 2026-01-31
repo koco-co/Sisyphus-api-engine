@@ -430,6 +430,123 @@ steps:
         expect: "important-featured-new"
         description: "验证标签连接"
 
+  # ==============================================================================
+  # 步骤15: 嵌套数组索引提取 - 用户报告的场景验证
+  # 用途：验证 JSONPath 提取器支持嵌套数组索引（如 $.data.data[1].id）
+  # ==============================================================================
+  - name: "嵌套数组索引提取"
+    description: "验证用户报告的场景 $.data.data[1].id"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 模拟用户报告的数据结构
+      code: "SUCCESS"
+      data:
+        data:
+          - id: 100
+            name: "first_role"
+            permissions: ["read", "write"]
+          - id: 200
+            name: "second_role"
+            permissions: ["read"]
+          - id: 300
+            name: "third_role"
+            permissions: ["admin"]
+        total: 3
+    extractors:
+      # 提取嵌套数组中第二个元素的 id - 用户报告的路径
+      - name: "second_role_id"
+        path: "$.body.json.data.data[1].id"
+        description: "提取第二个角色的 ID"
+      # 提取嵌套数组中第一个元素的名称
+      - name: "first_role_name"
+        path: "$.body.json.data.data[0].name"
+        description: "提取第一个角色的名称"
+      # 提取嵌套数组中最后一个元素的权限
+      - name: "third_role_permissions"
+        path: "$.body.json.data.data[2].permissions"
+        description: "提取第三个角色的权限列表"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证嵌套数组索引提取 - ID 为 200
+      - type: eq
+        path: "$.json.data.data[1].id"
+        expect: 200
+        description: "验证 $.data.data[1].id 提取正确（用户报告的场景）"
+      # 验证第一个元素名称
+      - type: eq
+        path: "$.json.data.data[0].name"
+        expect: "first_role"
+        description: "验证 $.data.data[0].name 提取正确"
+      # 验证权限数组
+      - type: contains
+        path: "$.json.data.data[2].permissions"
+        expect: "admin"
+        description: "验证权限数组包含 'admin'"
+
+  # ==============================================================================
+  # 步骤16: Contains 验证器 - 字符串和数组匹配
+  # 用途：验证 Contains 验证器支持字符串、数组、对象匹配
+  # ==============================================================================
+  - name: "Contains 验证器测试"
+    description: "验证 Contains 验证器的各种场景"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 字符串包含测试
+      message: "Operation test_param_xxx completed successfully"
+      # 数组包含测试 - 用户报告的场景
+      items:
+        - "apple"
+        - "banana"
+        - "test_param_xxx"
+        - "orange"
+      # 数值数组测试
+      numbers: [100, 200, 300, 400]
+      # 包含 None 值的数组 - 边界场景
+      nullable_items: [1, None, 3, None, 5]
+      # 对象包含测试
+      metadata:
+        key1: "value1"
+        key2: "value2"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证字符串包含 - 用户报告的场景
+      - type: contains
+        path: "$.json.message"
+        expect: "test_param_xxx"
+        description: "验证消息包含 'test_param_xxx'（字符串包含）"
+      # 验证数组包含字符串 - 用户报告的场景
+      - type: contains
+        path: "$.json.items"
+        expect: "test_param_xxx"
+        description: "验证 items 数组包含 'test_param_xxx'（数组包含）"
+      # 验证数组包含数值
+      - type: contains
+        path: "$.json.numbers"
+        expect: 300
+        description: "验证 numbers 数组包含 300"
+      # 验证数组不包含某值
+      - type: not_contains
+        path: "$.json.items"
+        expect: "grape"
+        description: "验证 items 数组不包含 'grape'"
+      # 验证对象键包含
+      - type: contains
+        path: "$.json.metadata"
+        expect: "key1"
+        description: "验证 metadata 包含键 'key1'"
+
 tags:
   - "JSONPath"
   - "函数"
