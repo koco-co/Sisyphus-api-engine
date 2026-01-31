@@ -63,7 +63,7 @@
 
 ### 📊 结果输出
 
-- **多种格式** - JSON、CSV、HTML、JUnit XML、Allure 报告
+- **多种格式** - JSON、CSV、HTML（支持中英文）、JUnit XML、Allure 报告
 - **性能指标** - DNS、TCP、TLS、服务器处理时间等详细性能数据
 - **错误分类** - 智能错误分类和诊断信息
 - **实时推送** - WebSocket 实时推送测试进度和结果
@@ -149,8 +149,11 @@ sisyphus-api-engine --cases my_first_test.yaml -o result.json
 # 导出为 CSV
 sisyphus-api-engine --cases my_first_test.yaml --format csv -o result.csv
 
-# 导出为 HTML
-sisyphus-api-engine --cases my_first_test.yaml --format html -o report.html
+# 导出为 HTML（中文报告）
+sisyphus-api-engine --cases my_first_test.yaml --format html --report-lang zh -o report.html
+
+# 导出为 HTML（英文报告）
+sisyphus-api-engine --cases my_first_test.yaml --format html --report-lang en -o report.html
 
 # 生成 Allure 报告
 sisyphus-api-engine --cases my_first_test.yaml --allure
@@ -689,6 +692,7 @@ config:
 
 #### 结果输出
 - ✨ 多种格式（JSON/CSV/HTML/JUnit XML/Allure）
+- ✨ HTML 报告支持中英文双语（通过 --report-lang 参数）
 - ✨ 详细性能指标（DNS/TCP/TLS/服务器处理时间）
 - ✨ 智能错误分类和诊断
 - ✨ 变量追踪（调试模式）
