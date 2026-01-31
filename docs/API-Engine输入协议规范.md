@@ -332,29 +332,142 @@ variables:
   url: "${base_url}/users/${user_id}"
 ```
 
-### 4.2 变量作用域优先级
+### 4.2 变量嵌套引用（v1.0.2+ 新增）
+
+Sisyphus API Engine 现在支持变量的嵌套引用，允许在变量定义中引用其他变量。
+
+**基本嵌套引用**
+
+```yaml
+config:
+  variables:
+    # 基础变量
+    api_prefix: "/api"
+    api_version: "v1"
+
+    # 一级嵌套：引用 api_prefix
+    api_path: "${api_prefix}/${api_version}"  # → "/api/v1"
+
+    # 多级嵌套：引用 api_path
+    user_endpoint: "${api_path}/users"  # → "/api/v1/users"
+
+    # 复杂嵌套
+    base_url: "https://example.com"
+    full_url: "${base_url}${user_endpoint}"  # → "https://example.com/api/v1/users"
+```
+
+**使用场景**
+
+```yaml
+# 场景 1: 构建 API 路径
+variables:
+  host: "https://api.example.com"
+  prefix: "/api/v2"
+  endpoint: "${prefix}/orders"
+  full_url: "${host}${endpoint}"  # "https://api.example.com/api/v2/orders"
+
+# 场景 2: 组合动态参数
+variables:
+  env: "prod"
+  app_name: "myapp"
+  # 嵌套引用
+  resource_name: "${app_name}-${env}"
+  # 最终结果: "myapp-prod"
+
+# 场景 3: 配置复用
+variables:
+  region: "us-west-1"
+  az: "${region}a"  # "us-west-1a"
+  subnet: "${region}-public"  # "us-west-1-public"
+```
+
+**注意事项**
+
+- 变量引用支持最多 10 层递归解析（防止循环引用）
+- 循环引用会在达到最大迭代次数后停止
+- 建议嵌套层级不超过 3 层，保持可读性
+
+### 4.3 变量作用域优先级
 
 从低到高：
 1. 全局变量（`config.variables`）
 2. 环境变量（`config.profiles.{profile}.variables`）
 3. 提取变量（从响应中提取）
 
-### 4.3 内置模板函数
+### 4.4 内置模板函数
+
+#### 4.4.1 时间函数
+
+| 函数 | 说明 | 返回值 | 示例 |
+|------|------|--------|------|
+| `now()` | 当前日期时间对象 | datetime | `${now()}` |
+| `timestamp()` | Unix 时间戳（秒） | 整数 | `${timestamp()}` |
+| `timestamp_ms()` | Unix 时间戳（毫秒） | 整数 | `${timestamp_ms()}` |
+| `timestamp_us()` | Unix 时间戳（微秒，v1.0.2+） | 整数 | `${timestamp_us()}` |
+| `now_us()` | 格式化微秒时间戳 | 字符串 | `${now_us()}` |
+| `date(format)` | 格式化当前时间 | 字符串 | `${date('%Y-%m-%d')}` |
+
+**时间戳使用示例**
 
 ```yaml
 variables:
-  # 随机字符串
-  random_str: "${random_string(10)}"
+  # 秒级时间戳（10位）
+  ts_seconds: "${timestamp()}"  # 1706508000
 
-  # UUID
-  unique_id: "${uuid()}"
+  # 毫秒级时间戳（13位）
+  ts_millis: "${timestamp_ms()}"  # 1706508000000
 
-  # 当前时间
-  current_time: "${now()}"
-  timestamp: "${timestamp()}"
+  # 微秒级时间戳（16位，v1.0.2+新增）
+  ts_micros: "${timestamp_us()}"  # 1706508000000000
 
-  # Base64编码
-  encoded: "${base64_encode('hello')}"
+  # 格式化微秒时间（20位字符串，v1.0.2+新增）
+  formatted_us: "${now_us()}"  # "20260129133045123456"
+
+  # 自定义格式
+  custom_date: "${date('%Y-%m-%d %H:%M:%S')}"  # "2026-01-29 13:30:45"
+
+  # 微秒级精度（v1.0.2+新增）
+  with_micros: "${now().strftime('%Y%m%d%H%M%S%f')}"  # "20260129133045123456"
+
+  # 生成唯一ID
+  request_id: "req_${now_us()}"  # "req_20260129133045123456"
+  session_id: "${now_us()}_${random_str(8)}"  # "20260129133045123456_aB3dX7kL"
+```
+
+#### 4.4.2 随机函数
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `random_int()` | 随机整数 | `${random_int()}` |
+| `random_int(min, max)` | 指定范围随机整数 | `${random_int(1, 100)}` |
+| `random_str(length)` | 随机字符串 | `${random_str(10)}` |
+| `uuid()` | UUID 字符串 | `${uuid()}` |
+| `uuid4()` | UUID v4 | `${uuid4()}` |
+
+#### 4.4.3 其他函数
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `choice(array)` | 随机选择 | `${choice(['A', 'B', 'C'])}` |
+| `base64_encode(str)` | Base64 编码 | `${base64_encode('hello')}` |
+| `base64_decode(str)` | Base64 解码 | `${base64_decode('aGVsbG8=')}` |
+
+**完整示例**
+
+```yaml
+variables:
+  # 时间相关
+  test_suffix: "${now_us()}"  # 微秒级唯一标识
+  current_date: "${date('%Y-%m-%d')}"
+
+  # 随机数据
+  username: "user_${random_str(8)}"
+  user_id: "${uuid()}"
+  random_score: "${random_int(1, 100)}"
+
+  # 组合使用
+  session_id: "sess_${timestamp_us()}_${random_str(6)}"
+  request_header: "Bearer ${uuid()}"
 ```
 
 ---
@@ -398,13 +511,67 @@ validations:
 
 #### 5.3.1 基础表达式
 
+| 表达式 | 说明 | 示例 |
+|---------|------|------|
+| `$.field` | 根对象属性 | `$.status_code` |
+| `$.data.user.id` | 嵌套属性 | `$.data.user.id` |
+| `$.data.items[0]` | 数组第一个元素 | `$.data.items[0]` |
+| `$.data.items[-1]` | 数组最后一个元素 | `$.data.items[-1]` |
+| `$..name` | 递归查找 | `$..username` |
+
+#### 5.3.1.1 过滤表达式（v1.0.2+ 增强）
+
+Sisyphus API Engine 现在支持完整的 JSONPath 过滤表达式，可以基于条件筛选数组元素。
+
+**基本过滤语法**
+
+| 表达式 | 说明 | 示例 |
+|---------|------|------|
+| `$.array[?(@.field == 'value')]` | 等于 | `$.users[?(@.role == 'admin')]` |
+| `$.array[?(@.field != 'value')]` | 不等于 | `$.users[?(@.status != 'deleted')]` |
+| `$.array[?(@.field > 10)]` | 大于 | `$.items[?(@.price > 100)]` |
+| `$.array[?(@.field < 10)]` | 小于 | `$.items[?(@.quantity < 5)]` |
+| `$.array[?(@.field == true)]` | 布尔等于 | `$.users[?(@.active == true)]` |
+| `$.array[*].field` | 通配符（所有元素） | `$.users[*].id` |
+
+**组合条件**
+
 | 表达式 | 说明 |
 |---------|------|
-| `$.status_code` | 根对象属性 |
-| `$.data.user.id` | 嵌套属性 |
-| `$.data.items[0]` | 数组第一个元素 |
-| `$.data.users[?id=1].name` | 过滤表达式 |
-| `$..name` | 递归查找 |
+| `[?(@.f1 == 'v1' & @.f2 == 'v2')]` | AND 条件 |
+| `[?(@.f1 == 'v1' \| @.f2 == 'v2')]` | OR 条件 |
+
+**使用示例**
+
+```yaml
+# 提取所有管理员用户
+extractors:
+  - name: "admin_ids"
+    path: "$.body.json.users[?(@.role == 'admin')].id"
+
+# 提取活跃用户的用户名
+extractors:
+  - name: "active_names"
+    path: "$.body.json.users[?(@.active == true)].name"
+
+# 提取价格大于100的商品
+extractors:
+  - name: "expensive_items"
+    path: "$.body.json.items[?(@.price > 100)].name"
+
+# 验证过滤后的结果
+validations:
+  - type: eq
+    path: "$.json.users[?(@.role == 'admin')].length()"
+    expect: 3
+    description: "应有3个管理员"
+```
+
+**注意事项**
+
+- 过滤表达式中的布尔值使用小写 `true`/`false`，而非 Python 的 `True`/`False`
+- 复杂的 AND/OR 条件需要使用 `&` 和 `|` 运算符
+- 通配符 `[*]` 可以获取所有元素的字段
 
 #### 5.3.1.1 重要：提取器与验证器的路径差异
 

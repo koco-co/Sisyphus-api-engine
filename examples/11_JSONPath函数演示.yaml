@@ -3,6 +3,13 @@
 # ==============================================================================
 # 本示例展示 Sisyphus API Engine 的增强 JSONPath 函数功能
 # 支持在验证和提取中使用 20+ 种函数
+#
+# 新增功能（v1.0.2+）：
+# - 过滤表达式: $.array[?(@.field == 'value')]
+# - 通配符访问: $.array[*].field
+# - 数组索引: $.array[index]
+# - 嵌套引用: ${var_${nested_var}}
+# - 微秒时间戳: ${now_us()}
 # ==============================================================================
 
 name: "JSONPath 函数功能演示"
@@ -12,10 +19,70 @@ config:
   timeout: 30
   variables:
     base_url: "https://httpbin.org"
+    # 变量嵌套引用示例
+    api_prefix: "api"
+    version: "v2"
+    # ✅ 支持嵌套引用
+    api_path: "${api_prefix}/${version}"
 
 steps:
   # ==============================================================================
-  # 1. 数组函数演示
+  # 1. 过滤表达式和通配符（新功能）
+  # ==============================================================================
+
+  - name: "创建测试数据"
+    description: "准备用于演示过滤表达式的数据"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      users:
+        - {id: 1, name: "Alice", role: "admin", active: true}
+        - {id: 2, name: "Bob", role: "user", active: true}
+        - {id: 3, name: "Charlie", role: "admin", active: false}
+        - {id: 4, name: "David", role: "user", active: true}
+      items:
+        - {id: 101, name: "Laptop", price: 999, stock: 5}
+        - {id: 102, name: "Mouse", price: 29, stock: 10}
+        - {id: 103, name: "Keyboard", price: 79, stock: 0}
+    extractors:
+      - name: "test_data"
+        path: "$.body.json"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "验证数组长度和通配符"
+    description: "演示 [*] 通配符和 length() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      message: "测试数据"
+      users: "${test_data.users}"
+      items: "${test_data.items}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 使用 [*].field 获取所有元素的某个字段
+      - type: eq
+        path: "$.json.users[*].id.length()"
+        expect: 4
+        description: "应有 4 个用户"
+      # 使用 length() 获取数组长度
+      - type: eq
+        path: "$.json.items.length()"
+        expect: 3
+        description: "应有 3 个商品"
+
+  # ==============================================================================
+  # 2. 数组函数演示
   # ==============================================================================
 
   - name: "验证返回数据不为空（length 函数）"
