@@ -258,6 +258,26 @@ def main() -> int:
     )
 
     parser.add_argument(
+        "--lang",
+        type=str,
+        choices=["en", "zh"],
+        default="zh",
+        help="CLI output language: en (English) / zh (中文, default)",
+    )
+
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output",
+    )
+
+    parser.add_argument(
+        "--no-emoji",
+        action="store_true",
+        help="Disable emoji in output",
+    )
+
+    parser.add_argument(
         "--allure",
         action="store_true",
         help="Generate Allure report",
@@ -332,7 +352,21 @@ def main() -> int:
             print("Error: No YAML files found", file=sys.stderr)
             return 1
 
-        print(f"Found {len(yaml_files)} test case file(s)\n")
+        # Import formatter
+        from apirun.utils.console_output import create_formatter
+
+        # Create output formatter
+        formatter = create_formatter(
+            use_color=not args.no_color,
+            use_emoji=not args.no_emoji,
+            lang=args.lang
+        )
+
+        found_text = formatter.style.get_text(
+            f"找到 {len(yaml_files)} 个测试用例文件",
+            f"Found {len(yaml_files)} test case file(s)"
+        )
+        print(f"\n{formatter.style.info(found_text)}\n")
 
         # Track overall results
         total_passed = 0
@@ -361,6 +395,9 @@ def main() -> int:
                     args.allure,
                     args.allure_dir,
                     args.allure_clean,
+                    lang=args.lang,
+                    use_color=not args.no_color,
+                    use_emoji=not args.no_emoji,
                 )
                 all_results.append(result)
 
@@ -835,6 +872,9 @@ def execute_test_case(
     allure: bool = False,
     allure_dir: str = "allure-results",
     allure_clean: bool = True,
+    lang: str = "zh",
+    use_color: bool = True,
+    use_emoji: bool = True,
 ) -> dict:
     """Execute test case and return results.
 
@@ -963,9 +1003,9 @@ def execute_test_case(
         and test_case.config.data_iterations
         and test_case.config.data_source
     ):
-        result = _execute_data_driven_test(test_case, verbose)
+        result = _execute_data_driven_test(test_case, verbose, lang=lang, use_color=use_color, use_emoji=use_emoji)
     else:
-        result = _execute_single_test(test_case, verbose)
+        result = _execute_single_test(test_case, verbose, lang=lang, use_color=use_color, use_emoji=use_emoji)
 
     # Generate Allure report if enabled
     if allure_enabled:
@@ -1041,12 +1081,21 @@ def _execute_with_websocket(
     return asyncio.run(run_test_with_ws())
 
 
-def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
+def _execute_data_driven_test(
+    test_case,
+    verbose: bool = False,
+    lang: str = "zh",
+    use_color: bool = True,
+    use_emoji: bool = True
+) -> dict:
     """Execute data-driven test case.
 
     Args:
         test_case: Test case with data source configuration
         verbose: Enable verbose output
+        lang: Language code ('zh' or 'en')
+        use_color: Enable colored output
+        use_emoji: Enable emoji
 
     Returns:
         Aggregated execution results
@@ -1058,10 +1107,22 @@ def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
         test_case.config.variable_prefix,
     )
 
-    print(f"Executing: {test_case.name} (Data-Driven)")
-    print(f"Description: {test_case.description}")
-    print(f"Data iterations: {len(iterator)}")
-    print(f"Steps: {len(test_case.steps)}")
+    # Import formatter
+    from apirun.utils.console_output import create_formatter, Color, Emoji
+
+    # Create output formatter
+    formatter = create_formatter(use_color=use_color, use_emoji=use_emoji, lang=lang)
+
+    # Print header
+    dd_text = formatter.style.get_text("数据驱动测试", "Data-Driven Test")
+    formatter.print_test_start(
+        f"{test_case.name} ({dd_text})",
+        test_case.description or "",
+        len(test_case.steps)
+    )
+
+    data_text = formatter.style.get_text(f"数据迭代: {len(iterator)}", f"Data iterations: {len(iterator)}")
+    print(f"   {formatter.style.dim(data_text)}")
     print()
 
     # Execute for each data row
@@ -1070,11 +1131,24 @@ def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
     total_failed = 0
 
     for i, (data_row, augmented_test_case) in enumerate(iterator):
-        print(f"\n--- Data Iteration #{i + 1} ---")
-        if verbose:
-            print(f"Data: {data_row}")
+        iteration_text = formatter.style.get_text(f"数据迭代 #{i + 1}", f"Data Iteration #{i + 1}")
+        print(f"\n{formatter.style.header('━' * 70)}")
+        print(f"  {formatter.style.header(iteration_text)}")
 
-        result = _execute_single_test(augmented_test_case, verbose, notifier=None)
+        if verbose:
+            data_str = str(data_row)[:100] + "..." if len(str(data_row)) > 100 else str(data_row)
+            print(f"  {formatter.style.dim(data_str)}")
+
+        print()
+
+        result = _execute_single_test(
+            augmented_test_case,
+            verbose,
+            lang=lang,
+            use_color=use_color,
+            use_emoji=use_emoji,
+            notifier=None
+        )
         all_results.append(result)
 
         # Update statistics
@@ -1097,24 +1171,45 @@ def _execute_data_driven_test(test_case, verbose: bool = False) -> dict:
     }
 
     # Print summary
-    print(f"\n{'='*60}")
-    print(f"Data-Driven Test Summary")
-    print(f"Total Iterations: {len(iterator)}")
-    print(f"Passed: {total_passed} ✓")
-    print(f"Failed: {total_failed} ✗")
-    print(f"Pass Rate: {aggregated_result['test_case']['pass_rate']:.1f}%")
-    print(f"{'='*60}")
+    summary_text = formatter.style.get_text("数据驱动测试摘要", "Data-Driven Test Summary")
+    print(f"\n{formatter.style.header('━' * 70)}")
+    print(f"  {formatter.style.header(summary_text)}")
+
+    total_text = formatter.style.get_text("总迭代次数:", "Total Iterations:")
+    print(f"  {total_text} {formatter.style.colorize(str(len(iterator)), Color.CYAN)}")
+
+    passed_text = formatter.style.get_text("通过:", "Passed:")
+    print(f"  {passed_text} {formatter.style.colorize(str(total_passed), Color.GREEN)} {Emoji.SUCCESS.value if formatter.style.use_emoji else ''}")
+
+    failed_text = formatter.style.get_text("失败:", "Failed:")
+    print(f"  {failed_text} {formatter.style.colorize(str(total_failed), Color.RED)} {Emoji.FAILURE.value if formatter.style.use_emoji else ''}")
+
+    rate_text = formatter.style.get_text("通过率:", "Pass Rate:")
+    rate_color = Color.GREEN if total_failed == 0 else (Color.YELLOW if total_passed > total_failed else Color.RED)
+    pass_rate_value = aggregated_result['test_case']['pass_rate']
+    print(f"  {rate_text} {formatter.style.colorize(f'{pass_rate_value:.1f}%', rate_color)}")
+    print(f"{formatter.style.header('━' * 70)}")
 
     return aggregated_result
 
 
-def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dict:
+def _execute_single_test(
+    test_case,
+    verbose: bool = False,
+    notifier=None,
+    lang: str = "zh",
+    use_color: bool = True,
+    use_emoji: bool = True
+) -> dict:
     """Execute single test case.
 
     Args:
         test_case: Test case to execute
         verbose: Enable verbose output
         notifier: Optional WebSocket notifier for real-time updates
+        lang: Language code ('zh' or 'en')
+        use_color: Enable colored output
+        use_emoji: Enable emoji
 
     Returns:
         Execution result as dictionary
@@ -1128,10 +1223,18 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
 
     # Only print in text mode
     if is_text_output:
+        # Import formatter
+        from apirun.utils.console_output import create_formatter
+
+        # Create output formatter
+        formatter = create_formatter(use_color=use_color, use_emoji=use_emoji, lang=lang)
+
         # Print test case info
-        print(f"Executing: {test_case.name}")
-        print(f"Description: {test_case.description}")
-        print(f"Steps: {len(test_case.steps)}")
+        formatter.print_test_start(
+            test_case.name,
+            test_case.description or "",
+            len(test_case.steps)
+        )
 
     # Execute test case
     executor = TestCaseExecutor(test_case, notifier=notifier)
@@ -1139,73 +1242,36 @@ def _execute_single_test(test_case, verbose: bool = False, notifier=None) -> dic
 
     # Only print summary in text mode
     if is_text_output:
+        # Create formatter
+        formatter = create_formatter(use_color=use_color, use_emoji=use_emoji, lang=lang)
+
         # Print summary
-        print(f"\n{'='*60}")
-        print(f"Status: {result['test_case']['status'].upper()}")
-        print(f"Duration: {result['test_case']['duration']:.2f}s")
-        print(f"Statistics:")
-        print(f"  Total:   {result['statistics']['total_steps']}")
-        print(f"  Passed:  {result['statistics']['passed_steps']} ✓")
-        print(f"  Failed:  {result['statistics']['failed_steps']} ✗")
-        print(f"  Skipped: {result['statistics']['skipped_steps']} ⊘")
-        print(f"Pass Rate: {result['statistics']['pass_rate']:.1f}%")
-        print(f"{'='*60}")
+        formatter.print_summary(
+            result['test_case']['status'],
+            result['test_case']['duration'],
+            result['statistics']['total_steps'],
+            result['statistics']['passed_steps'],
+            result['statistics']['failed_steps'],
+            result['statistics']['skipped_steps'],
+            result['statistics']['pass_rate']
+        )
 
         # Print step results if verbose
         if verbose:
-            print(f"\nStep Details:")
+            steps_text = formatter.style.get_text("步骤详情:", "Step Details:")
+            print(f"\n{formatter.style.header(steps_text)}")
             for step in result["steps"]:
-                status_icon = {
-                    "success": "✓",
-                    "failure": "✗",
-                    "skipped": "⊘",
-                    "error": "⚠",
-                }.get(step["status"], "?")
+                perf = step.get("performance", {})
+                duration = perf.get("total_time") if perf else None
+                error = step.get("error_info", {}).get("message") if step.get("error_info") else None
 
-                print(f"\n  {status_icon} {step['name']}")
-                print(f"     Status: {step['status']}")
-
-                if step.get("performance"):
-                    perf = step["performance"]
-                    total_time = perf.get("total_time", 0)
-                    print(f"     Total Time: {total_time:.2f}ms")
-
-                    # Display detailed timing breakdown if available
-                    dns_time = perf.get("dns_time", 0)
-                    tcp_time = perf.get("tcp_time", 0)
-                    tls_time = perf.get("tls_time", 0)
-                    server_time = perf.get("server_time", 0)
-                    download_time = perf.get("download_time", 0)
-                    upload_time = perf.get("upload_time", 0)
-
-                    if any([dns_time, tcp_time, tls_time, server_time, download_time, upload_time]):
-                        timing_details = []
-                        if dns_time > 0:
-                            timing_details.append(f"DNS: {dns_time:.2f}ms")
-                        if tcp_time > 0:
-                            timing_details.append(f"TCP: {tcp_time:.2f}ms")
-                        if tls_time > 0:
-                            timing_details.append(f"TLS: {tls_time:.2f}ms")
-                        if server_time > 0:
-                            timing_details.append(f"Server: {server_time:.2f}ms")
-                        if download_time > 0:
-                            timing_details.append(f"Download: {download_time:.2f}ms")
-                        if upload_time > 0:
-                            timing_details.append(f"Upload: {upload_time:.2f}ms")
-
-                        print(f"     Breakdown: {' | '.join(timing_details)}")
-
-                    # Display size information
-                    size = perf.get("size", 0)
-                    if size > 0:
-                        size_kb = size / 1024
-                        print(f"     Size: {size} bytes ({size_kb:.2f} KB)")
-
-            if step.get("response", {}).get("status_code"):
-                print(f"     Status Code: {step['response']['status_code']}")
-
-            if step.get("error_info"):
-                print(f"     Error: {step['error_info']['message']}")
+                formatter.print_step(
+                    step['name'],
+                    step['status'],
+                    duration=duration,
+                    performance=perf,
+                    error=error
+                )
 
     return result
 

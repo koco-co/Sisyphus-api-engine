@@ -3,7 +3,7 @@
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
 ![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.0.2-orange)
+![Version](https://img.shields.io/badge/version-1.0.3-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
@@ -70,9 +70,11 @@
 - **错误分类** - 智能错误分类和诊断信息
 - **实时推送** - WebSocket 实时推送测试进度和结果
 - **变量追踪** - 调试模式下追踪变量变化
+- **🆕 彩色输出（v1.0.3+）** - 支持 ANSI 颜色和 Emoji 图标，中英文双语界面
 
-### 🌟 v1.0.2+ 新功能亮点
+### 🌟 v1.0.3+ 新功能亮点
 
+- **彩色命令行输出** - ANSI 颜色 + Emoji 图标 + 中英文双语
 - **JSONPath 过滤表达式** - 支持 `$.users[?(@.role == 'admin')]` 语法
 - **变量嵌套引用** - `${base_url}${api_path}` 自动解析
 - **微秒时间戳** - `now_us()` 返回 20 位唯一时间戳
@@ -153,10 +155,19 @@ steps:
 ### 2. 运行测试
 
 ```bash
-# 基本运行（单个文件）
+# 基本运行（单个文件，中文彩色输出）
 sisyphus-api-engine --cases my_first_test.yaml
 
-# 详细输出
+# 英文界面
+sisyphus-api-engine --lang en --cases my_first_test.yaml
+
+# 禁用颜色（适合脚本）
+sisyphus-api-engine --no-color --cases my_first_test.yaml
+
+# 禁用 Emoji
+sisyphus-api-engine --no-emoji --cases my_first_test.yaml
+
+# 详细输出（显示每个步骤的详细信息）
 sisyphus-api-engine --cases my_first_test.yaml -v
 
 # 运行多个测试文件
