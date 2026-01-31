@@ -178,6 +178,150 @@ steps:
         expect: "httpbin.org"
         description: "验证URL包含httpbin.org"
 
+  # ----------------------------------------------------------------------------
+  # 步骤7: Regex提取器 - 新语法（pattern/group）
+  # 用途：演示 Regex 提取器使用语义化的 pattern 和 group 字段
+  # 增强功能：支持 pattern/group 作为 path/index 的别名
+  # ----------------------------------------------------------------------------
+  - name: "Regex提取器新语法"
+    description: "使用 pattern 和 group 字段（推荐用法）"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      userId: 101809
+      userName: "testuser"
+      email: "test@example.com"
+    extractors:
+      # 新语法：使用 pattern 和 group 字段（更语义化）
+      - name: extracted_user_id
+        type: regex
+        pattern: '"userId":\s*(\d+)'
+        group: 1
+        description: "使用 pattern/group 提取 userId"
+      # 旧语法：使用 path 和 index 字段（向后兼容）
+      - name: extracted_username
+        type: regex
+        path: '"userName":\s*"([^"]+)"'
+        index: 1
+        description: "使用 path/index 提取 userName（兼容旧语法）"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤8: 验证 Regex 提取的变量
+  # 用途：验证新语法提取的变量可以正常使用
+  # ----------------------------------------------------------------------------
+  - name: "验证Regex提取的变量"
+    description: "验证使用 pattern/group 提取的变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      userId: "${extracted_user_id}"
+      userName: "${extracted_username}"
+      expectedUserId: "101809"
+      expectedUsername: "testuser"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.userId"
+        expect: "101809"
+        description: "验证提取的 userId"
+      - type: eq
+        path: "$.json.userName"
+        expect: "testuser"
+        description: "验证提取的 userName"
+
+  # ----------------------------------------------------------------------------
+  # 步骤9: 多提取器同时工作
+  # 用途：验证多个提取器配置都能正确执行（Bug修复验证）
+  # 修复问题：之前只有最后一个提取器生效
+  # ----------------------------------------------------------------------------
+  - name: "多提取器同时工作"
+    description: "验证多个提取器都能正确执行"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-Custom-Header: "CustomValue123"
+    body:
+      orderId: "ORD-2024-001"
+      amount: 999.99
+      userId: 101809
+    extractors:
+      # 提取器1: JSONPath 提取 orderId
+      - name: extract_order_id
+        type: jsonpath
+        path: "$.body.json.orderId"
+        description: "提取订单ID"
+      # 提取器2: Regex 提取 amount
+      - name: extract_amount
+        type: regex
+        pattern: '"amount":\s*([\d.]+)'
+        group: 1
+        description: "提取金额"
+      # 提取器3: JSONPath 提取 userId
+      - name: extract_user_id
+        type: jsonpath
+        path: "$.body.json.userId"
+        description: "提取用户ID"
+      # 提取器4: Header 提取
+      - name: extract_custom_header
+        type: header
+        path: "X-Custom-Header"
+        description: "提取自定义响应头"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 步骤10: 验证所有提取器都工作正常
+  # 用途：验证多个提取器提取的变量都可用
+  # ----------------------------------------------------------------------------
+  - name: "验证所有提取器结果"
+    description: "验证所有提取器提取的变量都正确"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      orderId: "${extract_order_id}"
+      amount: "${extract_amount}"
+      userId: "${extract_user_id}"
+      customHeader: "${extract_custom_header}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.orderId"
+        expect: "ORD-2024-001"
+        description: "验证提取的 orderId"
+      - type: eq
+        path: "$.json.amount"
+        expect: "999.99"
+        description: "验证提取的 amount"
+      - type: eq
+        path: "$.json.userId"
+        expect: "101809"
+        description: "验证提取的 userId"
+      - type: eq
+        path: "$.json.customHeader"
+        expect: "CustomValue123"
+        description: "验证提取的自定义头"
+
 # ============================================================================
 # 标签
 # ============================================================================
@@ -185,5 +329,7 @@ tags:
   - "基础"
   - "提取器"
   - "变量"
+  - "regex"
+  - "多提取器"
 
 enabled: true
