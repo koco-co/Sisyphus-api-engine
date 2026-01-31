@@ -42,7 +42,7 @@
 - **全方法支持** - GET、POST、PUT、DELETE、PATCH、HEAD、OPTIONS
 - **请求定制** - 自定义 headers、params、body、cookies
 - **响应验证** - 状态码、响应体、响应头验证
-- **变量提取** - JSONPath、正则表达式、Header、Cookie 提取
+- **变量提取** - JSONPath（支持 20+ 增强函数）、正则表达式、Header、Cookie 提取
 
 ### 🗄️ 数据库集成
 
@@ -99,7 +99,7 @@ pip install Sisyphus-api-engine
 sisyphus-api-engine --help
 
 # 验证 YAML 文件语法
-sisyphus-api-validate examples/22_最佳实践.yaml
+sisyphus-api-validate examples/24_最佳实践.yaml
 
 # 验证多个文件
 sisyphus-api-validate test1.yaml test2.yaml test3.yaml
@@ -108,7 +108,7 @@ sisyphus-api-validate test1.yaml test2.yaml test3.yaml
 sisyphus-api-validate tests/
 
 # 运行示例测试
-sisyphus-api-engine --cases examples/22_最佳实践.yaml
+sisyphus-api-engine --cases examples/24_最佳实践.yaml
 ```
 
 ---
@@ -260,33 +260,34 @@ steps: []                     # 必填：测试步骤列表
 - **[06_环境配置切换.yaml](examples/06_环境配置切换.yaml)** - 多环境配置（方式一：在用例内定义）
 - **[07_使用全局配置.yaml](examples/07_使用全局配置.yaml)** - 全局配置复用（方式二：!include引入）
 
-### ⭐⭐ 中级 (8-13)
+### ⭐⭐ 中级 (8-14)
 
 - **[08_输出格式配置.yaml](examples/08_输出格式配置.yaml)** - 多种输出格式（JSON/CSV/HTML/JUnit）
 - **[09_变量提取器.yaml](examples/09_变量提取器.yaml)** - 从响应中提取变量（JSONPath/正则/Header等）
 - **[10_高级断言验证.yaml](examples/10_高级断言验证.yaml)** - 复杂验证逻辑（逻辑运算符/嵌套验证）
-- **[11_步骤控制.yaml](examples/11_步骤控制.yaml)** - 条件执行、跳过、依赖关系
-- **[12_重试机制.yaml](examples/12_重试机制.yaml)** - 失败重试策略（固定/指数退避）
-- **[13_等待机制.yaml](examples/13_等待机制.yaml)** - 等待条件满足（固定延迟/条件等待）
+- **[11_JSONPath函数演示.yaml](examples/11_JSONPath函数演示.yaml)** - JSONPath增强函数（length/sum/sort/unique等20+函数）
+- **[12_步骤控制.yaml](examples/12_步骤控制.yaml)** - 条件执行、跳过、依赖关系
+- **[13_重试机制.yaml](examples/13_重试机制.yaml)** - 失败重试策略（固定/指数退避）
+- **[14_等待机制.yaml](examples/14_等待机制.yaml)** - 等待条件满足（固定延迟/条件等待）
 
-### ⭐⭐⭐ 进阶级 (14-17)
+### ⭐⭐⭐ 进阶级 (15-18)
 
-- **[14_循环控制.yaml](examples/14_循环控制.yaml)** - 循环执行（for/while循环）
-- **[15_并发执行.yaml](examples/15_并发执行.yaml)** - 并发测试（并发请求）
-- **[16_数据驱动测试.yaml](examples/16_数据驱动测试.yaml)** - 数据驱动（CSV/JSON/数据库）
-- **[17_脚本执行.yaml](examples/17_脚本执行.yaml)** - 自定义脚本（Python/JavaScript）
+- **[15_循环控制.yaml](examples/15_循环控制.yaml)** - 循环执行（for/while循环）
+- **[16_并发执行.yaml](examples/16_并发执行.yaml)** - 并发测试（并发请求）
+- **[17_数据驱动测试.yaml](examples/17_数据驱动测试.yaml)** - 数据驱动（CSV/JSON/数据库）
+- **[18_脚本执行.yaml](examples/18_脚本执行.yaml)** - 自定义脚本（Python/JavaScript）
 
-### ⭐⭐⭐⭐ 高级 (18-21)
+### ⭐⭐⭐⭐ 高级 (19-22)
 
-- **[18_完整流程测试.yaml](examples/18_完整流程测试.yaml)** - 完整业务流程测试
-- **[19_Mock服务器测试.yaml](examples/19_Mock服务器测试.yaml)** - Mock服务测试
-- **[20_WebSocket实时推送.yaml](examples/20_WebSocket实时推送.yaml)** - WebSocket实时推送
-- **[21_性能测试.yaml](examples/21_性能测试.yaml)** - 性能测试与压测
+- **[19_完整流程测试.yaml](examples/19_完整流程测试.yaml)** - 完整业务流程测试
+- **[20_Mock服务器测试.yaml](examples/20_Mock服务器测试.yaml)** - Mock服务测试
+- **[21_WebSocket实时推送.yaml](examples/21_WebSocket实时推送.yaml)** - WebSocket实时推送
+- **[22_性能测试.yaml](examples/22_性能测试.yaml)** - 性能测试与压测
 
-### ⭐⭐⭐⭐⭐ 专家级 (22-23)
+### ⭐⭐⭐⭐⭐ 专家级 (23-24)
 
-- **[22_数据库操作.yaml](examples/22_数据库操作.yaml)** - 数据库操作（MySQL/PostgreSQL/SQLite）
-- **[23_最佳实践.yaml](examples/23_最佳实践.yaml)** - 综合最佳实践示例
+- **[23_数据库操作.yaml](examples/23_数据库操作.yaml)** - 数据库操作（MySQL/PostgreSQL/SQLite）
+- **[24_最佳实践.yaml](examples/24_最佳实践.yaml)** - 综合最佳实践示例
 
 ---
 
@@ -404,24 +405,26 @@ done
 2. 学习 `02_请求参数配置.yaml` 掌握请求定制
 3. 通过 `03_变量基础语法.yaml` 学习变量系统
 4. 实践 `04_内置模板函数.yaml` 掌握模板函数
-5. 进阶 `05_变量提取器.yaml` 学习数据提取
-6. 掌握 `06_基础断言验证.yaml` 理解验证机制
-7. 精通 `07_高级断言验证.yaml` 掌握复杂验证
-8. 学习 `08_环境配置切换.yaml` 理解多环境管理
-9. 实践 `09_重试机制.yaml` 掌握重试策略
-10. 学习 `10_步骤控制.yaml` 理解流程控制
-11. 实践 `11_等待机制.yaml` 掌握异步处理
-12. 学习 `12_循环控制.yaml` 掌握循环逻辑
-13. 实践 `13_并发执行.yaml` 理解并发测试
-14. 学习 `14_数据驱动测试.yaml` 掌握数据驱动
-15. 实践 `15_数据库操作.yaml` 掌握数据库集成
-16. 学习 `16_脚本执行.yaml` 理解脚本扩展
-17. 通过 `17_完整流程测试.yaml` 综合运用所学
-18. 学习 `18_输出格式配置.yaml` 掌握结果导出
-19. 实践 `19_Mock服务器测试.yaml` 理解 Mock 服务
-20. 学习 `20_WebSocket实时推送.yaml` 掌握实时推送
-21. 通过 `21_性能测试.yaml` 理解性能测试
-22. 最后学习 `22_最佳实践.yaml` 掌握生产级实践
+5. 进阶 `05_基础断言验证.yaml` 理解验证机制
+6. 掌握 `06_环境配置切换.yaml` 理解多环境管理
+7. 精通 `07_使用全局配置.yaml` 掌握配置复用
+8. 学习 `08_输出格式配置.yaml` 掌握结果导出
+9. 实践 `09_变量提取器.yaml` 学习数据提取
+10. 进阶 `10_高级断言验证.yaml` 掌握复杂验证
+11. 学习 `11_JSONPath函数演示.yaml` 掌握 JSONPath 增强函数
+12. 实践 `12_步骤控制.yaml` 理解流程控制
+13. 学习 `13_重试机制.yaml` 掌握重试策略
+14. 实践 `14_等待机制.yaml` 掌握异步处理
+15. 学习 `15_循环控制.yaml` 掌握循环逻辑
+16. 实践 `16_并发执行.yaml` 理解并发测试
+17. 学习 `17_数据驱动测试.yaml` 掌握数据驱动
+18. 实践 `18_脚本执行.yaml` 理解脚本扩展
+19. 通过 `19_完整流程测试.yaml` 综合运用所学
+20. 学习 `20_Mock服务器测试.yaml` 理解 Mock 服务
+21. 实践 `21_WebSocket实时推送.yaml` 掌握实时推送
+22. 学习 `22_性能测试.yaml` 理解性能测试
+23. 实践 `23_数据库操作.yaml` 掌握数据库集成
+24. 最后学习 `24_最佳实践.yaml` 掌握生产级实践
 
 </details>
 
@@ -484,6 +487,35 @@ config:
 | `type` | 类型检查 | `- type: ["$.count", "number"]` |
 
 更多验证器请参考[输入协议规范](docs/API-Engine输入协议规范.md)。
+
+### JSONPath 增强函数
+
+Sisyphus API Engine 支持 20+ 种 JSONPath 增强函数，包括：
+
+- **数组操作**: `length()`, `first()`, `last()`, `reverse()`, `sort()`, `unique()`, `flatten()`
+- **数值计算**: `sum()`, `avg()`, `min()`, `max()`
+- **字符串处理**: `upper()`, `lower()`, `trim()`, `split()`, `join()`
+- **检查函数**: `contains()`, `starts_with()`, `ends_with()`, `matches()`, `is_empty()`, `is_null()`
+- **对象操作**: `keys()`, `values()`
+
+**函数链式调用示例**：
+
+```yaml
+validations:
+  # 链式调用：去重后计数
+  - type: eq
+    path: "$.data.unique().length()"
+    expect: 5
+
+  # 排序后取最小值
+  - type: eq
+    path: "$.numbers.sort().first()"
+    expect: 1
+```
+
+详细文档请参考：
+- **[输入协议规范 - JSONPath 函数](docs/API-Engine输入协议规范.md#53-jsonpath-增强)**
+- **[11_JSONPath函数演示.yaml](examples/11_JSONPath函数演示.yaml)**
 
 ---
 
@@ -688,6 +720,7 @@ config:
 - ✨ 完整的请求定制（headers/params/body/cookies）
 - ✨ 17 种验证器（eq/ne/gt/lt/contains/regex/type/len_eq 等）
 - ✨ 4 种变量提取器（JSONPath/正则/Header/Cookie）
+- ✨ JSONPath 增强：支持 20+ 函数（length/sum/sort/unique 等）和链式调用
 - ✨ 增强的重试机制（固定/指数退避/线性策略）
 
 #### 数据库集成
@@ -715,7 +748,7 @@ config:
 #### 质量保证
 - ✨ 510+ 单元测试，100% 通过
 - ✨ 完整的集成测试覆盖
-- ✨ 22 个示例测试用例
+- ✨ 24 个示例测试用例
 - ✨ 详细的文档和最佳实践
 
 #### 代码规范
