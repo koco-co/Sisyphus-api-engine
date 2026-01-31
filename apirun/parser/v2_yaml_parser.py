@@ -203,6 +203,9 @@ class V2YamlParser:
         if variables:
             from apirun.core.variable_manager import VariableManager
             vm = VariableManager()
+            # 首先设置原始变量（未渲染的）到变量管理器，支持嵌套引用
+            vm.global_vars = variables.copy()
+
             rendered_variables = {}
             for key, value in variables.items():
                 if isinstance(value, str):
@@ -216,6 +219,9 @@ class V2YamlParser:
                         rendered_variables[key] = json.loads(rendered_str)
                     except:
                         rendered_variables[key] = value
+
+            # 更新变量管理器中的变量为渲染后的值
+            vm.global_vars = rendered_variables
             variables = rendered_variables
 
         # Parse other config options

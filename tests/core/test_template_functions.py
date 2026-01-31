@@ -79,6 +79,32 @@ class TestTemplateFunctions:
         # Should be recent timestamp in milliseconds
         assert 1577836800000 <= value <= 4102444800000
 
+    def test_timestamp_us_function(self):
+        """Test timestamp_us() function generates microsecond timestamp."""
+        result = self.vm.render_string("${timestamp_us()}")
+        assert result.isdigit()
+        value = int(result)
+        # Should be recent timestamp in microseconds (16+ digits)
+        assert value > 1_000_000_000_000_000
+        # Should be 16 digits
+        assert len(result) >= 16
+
+    def test_now_us_function(self):
+        """Test now_us() function generates formatted microsecond timestamp."""
+        result = self.vm.render_string("${now_us()}")
+        # Should be exactly 20 digits (YYYYMMDDHHMMSSffffffff)
+        assert len(result) == 20
+        assert result.isdigit()
+        # Should start with current year (202x)
+        assert result.startswith("20")
+
+    def test_now_with_microseconds(self):
+        """Test now().strftime('%f') supports microsecond precision."""
+        result = self.vm.render_string("${now().strftime('%Y%m%d%H%M%S%f')}")
+        # Length: 14 (YYYYMMDDHHMMSS) + 6 (microseconds) = 20
+        assert len(result) == 20
+        assert result.isdigit()
+
     def test_date_function_default_format(self):
         """Test date() function with default format."""
         result = self.vm.render_string("${date()}")

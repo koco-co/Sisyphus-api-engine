@@ -51,9 +51,10 @@ config:
     current_env: "development"
 
     # ✨ 新功能 v1.0.2+: 变量嵌套引用
-    # 定义包含其他变量引用的变量
+    # 定义包含其他变量引用的变量（注意：只能在同级variables中相互引用）
     api_prefix: "/api"
-    api_path: "${api_prefix}/${config.profiles.dev.api_version}"
+    api_version: "v1"
+    api_path: "${api_prefix}/${api_version}"
     # 多级嵌套引用
     full_api_path: "${api_path}/users"
 

@@ -437,3 +437,77 @@ class TestEdgeCases:
         """Test contains comparator with tuple."""
         result = Comparators.contains((1, 2, 3), 2)
         assert result is True
+
+
+class TestStringPrefixSuffixComparators:
+    """Tests for string prefix/suffix comparators (starts_with, ends_with)."""
+
+    def test_starts_with_positive(self):
+        """Test starts_with comparator with matching prefix."""
+        result = Comparators.starts_with("hello world", "hello")
+        assert result is True
+
+    def test_starts_with_negative(self):
+        """Test starts_with comparator with non-matching prefix."""
+        result = Comparators.starts_with("hello world", "world")
+        assert result is False
+
+    def test_starts_with_empty_prefix(self):
+        """Test starts_with comparator with empty prefix."""
+        result = Comparators.starts_with("hello world", "")
+        assert result is True
+
+    def test_starts_with_none_actual(self):
+        """Test starts_with comparator with None actual value."""
+        result = Comparators.starts_with(None, "prefix")
+        assert result is False
+
+    def test_starts_with_none_both(self):
+        """Test starts_with comparator with None values."""
+        result = Comparators.starts_with(None, None)
+        assert result is True
+
+    def test_starts_with_numeric_conversion(self):
+        """Test starts_with comparator with numeric values."""
+        result = Comparators.starts_with(12345, "12")
+        assert result is True
+
+    def test_ends_with_positive(self):
+        """Test ends_with comparator with matching suffix."""
+        result = Comparators.ends_with("hello world", "world")
+        assert result is True
+
+    def test_ends_with_negative(self):
+        """Test ends_with comparator with non-matching suffix."""
+        result = Comparators.ends_with("hello world", "hello")
+        assert result is False
+
+    def test_ends_with_empty_suffix(self):
+        """Test ends_with comparator with empty suffix."""
+        result = Comparators.ends_with("hello world", "")
+        assert result is True
+
+    def test_ends_with_none_actual(self):
+        """Test ends_with comparator with None actual value."""
+        result = Comparators.ends_with(None, "suffix")
+        assert result is False
+
+    def test_ends_with_none_both(self):
+        """Test ends_with comparator with None values."""
+        result = Comparators.ends_with(None, None)
+        assert result is True
+
+    def test_ends_with_numeric_conversion(self):
+        """Test ends_with comparator with numeric values."""
+        result = Comparators.ends_with(12345, "45")
+        assert result is True
+
+    def test_starts_with_full_string(self):
+        """Test starts_with comparator with full string match."""
+        result = Comparators.starts_with("test", "test")
+        assert result is True
+
+    def test_ends_with_full_string(self):
+        """Test ends_with comparator with full string match."""
+        result = Comparators.ends_with("test", "test")
+        assert result is True

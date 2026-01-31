@@ -431,6 +431,40 @@ class Comparators:
         except (ValueError, TypeError) as e:
             raise ComparatorError(f"Cannot compare values: {e}")
 
+    @staticmethod
+    def starts_with(actual: Any, expected: Any) -> bool:
+        """Check if actual string starts with expected prefix.
+
+        Args:
+            actual: Actual value (will be converted to string)
+            expected: Expected prefix
+
+        Returns:
+            True if actual starts with expected, False otherwise
+        """
+        if actual is None:
+            return expected is None or expected == ""
+        actual_str = str(actual)
+        expected_str = str(expected) if expected is not None else ""
+        return actual_str.startswith(expected_str)
+
+    @staticmethod
+    def ends_with(actual: Any, expected: Any) -> bool:
+        """Check if actual string ends with expected suffix.
+
+        Args:
+            actual: Actual value (will be converted to string)
+            expected: Expected suffix
+
+        Returns:
+            True if actual ends with expected, False otherwise
+        """
+        if actual is None:
+            return expected is None or expected == ""
+        actual_str = str(actual)
+        expected_str = str(expected) if expected is not None else ""
+        return actual_str.endswith(expected_str)
+
 
 # Get comparator function by name
 def get_comparator(name: str):
@@ -445,7 +479,25 @@ def get_comparator(name: str):
     Raises:
         ComparatorError: If comparator not found
     """
-    comparator_func = getattr(Comparators, name, None)
+    # 别名映射，支持多种命名方式
+    aliases = {
+        "startswith": "starts_with",
+        "endswith": "ends_with",
+        "len_eq": "length_eq",
+        "len_gt": "length_gt",
+        "len_lt": "length_lt",
+        "length_eq": "length_eq",
+        "length_gt": "length_gt",
+        "length_lt": "length_lt",
+        "is_empty": "is_empty",
+        "is_null": "is_null",
+        "not_empty": "not_empty",
+    }
+
+    # 查找别名对应的标准名称
+    standard_name = aliases.get(name, name)
+
+    comparator_func = getattr(Comparators, standard_name, None)
     if comparator_func is None:
         raise ComparatorError(f"Unknown comparator: {name}")
     return comparator_func
