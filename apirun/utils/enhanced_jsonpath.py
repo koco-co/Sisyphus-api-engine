@@ -2,6 +2,31 @@
 
 This module extends JSONPath with function call support.
 Following Google Python Style Guide.
+
+IMPORTANT - Extractor vs Validator Path Differences:
+When using JSONPath in test cases, be aware that extractors and validators
+use different data sources, requiring different path formats:
+
+- Validators (validations): Use response.body as data source
+  Path format: $.json.* (no 'body.' prefix needed)
+  Example: $.json.username
+
+- Extractors (extractors): Use full response as data source
+  Path format: $.body.json.* (must include 'body.' prefix)
+  Example: $.body.json.username
+
+Response structure reference:
+{
+  "status_code": 200,
+  "headers": {...},
+  "body": {
+    "json": {          # Parsed JSON data
+      "username": "...",
+      "token": "..."
+    },
+    ...
+  }
+}
 """
 
 import re

@@ -406,6 +406,58 @@ validations:
 | `$.data.users[?id=1].name` | 过滤表达式 |
 | `$..name` | 递归查找 |
 
+#### 5.3.1.1 重要：提取器与验证器的路径差异
+
+在编写 JSONPath 表达式时，**提取器（extractors）**和**验证器（validations）**使用不同的数据源，因此路径写法不同：
+
+**数据源差异**：
+
+| 组件 | 数据源 | 路径格式 | 说明 |
+|------|--------|----------|------|
+| **验证器** | `response.body` | `$.json.*` | 自动从响应体中提取，无需 `body.` 前缀 |
+| **提取器** | `response`（完整） | `$.body.json.*` | 需要从完整响应中提取，必须加 `body.` 前缀 |
+
+**响应结构参考**：
+```json
+{
+  "status_code": 200,
+  "headers": {...},
+  "body": {
+    "args": {},
+    "data": "...",
+    "json": {          // 请求/响应的 JSON 数据
+      "username": "...",
+      "token": "..."
+    },
+    "method": "POST",
+    "origin": "...",
+    "url": "..."
+  }
+}
+```
+
+**实际示例**：
+
+```yaml
+# 验证器：使用 $.json.*
+validations:
+  - type: eq
+    path: "$.json.username"
+    expect: "admin"
+    description: "验证用户名"
+
+# 提取器：使用 $.body.json.*
+extractors:
+  - name: "user_name"
+    path: "$.body.json.username"    # 注意：必须加 body. 前缀
+    description: "提取用户名"
+```
+
+**常见错误**：
+- ❌ 提取器中使用 `$.json.username` → 无法提取
+- ✅ 提取器应使用 `$.body.json.username` → 正确提取
+- ✅ 验证器使用 `$.json.username` → 正确验证
+
 #### 5.3.2 增强函数支持
 
 Sisyphus API Engine 支持在 JSONPath 表达式中使用函数，实现更强大的数据提取和验证能力。
@@ -480,7 +532,7 @@ validations:
 ```yaml
 extractors:
   - name: "user_count"
-    path: "$.users.length()"
+    path: "$.body.users.length()"    # 提取器需要 body. 前缀
 ```
 
 **字符串处理验证**
@@ -510,9 +562,9 @@ validations:
 ```yaml
 extractors:
   - name: "access_token"      # 变量名
-    path: "$.data.token"      # JSONPath表达式
+    path: "$.body.data.token"      # JSONPath表达式（提取器需要 body. 前缀）
   - name: "user_id"
-    path: "$.data.user.id"
+    path: "$.body.data.user.id"
 ```
 
 ### 6.2 步骤控制
