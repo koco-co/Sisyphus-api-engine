@@ -449,11 +449,11 @@ class StepExecutor(ABC):
                     else:
                         data_source = result.response
                 elif extractor_def.type == "header":
-                    # header extractor works on headers
-                    data_source = result.response.get("headers", result.response) if isinstance(result.response, dict) else result.response
+                    # header extractor works on full response (extracts headers internally)
+                    data_source = result.response
                 elif extractor_def.type == "cookie":
-                    # cookie extractor works on cookies
-                    data_source = result.response.get("cookies", result.response) if isinstance(result.response, dict) else result.response
+                    # cookie extractor works on full response (extracts cookies internally)
+                    data_source = result.response
                 else:
                     # Other extractors use full response
                     data_source = result.response

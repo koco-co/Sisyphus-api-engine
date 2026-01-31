@@ -277,3 +277,117 @@ class TestValidationEngine:
         results = engine.validate(rules, data)
 
         assert results[0]["description"] == description
+
+
+class TestValidationEngineWildcardExtraction:
+    """Tests for wildcard extraction in validation - Bug fix verification."""
+
+    def test_validate_contains_with_wildcard_path(self):
+        """Test contains validation with wildcard path - 用户报告的场景修复.
+
+        验证修复：Contains 验证器现在能正确处理通配符路径
+        Bug: 使用 index=0 只提取第一个匹配，导致 contains 验证失败
+        Fix: 检测通配符 [*] 或 ..，使用 index=-1 提取所有匹配
+        """
+        engine = ValidationEngine()
+        # 用户报告的真实场景：items 数组包含多个元素
+        data = {
+            "items": [
+                {"paramName": "value1", "value": "test1"},
+                {"paramName": "test_param_xxx", "value": "test2"},
+                {"paramName": "value3", "value": "test3"}
+            ]
+        }
+
+        # 使用通配符路径提取所有 paramName 值
+        rules = [
+            {
+                "type": "contains",
+                "path": "$.items[*].paramName",
+                "expect": "test_param_xxx",
+                "description": "验证 paramName 数组包含目标值（通配符路径）"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        # 验证：应提取到所有 paramName 值：["value1", "test_param_xxx", "value3"]
+        # contains 验证应成功
+        assert results[0]["passed"] is True
+        assert results[0]["actual"] == ["value1", "test_param_xxx", "value3"]
+
+    def test_validate_contains_with_recursive_wildcard(self):
+        """Test contains validation with recursive wildcard ..."""
+        engine = ValidationEngine()
+        data = {
+            "level1": {
+                "level2": {
+                    "items": ["apple", "banana", "test_param_xxx"]
+                }
+            }
+        }
+
+        rules = [
+            {
+                "type": "contains",
+                "path": "$..items",
+                "expect": ["apple", "banana", "test_param_xxx"],  # 期望值是整个 items 数组
+                "description": "验证递归通配符提取包含目标数组"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        # 递归通配符会提取到嵌套的数组：[["apple", "banana", "test_param_xxx"]]
+        # contains 检查外层数组是否包含 items 数组
+        assert results[0]["passed"] is True
+        # 验证提取到的数据结构
+        assert results[0]["actual"] == [["apple", "banana", "test_param_xxx"]]
+
+    def test_validate_not_contains_with_wildcard_path(self):
+        """Test not_contains validation with wildcard path."""
+        engine = ValidationEngine()
+        data = {
+            "items": [
+                {"name": "apple", "count": 5},
+                {"name": "banana", "count": 3},
+                {"name": "orange", "count": 7}
+            ]
+        }
+
+        rules = [
+            {
+                "type": "not_contains",
+                "path": "$.items[*].name",
+                "expect": "grape",
+                "description": "验证数组不包含某个值"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert results[0]["passed"] is True
+
+    def test_validate_contains_without_wildcard_uses_index_zero(self):
+        """Test contains validation without wildcard uses default index=0.
+
+        验证：非通配符路径仍然使用 index=0（默认行为）
+        """
+        engine = ValidationEngine()
+        data = {
+            "user": {
+                "name": "Alice",
+                "roles": ["admin", "user"]
+            }
+        }
+
+        # 简单路径，不使用通配符
+        rules = [
+            {
+                "type": "contains",
+                "path": "$.user.name",
+                "expect": "Ali",
+                "description": "验证字符串包含（简单路径）"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert results[0]["passed"] is True
+        assert results[0]["actual"] == "Alice"

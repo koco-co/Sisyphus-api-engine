@@ -7,7 +7,7 @@ Following Google Python Style Guide.
 import pytest
 from datetime import datetime
 from apirun.executor.step_executor import StepExecutor
-from apirun.core.models import TestStep, StepResult, ErrorCategory
+from apirun.core.models import TestStep, StepResult, ErrorCategory, Extractor
 from apirun.core.variable_manager import VariableManager
 
 
@@ -368,3 +368,187 @@ class TestStepExecutorWithRetry:
 
         assert executor.retry_manager is not None
         assert executor.retry_manager.policy.max_attempts == 2
+
+
+class TestStepExecutorExtraction:
+    """Tests for variable extraction - Bug fix verification for JSONPath Extractor."""
+
+    def test_extract_variables_from_response_body_new_style(self):
+        """Test extraction with new-style path - 用户报告的场景修复.
+
+        验证修复：JSONPath Extractor 现在能自动从 response["body"] 提取数据
+        Bug: Extractor 使用 response 对象而不是 response["body"]，导致提取失败
+        Fix: 检测 extractor 类型，对 jsonpath/regex 自动使用 response["body"]
+
+        Response 结构: {"status_code": 200, "body": {...}}
+        """
+        var_manager = VariableManager()
+        step = TestStep(
+            name="test_step",
+            type="request",
+            extractors=[
+                # 新风格：不使用 $.body. 前缀，自动从 body 提取
+                Extractor(name="code", type="jsonpath", path="$.json.code"),
+                Extractor(name="total", type="jsonpath", path="$.json.data.total"),
+                Extractor(name="first_id", type="jsonpath", path="$.json.data.data[0].id"),
+            ]
+        )
+
+        executor = MockStepExecutor(var_manager, step)
+
+        # 模拟真实 API 响应结构（httpbin 风格）
+        mock_response = {
+            "status_code": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "json": {
+                    "code": "SUCCESS",
+                    "data": {
+                        "total": 3,
+                        "data": [
+                            {"id": 100, "name": "first"},
+                            {"id": 200, "name": "second"},
+                            {"id": 300, "name": "third"}
+                        ]
+                    }
+                }
+            }
+        }
+
+        # 创建 StepResult 并设置 response
+        result = StepResult(
+            name="test_step",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+        )
+        result.response = mock_response
+
+        # 执行变量提取
+        executor._extract_variables(result)
+
+        # 验证提取的变量值
+        assert var_manager.get_variable("code") == "SUCCESS"
+        assert var_manager.get_variable("total") == 3
+        assert var_manager.get_variable("first_id") == 100
+
+    def test_extract_variables_backward_compatible_old_style(self):
+        """Test extraction with old-style path $.body.xxx - 向后兼容性验证.
+
+        验证：旧的 $.body.xxx 语法仍然工作
+        """
+        var_manager = VariableManager()
+        step = TestStep(
+            name="test_step",
+            type="request",
+            extractors=[
+                # 旧风格：显式使用 $.body.
+                Extractor(name="code", type="jsonpath", path="$.body.json.code"),
+            ]
+        )
+
+        executor = MockStepExecutor(var_manager, step)
+
+        mock_response = {
+            "status_code": 200,
+            "body": {
+                "json": {
+                    "code": "SUCCESS",
+                    "message": "OK"
+                }
+            }
+        }
+
+        result = StepResult(
+            name="test_step",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+        )
+        result.response = mock_response
+
+        executor._extract_variables(result)
+
+        # 旧风格应继续工作
+        assert var_manager.get_variable("code") == "SUCCESS"
+
+    def test_extract_variables_header_extractor(self):
+        """Test header extractor uses headers not body."""
+        var_manager = VariableManager()
+        step = TestStep(
+            name="test_step",
+            type="request",
+            extractors=[
+                Extractor(name="content_type", type="header", path="Content-Type"),
+            ]
+        )
+
+        executor = MockStepExecutor(var_manager, step)
+
+        mock_response = {
+            "status_code": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": {"json": {"code": "SUCCESS"}}
+        }
+
+        result = StepResult(
+            name="test_step",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+        )
+        result.response = mock_response
+
+        executor._extract_variables(result)
+
+        # Header extractor 应从 headers 提取，不是 body
+        assert var_manager.get_variable("content_type") == "application/json"
+
+    def test_extract_variables_nested_array_index(self):
+        """Test extraction from nested array with index - 用户报告的场景.
+
+        验证：$.data.data[1].id 能正确提取嵌套数组元素
+        """
+        var_manager = VariableManager()
+        step = TestStep(
+            name="test_step",
+            type="request",
+            extractors=[
+                # 新风格：直接从 body.json 开始
+                Extractor(name="second_id", type="jsonpath", path="$.json.data.data[1].id"),
+                Extractor(name="third_name", type="jsonpath", path="$.json.data.data[2].name"),
+            ]
+        )
+
+        executor = MockStepExecutor(var_manager, step)
+
+        mock_response = {
+            "status_code": 200,
+            "body": {
+                "json": {
+                    "code": "SUCCESS",
+                    "data": {
+                        "data": [
+                            {"id": 100, "name": "first"},
+                            {"id": 200, "name": "second"},
+                            {"id": 300, "name": "third"}
+                        ],
+                        "total": 3
+                    }
+                }
+            }
+        }
+
+        result = StepResult(
+            name="test_step",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+        )
+        result.response = mock_response
+
+        executor._extract_variables(result)
+
+        # 验证嵌套数组索引提取
+        assert var_manager.get_variable("second_id") == 200
+        assert var_manager.get_variable("third_name") == "third"
