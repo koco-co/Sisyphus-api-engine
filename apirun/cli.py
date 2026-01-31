@@ -380,6 +380,13 @@ def main() -> int:
                 print("-" * 60)
 
             try:
+                # 批量运行时，只在第一个测试用例执行前清理 Allure 目录
+                # 当批量运行多个测试用例时，后续用例应该追加结果而不是清理
+                current_allure_clean = args.allure_clean and (i == 1)
+
+                # 批量运行时，静默生成 Allure 报告，最后统一输出提示信息
+                current_allure_silent = len(yaml_files) > 1
+
                 result = execute_test_case(
                     str(yaml_file),
                     args.verbose,
@@ -394,7 +401,8 @@ def main() -> int:
                     args.format,
                     args.allure,
                     args.allure_dir,
-                    args.allure_clean,
+                    current_allure_clean,
+                    current_allure_silent,
                     lang=args.lang,
                     use_color=not args.no_color,
                     use_emoji=not args.no_emoji,
@@ -416,14 +424,19 @@ def main() -> int:
 
         # Print overall summary if multiple files
         if len(yaml_files) > 1:
-            print(f"\n{'=' * 60}")
-            print("OVERALL SUMMARY")
-            print(f"{'=' * 60}")
-            print(f"Total Test Cases: {len(yaml_files)}")
-            print(f"Passed: {total_passed} ✓")
-            print(f"Failed: {total_failed} ✗")
-            print(f"Pass Rate: {(total_passed / len(yaml_files) * 100):.1f}%")
-            print(f"{'=' * 60}")
+            # 使用 formatter 输出总体概览
+            formatter.print_overall_summary(
+                total_tests=len(yaml_files),
+                passed_tests=total_passed,
+                failed_tests=total_failed
+            )
+
+            # 如果启用了 Allure，统一输出提示信息
+            if args.allure:
+                print(f"\n✓ Allure 报告数据已生成")
+                print(f"  结果目录: {args.allure_dir}")
+                print(f"  查看报告: allure serve {args.allure_dir}")
+                print(f"  或生成 HTML: allure generate {args.allure_dir} --clean -o allure-report")
 
             # Return non-zero if any test failed
             return 0 if total_failed == 0 else 1
@@ -872,6 +885,7 @@ def execute_test_case(
     allure: bool = False,
     allure_dir: str = "allure-results",
     allure_clean: bool = True,
+    allure_silent: bool = False,
     lang: str = "zh",
     use_color: bool = True,
     use_emoji: bool = True,
@@ -893,6 +907,7 @@ def execute_test_case(
         allure: Generate Allure report (overrides YAML config)
         allure_dir: Allure results directory (overrides YAML config)
         allure_clean: Clean Allure results before generating (default: True)
+        allure_silent: Suppress Allure output messages (default: False)
 
     Returns:
         Execution result as dictionary
@@ -1009,7 +1024,7 @@ def execute_test_case(
 
     # Generate Allure report if enabled
     if allure_enabled:
-        _generate_allure_report(test_case, result, allure_output_dir, allure_clean)
+        _generate_allure_report(test_case, result, allure_output_dir, allure_clean, silent=allure_silent)
 
     return result
 
@@ -1402,7 +1417,7 @@ def save_result(result: dict, output_path: str, report_lang: str = "en") -> None
             json.dump(result, f, indent=2, ensure_ascii=False)
 
 
-def _generate_allure_report(test_case, result: dict, allure_dir: str, clean: bool = True):
+def _generate_allure_report(test_case, result: dict, allure_dir: str, clean: bool = True, silent: bool = False):
     """Generate Allure report from test result.
 
     Args:
@@ -1410,6 +1425,7 @@ def _generate_allure_report(test_case, result: dict, allure_dir: str, clean: boo
         result: Test execution result dictionary
         allure_dir: Allure results directory
         clean: Whether to clean directory before generating (default: True)
+        silent: Whether to suppress output messages (default: False)
     """
     import shutil
     from pathlib import Path
@@ -1518,11 +1534,12 @@ def _generate_allure_report(test_case, result: dict, allure_dir: str, clean: boo
     collector.generate_environment_file()
     collector.generate_categories_file()
 
-    # Print message
-    print(f"\n✓ Allure report data generated: {result_file}")
-    print(f"  Results directory: {allure_dir}")
-    print(f"  View report: allure serve {allure_dir}")
-    print(f"  Or generate HTML: allure generate {allure_dir} --clean -o allure-report")
+    # Print message only if not in silent mode
+    if not silent:
+        print(f"\n✓ Allure 报告数据已生成: {result_file}")
+        print(f"  结果目录: {allure_dir}")
+        print(f"  查看报告: allure serve {allure_dir}")
+        print(f"  或生成 HTML: allure generate {allure_dir} --clean -o allure-report")
 
 
 if __name__ == "__main__":
