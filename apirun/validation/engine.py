@@ -125,7 +125,22 @@ class ValidationEngine:
 
         try:
             # Extract value using JSONPath
-            actual = self._extract_value(path, response_data)
+            # For contains/not_contains, extract all matches (not just first)
+            # For other validations, use default index=0
+            if val_type in ("contains", "not_contains"):
+                # For contains validations, we need all matching values
+                # Check if path uses wildcard or recursive search
+                path_has_wildcard = "[*]" in path or ".." in path
+
+                if path_has_wildcard:
+                    # Extract all matching values (use index=-1)
+                    actual = self._extract_value(path, response_data, index=-1)
+                else:
+                    # Simple path, use default behavior
+                    actual = self._extract_value(path, response_data)
+            else:
+                # For non-contains validations, use default behavior
+                actual = self._extract_value(path, response_data)
 
             # Get comparator function
             comparator = get_comparator(val_type)
@@ -253,12 +268,13 @@ class ValidationEngine:
             error=error,
         )
 
-    def _extract_value(self, path: str, data: Any) -> Any:
+    def _extract_value(self, path: str, data: Any, index: int = 0) -> Any:
         """Extract value from data using enhanced JSONPath.
 
         Args:
             path: JSONPath expression (may include function calls)
             data: Data to extract from
+            index: Index to return if multiple matches (None for all matches)
 
         Returns:
             Extracted value
@@ -273,7 +289,7 @@ class ValidationEngine:
             $.items.sum()              # Sum of numeric values
         """
         try:
-            return extract_value(path, data, index=0)
+            return extract_value(path, data, index=index)
         except Exception as e:
             raise ValueError(f"Failed to extract value: {e}")
 
