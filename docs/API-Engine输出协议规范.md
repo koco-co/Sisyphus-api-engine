@@ -497,9 +497,25 @@ sisyphus-api-engine --cases test.yaml --format csv
 
 ### 5.3 HTML 格式
 
+HTML 格式支持中英文双语，通过 `--report-lang` 参数指定语言：
+
 ```bash
-sisyphus-api-engine --cases test.yaml --format html -o report.html
+# 生成中文报告
+sisyphus-api-engine --cases test.yaml --format html --report-lang zh -o report.html
+
+# 生成英文报告
+sisyphus-api-engine --cases test.yaml --format html --report-lang en -o report.html
 ```
+
+**特性：**
+- 完整的中英文双语支持
+- 响应式设计，美观易读
+- 交互式步骤详情（可展开/折叠）
+- 彩色状态标识（绿色成功、红色失败、橙色跳过）
+- 进度条展示
+- 统计数据卡片
+- 性能指标可视化
+- 错误信息和建议提示
 
 ### 5.4 JUnit 格式
 
