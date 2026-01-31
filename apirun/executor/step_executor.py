@@ -359,12 +359,12 @@ class StepExecutor(ABC):
         if self.step.extractors:
             rendered["extractors"] = []
             for ext in self.step.extractors:
-                rendered["extractors"] = {
+                rendered["extractors"].append({
                     "name": ext.name,
                     "type": ext.type,
                     "path": ext.path,
                     "index": ext.index,
-                }
+                })
 
         return rendered
 
@@ -465,10 +465,41 @@ class StepExecutor(ABC):
                 if value is not None:
                     self.variable_manager.set_variable(extractor_def.name, value)
                     result.extracted_vars[extractor_def.name] = value
+                else:
+                    # Extraction returned None - provide helpful warning
+                    print(f"⚠️  变量提取失败: '{extractor_def.name}'")
+                    print(f"   提取器类型: {extractor_def.type}")
+                    print(f"   提取路径: {extractor_def.path}")
+                    print(f"   可能原因: 响应中未找到匹配的数据")
+                    print(f"   建议: 请检查路径表达式是否正确，或确认响应数据结构")
 
             except Exception as e:
-                # Log but don't fail the step
-                print(f"Warning: Failed to extract variable '{extractor_def.name}': {e}")
+                # Extraction failed with error - provide detailed diagnostic information
+                print(f"⚠️  变量提取异常: '{extractor_def.name}'")
+                print(f"   提取器类型: {extractor_def.type}")
+                print(f"   提取路径: {extractor_def.path}")
+                print(f"   错误详情: {type(e).__name__}: {e}")
+
+                # Provide specific suggestions based on error type
+                if "JSONPath" in str(e):
+                    print(f"   💡 JSONPath 路径建议:")
+                    print(f"      • 检查路径是否以 '$' 开头")
+                    print(f"      • 验证数组索引: $.data[0].field")
+                    print(f"      • 确认字段名称拼写正确")
+                elif "regex" in str(e).lower() or "pattern" in str(e).lower():
+                    print(f"   💡 Regex 表达式建议:")
+                    print(f"      • 验证正则表达式语法")
+                    print(f"      • 检查捕获组索引 (group: {extractor_def.index})")
+                    print(f"      • 确保模式与响应数据匹配")
+                elif "No value found" in str(e):
+                    print(f"   💡 数据匹配建议:")
+                    print(f"      • 确认响应中包含目标字段")
+                    print(f"      • 检查字段名是否区分大小写")
+                    print(f"      • 尝试使用更通用的路径表达式")
+                else:
+                    print(f"   💡 通用建议:")
+                    print(f"      • 使用 -v 参数查看详细响应数据")
+                    print(f"      • 检查 API 响应格式是否符合预期")
 
     def _execute_setup(self) -> None:
         """Execute setup hooks.
