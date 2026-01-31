@@ -18,6 +18,12 @@ Examples:
   # Run and save results to JSON
   sisyphus-api-engine --cases test_case.yaml -o result.json
 
+  # Generate HTML report (English)
+  sisyphus-api-engine --cases test_case.yaml --format html --report-lang en -o report.html
+
+  # Generate HTML report (Chinese)
+  sisyphus-api-engine --cases test_case.yaml --format html --report-lang zh -o report.html
+
   # Validate YAML syntax
   sisyphus-api-engine --validate test_case.yaml
 
@@ -41,6 +47,7 @@ Documentation:
         "--override": "Configuration overrides in format 'key=value' (can be used multiple times)",
         "--debug": "Enable debug mode with variable tracking",
         "--format": "Output format: text, json, csv, junit, or html",
+        "--report-lang": "Report language: en (English) or zh (中文)",
         "--allure": "Generate Allure report (saves to allure-results directory)",
         "--allure-dir": "Allure results directory",
         "--allure-clean": "Clean Allure results directory before generating",
@@ -61,6 +68,12 @@ ZH_HELP_MESSAGES = {
 
   # 运行并保存结果到 JSON
   sisyphus-api-engine --cases test_case.yaml -o result.json
+
+  # 生成 HTML 报告（英文）
+  sisyphus-api-engine --cases test_case.yaml --format html --report-lang en -o report.html
+
+  # 生成 HTML 报告（中文）
+  sisyphus-api-engine --cases test_case.yaml --format html --report-lang zh -o report.html
 
   # 验证 YAML 语法
   sisyphus-api-engine --validate test_case.yaml
@@ -85,6 +98,7 @@ ZH_HELP_MESSAGES = {
         "--override": "配置覆盖，格式为 'key=value'（可多次使用）",
         "--debug": "启用调试模式，包含变量追踪功能",
         "--format": "输出格式: text、json、csv、junit 或 html",
+        "--report-lang": "报告语言: en（英文）或 zh（中文）",
         "--allure": "生成 Allure 报告（保存到 allure-results 目录）",
         "--allure-dir": "Allure 结果目录",
         "--allure-clean": "生成前清理 Allure 结果目录",
@@ -172,6 +186,7 @@ ARGUMENT_MAPPING = {
     "override": "--override",
     "debug": "--debug",
     "format": "--format",
+    "report_lang": "--report-lang",
     "allure": "--allure",
     "allure_dir": "--allure-dir",
     "allure_clean": "--allure-clean",
