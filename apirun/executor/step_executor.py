@@ -417,11 +417,49 @@ class StepExecutor(ABC):
 
         extractor_factory = ExtractorFactory()
 
+        # For request steps, extract from response body by default (like validation)
+        # This allows users to use $.code instead of $.body.code
+        extraction_data = result.response
+        if isinstance(result.response, dict) and "body" in result.response:
+            # Check if extractor type is jsonpath - if so, use body as default
+            # For other extractors (header, cookie), they work on the full response
+            first_extractor_type = self.step.extractors[0].type if self.step.extractors else None
+            if first_extractor_type in ["jsonpath", "regex"]:
+                extraction_data = result.response.get("body", result.response)
+
         for extractor_def in self.step.extractors:
             try:
                 extractor = extractor_factory.create_extractor(extractor_def.type)
+
+                # Choose data source based on extractor type
+                if extractor_def.type in ["jsonpath", "regex"]:
+                    # jsonpath and regex extractors work on body by default
+                    # Backward compatibility: if path starts with "$.body.", use full response
+                    path = extractor_def.path
+                    if isinstance(result.response, dict):
+                        if path.startswith("$.body."):
+                            # Old-style path with explicit $.body. prefix
+                            data_source = result.response
+                        elif path.startswith("$"):
+                            # New-style path without $.body. prefix, auto-extract from body
+                            data_source = result.response.get("body", result.response)
+                        else:
+                            # Non-JSONPath path, use body
+                            data_source = result.response.get("body", result.response)
+                    else:
+                        data_source = result.response
+                elif extractor_def.type == "header":
+                    # header extractor works on headers
+                    data_source = result.response.get("headers", result.response) if isinstance(result.response, dict) else result.response
+                elif extractor_def.type == "cookie":
+                    # cookie extractor works on cookies
+                    data_source = result.response.get("cookies", result.response) if isinstance(result.response, dict) else result.response
+                else:
+                    # Other extractors use full response
+                    data_source = result.response
+
                 value = extractor.extract(
-                    extractor_def.path, result.response, extractor_def.index
+                    extractor_def.path, data_source, extractor_def.index
                 )
 
                 if value is not None:
