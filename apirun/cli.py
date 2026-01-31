@@ -31,11 +31,11 @@ def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
     print(f"\n{messages['description']}\n")
     if lang == "zh":
         print("用法:")
-        print("  sisyphus-api-engine --cases <文件> [选项]\n")
+        print("  sisyphus-api-engine --cases <路径...> [选项]\n")
         print("参数:")
     else:
         print("Usage:")
-        print("  sisyphus-api-engine --cases <file> [options]\n")
+        print("  sisyphus-api-engine --cases <paths...> [options]\n")
         print("Arguments:")
 
     # Format and display arguments
@@ -171,8 +171,9 @@ def main() -> int:
     parser.add_argument(
         "--cases",
         type=str,
+        nargs="+",
         required=True,
-        help="Path to YAML test case file or directory",
+        help="Path(s) to YAML test case file(s) or directory/directories",
     )
 
     parser.add_argument(
@@ -297,27 +298,101 @@ def main() -> int:
 
     try:
         if args.validate:
-            return validate_yaml(args.cases)
+            # For validation, collect all files and validate them
+            yaml_files = collect_yaml_files(args.cases)
+            if not yaml_files:
+                print("Error: No YAML files found to validate", file=sys.stderr)
+                return 1
 
-        # Execute test case
-        result = execute_test_case(
-            args.cases,
-            args.verbose,
-            args.profile,
-            args.ws_server,
-            args.ws_host,
-            args.ws_port,
-            args.env_prefix,
-            args.override,
-            args.debug,
-            args.output,
-            args.format,
-            args.allure,
-            args.allure_dir,
-            args.allure_clean,
-        )
+            all_valid = True
+            parser = V2YamlParser()
 
-        # Handle output based on format
+            for yaml_file in yaml_files:
+                print(f"Validating: {yaml_file}")
+                errors = parser.validate_yaml(str(yaml_file))
+
+                if errors:
+                    all_valid = False
+                    print(f"  ❌ Validation failed:")
+                    for error in errors:
+                        print(f"    - {error}")
+                else:
+                    print(f"  ✓ Valid")
+
+            if all_valid:
+                print("\n✓ All YAML files are valid!")
+                return 0
+            else:
+                print("\n❌ Some YAML files have validation errors.")
+                return 1
+
+        # For test execution, collect all YAML files
+        yaml_files = collect_yaml_files(args.cases)
+        if not yaml_files:
+            print("Error: No YAML files found", file=sys.stderr)
+            return 1
+
+        print(f"Found {len(yaml_files)} test case file(s)\n")
+
+        # Track overall results
+        total_passed = 0
+        total_failed = 0
+        all_results = []
+
+        # Execute each test case
+        for i, yaml_file in enumerate(yaml_files, 1):
+            if len(yaml_files) > 1:
+                print(f"\n[{i}/{len(yaml_files)}] Running: {yaml_file}")
+                print("-" * 60)
+
+            try:
+                result = execute_test_case(
+                    str(yaml_file),
+                    args.verbose,
+                    args.profile,
+                    args.ws_server,
+                    args.ws_host,
+                    args.ws_port,
+                    args.env_prefix,
+                    args.override,
+                    args.debug,
+                    args.output,
+                    args.format,
+                    args.allure,
+                    args.allure_dir,
+                    args.allure_clean,
+                )
+                all_results.append(result)
+
+                # Track statistics
+                if result["test_case"]["status"] == "passed":
+                    total_passed += 1
+                else:
+                    total_failed += 1
+
+            except Exception as e:
+                print(f"Error executing {yaml_file}: {e}", file=sys.stderr)
+                total_failed += 1
+                if args.verbose:
+                    import traceback
+                    traceback.print_exc()
+
+        # Print overall summary if multiple files
+        if len(yaml_files) > 1:
+            print(f"\n{'=' * 60}")
+            print("OVERALL SUMMARY")
+            print(f"{'=' * 60}")
+            print(f"Total Test Cases: {len(yaml_files)}")
+            print(f"Passed: {total_passed} ✓")
+            print(f"Failed: {total_failed} ✗")
+            print(f"Pass Rate: {(total_passed / len(yaml_files) * 100):.1f}%")
+            print(f"{'=' * 60}")
+
+            # Return non-zero if any test failed
+            return 0 if total_failed == 0 else 1
+
+        # Handle output based on format (single file mode)
+        result = all_results[0]
         if args.format == "json":
             # Determine if we should output compact or full JSON
             # Check verbose flag (from CLI or YAML config)
@@ -671,6 +746,40 @@ def validate_main() -> int:
         import traceback
         traceback.print_exc()
         return 1
+
+
+def collect_yaml_files(paths: list) -> list:
+    """Collect all YAML files from given paths.
+
+    Args:
+        paths: List of file or directory paths
+
+    Returns:
+        List of Path objects for all YAML files found
+    """
+    yaml_files = []
+    for path_str in paths:
+        path = Path(path_str)
+
+        if not path.exists():
+            print(f"Warning: Path not found: {path_str}", file=sys.stderr)
+            continue
+
+        if path.is_file():
+            if path.suffix in [".yaml", ".yml"]:
+                yaml_files.append(path)
+            else:
+                print(f"Warning: Skipping non-YAML file: {path_str}", file=sys.stderr)
+        elif path.is_dir():
+            found_files = list(path.glob("**/*.yaml")) + list(path.glob("**/*.yml"))
+            if found_files:
+                yaml_files.extend(found_files)
+            else:
+                print(f"Warning: No YAML files found in directory: {path_str}")
+        else:
+            print(f"Warning: Invalid path: {path_str}", file=sys.stderr)
+
+    return sorted(yaml_files)
 
 
 def validate_yaml(case_path: str) -> int:

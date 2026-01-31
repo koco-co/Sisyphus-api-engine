@@ -396,6 +396,8 @@ validations:
 
 ### 5.3 JSONPath 表达式
 
+#### 5.3.1 基础表达式
+
 | 表达式 | 说明 |
 |---------|------|
 | `$.status_code` | 根对象属性 |
@@ -403,6 +405,101 @@ validations:
 | `$.data.items[0]` | 数组第一个元素 |
 | `$.data.users[?id=1].name` | 过滤表达式 |
 | `$..name` | 递归查找 |
+
+#### 5.3.2 增强函数支持
+
+Sisyphus API Engine 支持在 JSONPath 表达式中使用函数，实现更强大的数据提取和验证能力。
+
+**函数语法**：`$.path.function_name(arguments)`
+
+**数组函数**
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `length()` | 获取数组/字符串/对象长度 | `$.data.length()` |
+| `size()` | length 的别名 | `$.items.size()` |
+| `count()` | count 的别名 | `$.users.count()` |
+| `first()` | 获取数组第一个元素 | `$.items.first()` |
+| `last()` | 获取数组最后一个元素 | `$.items.last()` |
+| `sum()` | 数值求和 | `$.prices.sum()` |
+| `avg()` | 计算平均值 | `$.scores.avg()` |
+| `min()` | 获取最小值 | `$.values.min()` |
+| `max()` | 获取最大值 | `$.values.max()` |
+| `reverse()` | 反转数组 | `$.items.reverse()` |
+| `sort()` | 排序数组 | `$.numbers.sort()` |
+| `unique()` | 获取唯一值 | `$.ids.unique()` |
+| `flatten()` | 展平嵌套数组 | `$.nested.flatten()` |
+
+**对象函数**
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `keys()` | 获取对象的所有键 | `$.user.keys()` |
+| `values()` | 获取对象的所有值 | `$.user.values()` |
+
+**字符串函数**
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `upper()` | 转换为大写 | `$.text.upper()` |
+| `lower()` | 转换为小写 | `$.text.lower()` |
+| `trim()` | 去除首尾空白 | `$.text.trim()` |
+| `split(delimiter)` | 分割字符串 | `$.text.split(,)` |
+| `join(delimiter)` | 数组连接为字符串 | `$.items.join(-)` |
+
+**检查函数**
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `contains(value)` | 检查是否包含值 | `$.text.contains(hello)` |
+| `starts_with(value)` | 检查是否以...开头 | `$.text.starts_with(pre)` |
+| `ends_with(value)` | 检查是否以...结尾 | `$.text.ends_with(com)` |
+| `matches(pattern)` | 正则匹配 | `$.code.matches(^\d+$)` |
+
+#### 5.3.3 实际应用示例
+
+**验证数组不为空**
+```yaml
+validations:
+  - type: gt
+    path: "$.data.length()"
+    expect: 0
+    description: "返回数据不应为空"
+```
+
+**验证数值总和**
+```yaml
+validations:
+  - type: eq
+    path: "$.order_items.sum()"
+    expect: 100
+    description: "订单总额应为100"
+```
+
+**提取数组长度**
+```yaml
+extractors:
+  - name: "user_count"
+    path: "$.users.length()"
+```
+
+**字符串处理验证**
+```yaml
+validations:
+  - type: eq
+    path: "$.username.upper()"
+    expect: "ADMIN"
+    description: "用户名应为大写"
+```
+
+**验证数组中所有元素唯一**
+```yaml
+validations:
+  - type: eq
+    path: "$.ids.unique().length()"
+    expect: 10
+    description: "所有ID应该唯一"
+```
 
 ---
 

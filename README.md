@@ -101,6 +101,12 @@ sisyphus-api-engine --help
 # 验证 YAML 文件语法
 sisyphus-api-validate examples/22_最佳实践.yaml
 
+# 验证多个文件
+sisyphus-api-validate test1.yaml test2.yaml test3.yaml
+
+# 验证目录中的所有文件
+sisyphus-api-validate tests/
+
 # 运行示例测试
 sisyphus-api-engine --cases examples/22_最佳实践.yaml
 ```
@@ -137,11 +143,20 @@ steps:
 ### 2. 运行测试
 
 ```bash
-# 基本运行
+# 基本运行（单个文件）
 sisyphus-api-engine --cases my_first_test.yaml
 
 # 详细输出
 sisyphus-api-engine --cases my_first_test.yaml -v
+
+# 运行多个测试文件
+sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+
+# 运行目录中的所有测试
+sisyphus-api-engine --cases tests/
+
+# 混合文件和目录
+sisyphus-api-engine --cases smoke_test.yaml tests/ integration/
 
 # 保存结果到 JSON
 sisyphus-api-engine --cases my_first_test.yaml -o result.json

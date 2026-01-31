@@ -5,9 +5,9 @@ Following Google Python Style Guide.
 """
 
 from typing import Any, Dict, List
-from jsonpath import jsonpath
 
 from apirun.validation.comparators import get_comparator, ComparatorError
+from apirun.utils.enhanced_jsonpath import extract_value
 
 
 class ValidationResult:
@@ -254,10 +254,10 @@ class ValidationEngine:
         )
 
     def _extract_value(self, path: str, data: Any) -> Any:
-        """Extract value from data using JSONPath.
+        """Extract value from data using enhanced JSONPath.
 
         Args:
-            path: JSONPath expression
+            path: JSONPath expression (may include function calls)
             data: Data to extract from
 
         Returns:
@@ -265,19 +265,15 @@ class ValidationEngine:
 
         Raises:
             ValueError: If path is invalid or value not found
+
+        Examples:
+            $.data                    # Get data field
+            $.data.length()            # Get array length
+            $.users.name               # Get all name fields
+            $.items.sum()              # Sum of numeric values
         """
         try:
-            result = jsonpath(data, path)
-
-            if result is False:
-                raise ValueError(f"Invalid JSONPath expression: {path}")
-
-            if len(result) == 0:
-                raise ValueError(f"No value found at path: {path}")
-
-            # Return first match
-            return result[0]
-
+            return extract_value(path, data, index=0)
         except Exception as e:
             raise ValueError(f"Failed to extract value: {e}")
 

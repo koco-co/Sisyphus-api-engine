@@ -1,0 +1,363 @@
+# ==============================================================================
+# JSONPath 函数功能演示
+# ==============================================================================
+# 本示例展示 Sisyphus API Engine 的增强 JSONPath 函数功能
+# 支持在验证和提取中使用 20+ 种函数
+# ==============================================================================
+
+name: "JSONPath 函数功能演示"
+description: "演示增强的 JSONPath 表达式支持各种函数调用"
+
+config:
+  timeout: 30
+  variables:
+    base_url: "https://httpbin.org"
+
+steps:
+  # ==============================================================================
+  # 1. 数组函数演示
+  # ==============================================================================
+
+  - name: "验证返回数据不为空（length 函数）"
+    description: "使用 length() 函数验证数组长度"
+    type: request
+    method: GET
+    url: "${base_url}/get"
+    params:
+      show: "items"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # length() 函数：验证数组长度大于 0
+      - type: gt
+        path: "$.args.length()"
+        expect: 0
+        description: "查询参数不应为空"
+
+  - name: "获取数组第一个和最后一个元素"
+    description: "使用 first() 和 last() 函数"
+    type: request
+    method: GET
+    url: "${base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # first() 函数：获取第一个元素
+      - type: contains
+        path: "$.headers.keys()"
+        expect: "Accept"
+        description: "请求头应包含 Accept"
+
+  # ==============================================================================
+  # 2. 数值函数演示
+  # ==============================================================================
+
+  - name: "数值聚合函数演示"
+    description: "使用 sum()、avg()、min()、max() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      test_data:
+        scores: [85, 90, 78, 92, 88]
+        prices: [10.5, 20.3, 15.8, 30.2]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # sum() 函数：验证总和
+      - type: eq
+        path: "$.json.test_data.scores.sum()"
+        expect: 433
+        description: "成绩总和应为 433"
+      # avg() 函数：验证平均值
+      - type: eq
+        path: "$.json.test_data.scores.avg()"
+        expect: 86.6
+        description: "平均成绩应为 86.6"
+      # min() 函数：验证最小值
+      - type: eq
+        path: "$.json.test_data.scores.min()"
+        expect: 78
+        description: "最低分应为 78"
+      # max() 函数：验证最大值
+      - type: eq
+        path: "$.json.test_data.scores.max()"
+        expect: 92
+        description: "最高分应为 92"
+
+  # ==============================================================================
+  # 3. 数组操作函数演示
+  # ==============================================================================
+
+  - name: "数组排序和去重"
+    description: "使用 sort() 和 unique() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      numbers: [3, 1, 4, 1, 5, 9, 2, 6, 5]
+      ids: [101, 102, 101, 103, 102]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # sort() 函数：验证排序后的数组
+      - type: eq
+        path: "$.json.numbers.sort().first()"
+        expect: 1
+        description: "排序后第一个元素应为 1"
+      # unique() 函数：验证去重后的长度
+      - type: eq
+        path: "$.json.ids.unique().length()"
+        expect: 3
+        description: "去重后应有 3 个唯一 ID"
+
+  - name: "数组反转和展平"
+    description: "使用 reverse() 和 flatten() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      items: [[1, 2], [3, 4], [5, 6]]
+      sequence: [1, 2, 3, 4, 5]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # reverse() 函数：验证反转后的数组
+      - type: eq
+        path: "$.json.sequence.reverse().first()"
+        expect: 5
+        description: "反转后第一个元素应为 5"
+      # flatten() 函数：验证展平后的数组
+      - type: eq
+        path: "$.json.items.flatten().length()"
+        expect: 6
+        description: "展平后应有 6 个元素"
+
+  # ==============================================================================
+  # 4. 字符串函数演示
+  # ==============================================================================
+
+  - name: "字符串大小写转换"
+    description: "使用 upper() 和 lower() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      username: "AdminUser"
+      email: "TEST@EXAMPLE.COM"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # upper() 函数：验证大写转换
+      - type: eq
+        path: "$.json.username.upper()"
+        expect: "ADMINUSER"
+        description: "用户名应转换为大写"
+      # lower() 函数：验证小写转换
+      - type: eq
+        path: "$.json.email.lower()"
+        expect: "test@example.com"
+        description: "邮箱应转换为小写"
+
+  - name: "字符串分割和连接"
+    description: "使用 split() 和 join() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      tags: "python,java,golang"
+      items: ["apple", "banana", "cherry"]
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # split() 函数：验证字符串分割
+      - type: eq
+        path: "$.json.tags.split(,).length()"
+        expect: 3
+        description: "分割后应有 3 个标签"
+      # join() 函数：验证数组连接
+      - type: eq
+        path: "$.json.items.join(-)"
+        expect: "apple-banana-cherry"
+        description: "数组应连接为指定格式"
+
+  - name: "字符串修剪"
+    description: "使用 trim() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      text: "  hello world  "
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # trim() 函数：验证去空格后的字符串
+      - type: eq
+        path: "$.json.text.trim()"
+        expect: "hello world"
+        description: "应去除首尾空格"
+
+  # ==============================================================================
+  # 5. 检查函数演示
+  # ==============================================================================
+
+  - name: "字符串包含检查"
+    description: "使用 contains()、starts_with()、ends_with() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      message: "Hello, this is a test message"
+      url: "https://api.example.com/v1/users"
+      email: "user@example.com"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # contains() 函数：验证包含子字符串
+      - type: eq
+        path: "$.json.message.contains(test)"
+        expect: true
+        description: "消息应包含 'test'"
+      # starts_with() 函数：验证前缀
+      - type: eq
+        path: "$.json.url.starts_with(https://)"
+        expect: true
+        description: "URL 应以 https:// 开头"
+      # ends_with() 函数：验证后缀
+      - type: eq
+        path: "$.json.email.ends_with(.com)"
+        expect: true
+        description: "邮箱应以 .com 结尾"
+
+  - name: "正则表达式匹配"
+    description: "使用 matches() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      phone: "13812345678"
+      email: "user@example.com"
+      zip_code: "123456"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # matches() 函数：验证手机号格式
+      - type: eq
+        path: "$.json.phone.matches(^1\\d{10}$)"
+        expect: true
+        description: "应为有效的中国手机号"
+      # matches() 函数：验证邮箱格式
+      - type: eq
+        path: "$.json.email.matches(^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$)"
+        expect: true
+        description: "应为有效的邮箱地址"
+
+  # ==============================================================================
+  # 6. 对象函数演示
+  # ==============================================================================
+
+  - name: "对象键值提取"
+    description: "使用 keys() 和 values() 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        name: "Alice"
+        age: 30
+        city: "Beijing"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # keys() 函数：验证对象的键
+      - type: eq
+        path: "$.json.user.keys().length()"
+        expect: 3
+        description: "用户对象应有 3 个属性"
+      # values() 函数：验证对象的值
+      - type: contains
+        path: "$.json.user.values()"
+        expect: "Alice"
+        description: "用户值中应包含 Alice"
+
+  # ==============================================================================
+  # 7. 变量提取演示
+  # ==============================================================================
+
+  - name: "使用函数提取变量"
+    description: "在 extractors 中使用 JSONPath 函数"
+    type: request
+    method: POST
+    url: "${base_url}/anything"
+    headers:
+      Content-Type: "application/json"
+    body:
+      items:
+        - {id: 1, name: "Item A", price: 10}
+        - {id: 2, name: "Item B", price: 20}
+        - {id: 3, name: "Item C", price: 30}
+      tags: ["important", "featured", "new"]
+      numbers: [100, 200, 300]
+    extractors:
+      # 提取数组长度
+      - name: "item_count"
+        path: "$.body.json.items.length()"
+      # 提取数字总和
+      - name: "numbers_sum"
+        path: "$.body.json.numbers.sum()"
+      # 提取标签连接字符串
+      - name: "tags_string"
+        path: "$.body.json.tags.join(-)"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      # 验证提取的值
+      - type: eq
+        path: "$.json.items.length()"
+        expect: 3
+        description: "验证项目数量"
+      - type: eq
+        path: "$.json.numbers.sum()"
+        expect: 600
+        description: "验证数字总和"
+      - type: eq
+        path: "$.json.tags.join(-)"
+        expect: "important-featured-new"
+        description: "验证标签连接"
+
+tags:
+  - "JSONPath"
+  - "函数"
+  - "示例"
+
+enabled: true

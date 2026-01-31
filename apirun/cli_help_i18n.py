@@ -9,8 +9,17 @@ EN_HELP_MESSAGES = {
     "description": "Sisyphus API Engine - Enterprise-grade API Testing Tool",
     "epilog": """
 Examples:
-  # Run a test case
+  # Run a single test case
   sisyphus-api-engine --cases test_case.yaml
+
+  # Run multiple test cases
+  sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+
+  # Run all test cases in a directory
+  sisyphus-api-engine --cases tests/
+
+  # Mix files and directories
+  sisyphus-api-engine --cases test1.yaml tests/ integration/
 
   # Run with verbose output
   sisyphus-api-engine --cases test_case.yaml -v
@@ -27,6 +36,12 @@ Examples:
   # Validate YAML syntax
   sisyphus-api-engine --validate test_case.yaml
 
+  # Validate multiple files
+  sisyphus-api-engine --validate test1.yaml test2.yaml
+
+  # Validate all files in directory
+  sisyphus-api-engine --validate tests/
+
   # Or use the dedicated validate command
   sisyphus-api-validate test_case.yaml
 
@@ -35,7 +50,7 @@ Documentation:
   Report issues: https://github.com/koco-co/Sisyphus-api-engine/issues
     """,
     "args": {
-        "--cases": "Path to YAML test case file or directory",
+        "--cases": "Path(s) to YAML test case file(s) or director(y/ies)",
         "-o/--output": "Output file path (supports JSON/CSV/HTML/JUnit XML, format determined by extension or --format)",
         "-v/--verbose": "Enable verbose output (show detailed step information)",
         "--validate": "Validate YAML syntax without execution",
@@ -60,8 +75,17 @@ ZH_HELP_MESSAGES = {
     "description": "Sisyphus API Engine - 企业级 API 自动化测试工具",
     "epilog": """
 使用示例:
-  # 运行测试用例
+  # 运行单个测试用例
   sisyphus-api-engine --cases test_case.yaml
+
+  # 运行多个测试用例
+  sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+
+  # 运行目录中的所有测试用例
+  sisyphus-api-engine --cases tests/
+
+  # 混合文件和目录
+  sisyphus-api-engine --cases test1.yaml tests/ integration/
 
   # 启用详细输出
   sisyphus-api-engine --cases test_case.yaml -v
@@ -78,6 +102,12 @@ ZH_HELP_MESSAGES = {
   # 验证 YAML 语法
   sisyphus-api-engine --validate test_case.yaml
 
+  # 验证多个文件
+  sisyphus-api-engine --validate test1.yaml test2.yaml
+
+  # 验证目录中的所有文件
+  sisyphus-api-engine --validate tests/
+
   # 或使用专用验证命令
   sisyphus-api-validate test_case.yaml
 
@@ -86,7 +116,7 @@ ZH_HELP_MESSAGES = {
   问题反馈: https://github.com/koco-co/Sisyphus-api-engine/issues
     """,
     "args": {
-        "--cases": "YAML 测试用例文件或目录路径",
+        "--cases": "YAML 测试用例文件或目录路径（支持多个）",
         "-o/--output": "输出文件路径（支持 JSON/CSV/HTML/JUnit XML，格式由文件扩展名或 --format 决定）",
         "-v/--verbose": "启用详细输出模式（显示步骤详细信息）",
         "--validate": "仅验证 YAML 语法，不执行测试",
