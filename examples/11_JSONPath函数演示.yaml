@@ -64,8 +64,16 @@ steps:
       Content-Type: "application/json"
     body:
       message: "测试数据"
-      users: "${test_data.users}"
-      items: "${test_data.items}"
+      # 直接定义测试数据（避免变量引用时的字符串转换问题）
+      users:
+        - {id: 1, name: "Alice", role: "admin", active: true}
+        - {id: 2, name: "Bob", role: "user", active: true}
+        - {id: 3, name: "Charlie", role: "admin", active: false}
+        - {id: 4, name: "David", role: "user", active: true}
+      items:
+        - {id: 101, name: "Laptop", price: 999, stock: 5}
+        - {id: 102, name: "Mouse", price: 29, stock: 10}
+        - {id: 103, name: "Keyboard", price: 79, stock: 0}
     validations:
       - type: status_code
         path: "$.status_code"
