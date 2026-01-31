@@ -5,6 +5,7 @@ Following Google Python Style Guide.
 """
 
 import re
+import json
 from typing import Any, Optional
 
 
@@ -29,10 +30,17 @@ class RegexExtractor:
             Extracted string value or None if no match
 
         Raises:
-            ValueError: If pattern is invalid
+            ValueError: If pattern is invalid or index out of range
         """
+        # Convert data to string for regex matching
+        # For dict/list, use json.dumps() to preserve JSON formatting (double quotes)
+        # For other types, use str()
         if not isinstance(data, str):
-            data = str(data)
+            if isinstance(data, (dict, list)):
+                # Use json.dumps for proper JSON formatting (double quotes)
+                data = json.dumps(data, ensure_ascii=False)
+            else:
+                data = str(data)
 
         try:
             match = re.search(pattern, data)
@@ -42,10 +50,14 @@ class RegexExtractor:
 
             if index == 0:
                 return match.group(0)
-            elif index <= len(match.groups()):
+            elif 0 < index <= len(match.groups()):
                 return match.group(index)
             else:
+                # Index out of range - return None (extractor failed)
                 return None
 
         except re.error as e:
-            raise ValueError(f"Invalid regex pattern: {e}")
+            raise ValueError(
+                f"无效的正则表达式 '{pattern}': {e}。\n"
+                f"请检查正则表达式语法，建议使用在线工具验证。"
+            )
