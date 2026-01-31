@@ -446,8 +446,16 @@ class V2YamlParser:
 
         name = ext_data.get("name")
         ext_type = ext_data.get("type", "jsonpath")
-        path = ext_data.get("path", "")
-        index = ext_data.get("index", 0)
+
+        # Support field aliases for different extractor types
+        # - regex extractors: support 'pattern' and 'group' as aliases for 'path' and 'index'
+        if ext_type == "regex":
+            path = ext_data.get("pattern") or ext_data.get("path", "")
+            # For regex, 'group' is more semantic than 'index', but support both
+            index = ext_data.get("group") or ext_data.get("index", 0)
+        else:
+            path = ext_data.get("path", "")
+            index = ext_data.get("index", 0)
 
         if not name:
             return None
