@@ -7,7 +7,7 @@ Following Google Python Style Guide.
 import time
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from apirun.core.models import (
@@ -20,6 +20,7 @@ from apirun.core.models import (
 from apirun.core.variable_manager import VariableManager
 from apirun.core.retry import RetryManager, create_retry_policy_from_config
 from apirun.utils.template import render_template
+from apirun.utils.logger import get_logger
 
 
 class StepExecutor(ABC):
@@ -58,6 +59,9 @@ class StepExecutor(ABC):
         self.timeout = step.timeout or timeout
         self.retry_times = step.retry_times or retry_times
         self.previous_results = previous_results or []
+
+        # Get logger instance
+        self.logger = get_logger()
 
         # Initialize retry manager
         self.retry_manager = None
@@ -103,10 +107,18 @@ class StepExecutor(ABC):
         )
 
         try:
+            # Log step start
+            self.logger.log_step_start(
+                step_name=self.step.name,
+                step_type=self.step.type,
+                description=getattr(self.step, 'description', '')
+            )
+
             # Check step control conditions
             if not self._should_execute():
                 result.status = "skipped"
                 result.end_time = datetime.now()
+                self.logger.log_step_end(self.step.name, "skipped", 0)
                 return result
 
             # Execute setup hooks
@@ -124,6 +136,13 @@ class StepExecutor(ABC):
                 if attempt > 0 and self.retry_manager:
                     delay_before = self.retry_manager.calculate_delay(attempt - 1)
                     if delay_before > 0:
+                        # Log retry attempt
+                        self.logger.log_retry_attempt(
+                            attempt=attempt + 1,
+                            max_attempts=self.retry_manager.policy.max_attempts,
+                            delay=delay_before,
+                            error=str(last_error) if last_error else "Unknown error"
+                        )
                         time.sleep(delay_before)
 
                 try:
@@ -178,6 +197,40 @@ class StepExecutor(ABC):
 
                     # Set end time on success
                     result.end_time = datetime.now()
+
+                    # Calculate total duration
+                    total_duration = (result.end_time - start_time).total_seconds()
+
+                    # Log step completion with performance metrics
+                    performance_details = {}
+                    if result.performance:
+                        performance_details = {
+                            "total_time": result.performance.total_time,
+                            "dns_time": getattr(result.performance, "dns_time", None),
+                            "tcp_time": getattr(result.performance, "tcp_time", None),
+                            "tls_time": getattr(result.performance, "tls_time", None),
+                            "server_time": getattr(result.performance, "server_time", None),
+                        }
+
+                    self.logger.log_step_end(
+                        step_name=self.step.name,
+                        status="passed",
+                        duration=total_duration,
+                        **performance_details
+                    )
+
+                    # Log performance metrics if available
+                    if result.performance:
+                        self.logger.log_performance_metrics(
+                            self.step.name,
+                            {
+                                "total_time": result.performance.total_time,
+                                "dns_time": getattr(result.performance, "dns_time", None),
+                                "tcp_time": getattr(result.performance, "tcp_time", None),
+                                "tls_time": getattr(result.performance, "tls_time", None),
+                                "server_time": getattr(result.performance, "server_time", None),
+                            }
+                        )
 
                     # Success - no need to retry
                     break
@@ -271,20 +324,45 @@ class StepExecutor(ABC):
         Returns:
             True if step should execute, False to skip
         """
+        # Import condition evaluator
+        from apirun.core.condition_evaluator import ConditionEvaluator
+
+        variables = self.variable_manager.get_all_variables()
+        evaluator = ConditionEvaluator(variables)
+
         # Check skip_if condition
         if self.step.skip_if:
-            skip_condition = render_template(
-                self.step.skip_if, self.variable_manager.get_all_variables()
-            )
-            if skip_condition and skip_condition.lower() in ("true", "1", "yes"):
-                return False
+            try:
+                should_skip = evaluator.evaluate(self.step.skip_if)
+                if should_skip:
+                    return False
+            except Exception as e:
+                # If evaluation fails, log warning but don't skip
+                import warnings
+                warnings.warn(f"Failed to evaluate skip_if condition '{self.step.skip_if}': {e}")
 
         # Check only_if condition
         if self.step.only_if:
-            only_condition = render_template(
-                self.step.only_if, self.variable_manager.get_all_variables()
-            )
-            if only_condition and only_condition.lower() not in ("true", "1", "yes"):
+            try:
+                should_execute = evaluator.evaluate(self.step.only_if)
+                if not should_execute:
+                    return False
+            except Exception as e:
+                # If evaluation fails, log warning but don't execute
+                import warnings
+                warnings.warn(f"Failed to evaluate only_if condition '{self.step.only_if}': {e}")
+                return False
+
+        # Check generic condition field (skip for wait steps where condition is a parameter)
+        if self.step.condition and self.step.type != "wait":
+            try:
+                condition_met = evaluator.evaluate(self.step.condition)
+                if not condition_met:
+                    return False
+            except Exception as e:
+                # If evaluation fails, log warning but don't execute
+                import warnings
+                warnings.warn(f"Failed to evaluate condition '{self.step.condition}': {e}")
                 return False
 
         # Check depends_on conditions
@@ -429,6 +507,28 @@ class StepExecutor(ABC):
 
         for extractor_def in self.step.extractors:
             try:
+                # Check condition before extraction if specified
+                if extractor_def.condition:
+                    condition_met = self._evaluate_condition(
+                        extractor_def.condition,
+                        extraction_data if extractor_def.type in ["jsonpath", "regex"] else result.response
+                    )
+
+                    if not condition_met:
+                        # Condition not met, use default value if specified
+                        if extractor_def.on_failure and "use_default" in extractor_def.on_failure:
+                            default_value = extractor_def.on_failure["use_default"]
+                            self.variable_manager.set_variable(extractor_def.name, default_value)
+                            result.extracted_vars[extractor_def.name] = default_value
+                            print(f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {default_value}")
+                        elif extractor_def.default is not None:
+                            self.variable_manager.set_variable(extractor_def.name, extractor_def.default)
+                            result.extracted_vars[extractor_def.name] = extractor_def.default
+                            print(f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {extractor_def.default}")
+                        else:
+                            print(f"⚠️  条件不满足且无默认值: '{extractor_def.name}'")
+                        continue
+
                 extractor = extractor_factory.create_extractor(extractor_def.type)
 
                 # Choose data source based on extractor type
@@ -458,26 +558,48 @@ class StepExecutor(ABC):
                     # Other extractors use full response
                     data_source = result.response
 
+                # Handle extract_all parameter: if True, use index=-1 to get all matches
+                extract_index = -1 if extractor_def.extract_all else extractor_def.index
+
                 value = extractor.extract(
-                    extractor_def.path, data_source, extractor_def.index
+                    extractor_def.path, data_source, extract_index,
+                    extractor_def.default
                 )
 
                 if value is not None:
+                    old_value = self.variable_manager.get_variable(extractor_def.name, None)
                     self.variable_manager.set_variable(extractor_def.name, value)
                     result.extracted_vars[extractor_def.name] = value
+
+                    # Log successful extraction
+                    self.logger.log_extraction_success(
+                        extractor_def.name,
+                        extractor_def.path,
+                        value
+                    )
+
+                    # Log variable change
+                    self.logger.log_variable_change(
+                        extractor_def.name,
+                        old_value,
+                        value,
+                        "extraction"
+                    )
                 else:
-                    # Extraction returned None - provide helpful warning
-                    print(f"⚠️  变量提取失败: '{extractor_def.name}'")
-                    print(f"   提取器类型: {extractor_def.type}")
-                    print(f"   提取路径: {extractor_def.path}")
-                    print(f"   可能原因: 响应中未找到匹配的数据")
-                    print(f"   建议: 请检查路径表达式是否正确，或确认响应数据结构")
+                    # Extraction returned None - use logger
+                    self.logger.log_extraction_failure(
+                        extractor_def.name,
+                        extractor_def.path,
+                        "未找到匹配的数据"
+                    )
 
             except Exception as e:
-                # Extraction failed with error - provide detailed diagnostic information
-                print(f"⚠️  变量提取异常: '{extractor_def.name}'")
-                print(f"   提取器类型: {extractor_def.type}")
-                print(f"   提取路径: {extractor_def.path}")
+                # Extraction failed with error - use logger
+                self.logger.log_extraction_failure(
+                    extractor_def.name,
+                    extractor_def.path,
+                    str(e)
+                )
                 print(f"   错误详情: {type(e).__name__}: {e}")
 
                 # Provide specific suggestions based on error type
@@ -500,6 +622,295 @@ class StepExecutor(ABC):
                     print(f"   💡 通用建议:")
                     print(f"      • 使用 -v 参数查看详细响应数据")
                     print(f"      • 检查 API 响应格式是否符合预期")
+
+    @staticmethod
+    def _evaluate_condition(condition: str, data_source: Any) -> bool:
+        """Evaluate a condition expression against data source.
+
+        支持的操作符:
+        - 比较操作符: ==, !=, >, <, >=, <=
+        - 逻辑操作符: and, or
+        - 成员操作符: in, not in (用于数组/字符串)
+        - 包含操作符: contains (检查字符串/数组是否包含)
+        - 存在性检查: 直接使用路径 (如 "$.data" 检查字段是否存在)
+
+        支持括号改变优先级,如: "$.a == 1 and ($.b == 2 or $.c == 3)"
+
+        Args:
+            condition: Condition expression (e.g., "$.code == 1 and $.data != null")
+            data_source: Data to evaluate condition against
+
+        Returns:
+            True if condition is met, False otherwise
+        """
+        from apirun.utils.enhanced_jsonpath import EnhancedJSONPath
+
+        try:
+            # 首先处理括号 - 找到最内层的括号并先评估
+            while '(' in condition and ')' in condition:
+                # 找到第一个匹配的括号对
+                start = condition.find('(')
+                end = start + 1
+                depth = 1
+                while end < len(condition) and depth > 0:
+                    if condition[end] == '(':
+                        depth += 1
+                    elif condition[end] == ')':
+                        depth -= 1
+                    end += 1
+
+                if depth == 0:
+                    # 提取括号内的表达式
+                    sub_expr = condition[start+1:end-1]
+                    # 递归评估子表达式
+                    result = StepExecutor._evaluate_condition(sub_expr, data_source)
+                    # 将结果替换回表达式
+                    condition = condition[:start] + ('true' if result else 'false') + condition[end:]
+                else:
+                    # 括号不匹配,跳过括号处理
+                    break
+
+            # 处理 AND 逻辑 (优先级高于 OR)
+            if " and " in condition.lower():
+                parts = StepExecutor._split_by_operators(condition, [' and '])
+                results = []
+                for part in parts:
+                    results.append(StepExecutor._evaluate_condition(part.strip(), data_source))
+                return all(results)
+
+            # 处理 OR 逻辑
+            elif " or " in condition.lower():
+                parts = StepExecutor._split_by_operators(condition, [' or '])
+                results = []
+                for part in parts:
+                    results.append(StepExecutor._evaluate_condition(part.strip(), data_source))
+                return any(results)
+
+            # 处理简单的布尔值
+            elif condition.lower().strip() == 'true':
+                return True
+            elif condition.lower().strip() == 'false':
+                return False
+
+            # 处理简单条件
+            else:
+                return StepExecutor._evaluate_simple_condition(condition.strip(), data_source)
+
+        except Exception as e:
+            print(f"⚠️  条件评估失败: {condition}")
+            print(f"   错误: {e}")
+            # If condition evaluation fails, proceed with extraction
+            return True
+
+    @staticmethod
+    def _split_by_operators(expression: str, operators: List[str]) -> List[str]:
+        """Split expression by operators, respecting quoted strings.
+
+        Args:
+            expression: Expression to split
+            operators: List of operators to split by (in order of priority)
+
+        Returns:
+            List of expression parts
+        """
+        import re
+
+        # Build regex pattern that matches operators but not those inside quotes
+        pattern = '|'.join(re.escape(op) for op in operators)
+
+        # Split but keep track of quoted strings
+        parts = []
+        current = []
+        in_quotes = False
+        quote_char = None
+        i = 0
+
+        while i < len(expression):
+            char = expression[i]
+
+            # Handle quotes
+            if char in '"\'':
+                if not in_quotes:
+                    in_quotes = True
+                    quote_char = char
+                    current.append(char)
+                elif char == quote_char:
+                    in_quotes = False
+                    quote_char = None
+                    current.append(char)
+                else:
+                    current.append(char)
+                i += 1
+            elif in_quotes:
+                current.append(char)
+                i += 1
+            else:
+                # Check for operator matches
+                matched = False
+                for op in sorted(operators, key=len, reverse=True):
+                    if expression[i:i+len(op)].lower() == op.lower():
+                        if current:
+                            parts.append(''.join(current))
+                            current = []
+                        i += len(op)
+                        matched = True
+                        break
+                if not matched:
+                    current.append(char)
+                    i += 1
+
+        if current:
+            parts.append(''.join(current))
+
+        return parts
+
+    @staticmethod
+    def _evaluate_simple_condition(condition: str, data_source: Any) -> bool:
+        """Evaluate a simple condition (no and/or).
+
+        支持的操作符:
+        - 比较操作符: ==, !=, >, <, >=, <=
+        - 成员操作符: in, not in
+        - 包含操作符: contains
+
+        Args:
+            condition: Simple condition expression
+            data_source: Data to evaluate against
+
+        Returns:
+            True if condition is met, False otherwise
+        """
+        from apirun.utils.enhanced_jsonpath import EnhancedJSONPath
+
+        import re
+
+        # 优先检查多词操作符: in, not in, contains
+        # 模式: path in value, path not in value, path contains value
+        multi_op_pattern = r'(\$[^\s]+)\s*(in|not in|contains)\s*(.+)'
+        multi_match = re.match(multi_op_pattern, condition.strip(), re.IGNORECASE)
+
+        if multi_match:
+            path, operator, expected_value = multi_match.groups()
+            operator = operator.lower()
+            jsonpath = EnhancedJSONPath()
+
+            try:
+                # Extract actual value from data source
+                actual_value = jsonpath.extract(path, data_source, 0)
+
+                # Convert expected value
+                expected_value = StepExecutor._convert_condition_value(expected_value.strip())
+
+                # Perform operation
+                if operator == "in":
+                    # Check if value is in array/string
+                    if isinstance(actual_value, (list, tuple)):
+                        return expected_value in actual_value
+                    elif isinstance(actual_value, str):
+                        return str(expected_value) in actual_value
+                    return False
+
+                elif operator == "not in":
+                    # Check if value is NOT in array/string
+                    if isinstance(actual_value, (list, tuple)):
+                        return expected_value not in actual_value
+                    elif isinstance(actual_value, str):
+                        return str(expected_value) not in actual_value
+                    return False
+
+                elif operator == "contains":
+                    # Check if array/string contains value
+                    if isinstance(actual_value, (list, tuple)):
+                        return expected_value in actual_value
+                    elif isinstance(actual_value, str):
+                        return str(expected_value) in actual_value
+                    return False
+
+            except Exception:
+                return False
+
+        # 检查标准比较操作符: ==, !=, >, <, >=, <=
+        # 模式: "$.path == value"
+        match = re.match(r'(\$[^\s]+)\s*(==|!=|>=|<=|>|<)\s*(.+)', condition.strip())
+        if match:
+            path, operator, expected_value = match.groups()
+            jsonpath = EnhancedJSONPath()
+
+            try:
+                # Extract value from data source
+                actual_value = jsonpath.extract(path, data_source, 0)
+
+                # Convert expected value to appropriate type
+                expected_value = StepExecutor._convert_condition_value(expected_value.strip())
+
+                # Perform comparison
+                if operator == "==":
+                    return actual_value == expected_value
+                elif operator == "!=":
+                    return actual_value != expected_value
+                elif operator == ">":
+                    return actual_value is not None and actual_value > expected_value
+                elif operator == "<":
+                    return actual_value is not None and actual_value < expected_value
+                elif operator == ">=":
+                    return actual_value is not None and actual_value >= expected_value
+                elif operator == "<=":
+                    return actual_value is not None and actual_value <= expected_value
+                else:
+                    return False
+
+            except Exception:
+                return False
+
+        # If no match, check if the path exists (existence check)
+        elif condition.startswith("$"):
+            jsonpath = EnhancedJSONPath()
+            try:
+                value = jsonpath.extract(condition, data_source, 0)
+                return value is not None
+            except Exception:
+                return False
+
+        return False
+
+    @staticmethod
+    def _convert_condition_value(value: str) -> Any:
+        """Convert string value to appropriate Python type.
+
+        Args:
+            value: String value from condition
+
+        Returns:
+            Converted value (bool, int, float, str, None)
+        """
+        value_lower = value.lower()
+
+        # Boolean values
+        if value_lower == "true":
+            return True
+        elif value_lower == "false":
+            return False
+
+        # Null value
+        elif value_lower == "null":
+            return None
+
+        # Quoted string
+        elif (value.startswith('"') and value.endswith('"')) or \
+             (value.startswith("'") and value.endswith("'")):
+            return value[1:-1]
+
+        # Numeric values
+        else:
+            # Try to convert to number
+            try:
+                # Check for negative number or decimal
+                if value.startswith('-') or '.' in value:
+                    return float(value)
+                return int(value)
+            except ValueError:
+                # Return as string if not a number
+                return value
 
     def _execute_setup(self) -> None:
         """Execute setup hooks.

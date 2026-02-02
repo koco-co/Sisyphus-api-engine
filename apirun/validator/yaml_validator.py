@@ -109,6 +109,8 @@ class YamlValidator:
         "profiles",
         "active_profile",
         "data_source",
+        "data_iterations",  # Number of data-driven iterations
+        "variable_prefix",  # Prefix for data variables
         "websocket",
         "output",
         "base_url",
@@ -176,10 +178,12 @@ class YamlValidator:
     # Valid keywords for wait steps
     VALID_WAIT_KEYWORDS: Set[str] = {
         "duration",
+        "seconds",  # Fixed delay in seconds
         "condition",
         "wait_condition",
         "interval",
         "timeout",
+        "max_wait",  # Maximum wait time for conditional waits
         "wait_type",
     }
 
@@ -206,6 +210,7 @@ class YamlValidator:
         "allow_imports",
         "variables",
         "timeout",
+        "capture_output",  # Capture script output
     }
 
     # Valid keywords for concurrent steps
@@ -250,6 +255,7 @@ class YamlValidator:
         "expect",
         "expected",
         "description",
+        "error_message",  # Custom error message (v2.0.1+)
     }
 
     # Valid keywords in extractors
@@ -263,6 +269,10 @@ class YamlValidator:
         "pattern",
         "group",
         "multiple",
+        "extract_all",  # Extract all matches (v2.0+)
+        "default",  # Default value if extraction fails (v2.0.1+)
+        "condition",  # Conditional extraction (v2.0+)
+        "on_failure",  # Behavior on extraction failure (v2.0+)
         "description",
     }
 
@@ -276,6 +286,20 @@ class YamlValidator:
         "jitter",
         "retry_on",
         "stop_on",
+    }
+
+    # Valid keywords in data_source
+    VALID_DATA_SOURCE_KEYWORDS: Set[str] = {
+        "type",  # Data source type: csv, json, database
+        "file_path",  # Path to data file
+        "data_key",  # Key for JSON data
+        "table",  # Database table name
+        "query",  # Database query
+        "sheet",  # Excel sheet name
+        "delimiter",  # CSV delimiter
+        "encoding",  # File encoding
+        "data",  # Inline data
+        "iterations",  # Number of iterations
     }
 
     # Valid keywords in data_source

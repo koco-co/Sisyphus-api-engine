@@ -139,6 +139,7 @@ class ValidationRule:
         description: Validation description
         logical_operator: Logical operator (and/or/not) for complex validations
         sub_validations: List of sub-validation rules for logical operators
+        error_message: Custom error message to display on validation failure
     """
 
     type: str
@@ -147,6 +148,7 @@ class ValidationRule:
     description: str = ""
     logical_operator: Optional[str] = None
     sub_validations: List["ValidationRule"] = field(default_factory=list)
+    error_message: str = ""
 
 
 @dataclass
@@ -158,12 +160,22 @@ class Extractor:
         type: Extraction type (jsonpath, regex, header, cookie)
         path: Extraction path or pattern
         index: Index for multiple matches (default: 0)
+        extract_all: Extract all matching values as an array (default: False)
+        default: Default value to use if extraction fails (default: None)
+        description: Extractor description (default: "")
+        condition: Condition expression that must be true for extraction (default: None)
+        on_failure: Failure handling configuration (default: None)
     """
 
     name: str
     type: str
     path: str
     index: int = 0
+    extract_all: bool = False
+    default: Any = None
+    description: str = ""
+    condition: Optional[str] = None
+    on_failure: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -269,8 +281,11 @@ class TestStep:
     concurrent_steps: Optional[List[Dict[str, Any]]] = None
     # Script step fields
     script: Optional[str] = None
+    script_file: Optional[str] = None  # Path to external Python script file
     script_type: Optional[str] = None
     allow_imports: Optional[bool] = None
+    args: Optional[Dict[str, Any]] = None  # Arguments to pass to script
+    capture_output: Optional[bool] = None  # Whether to capture script output
     # Poll step fields (for async operation polling)
     poll_config: Optional[Dict[str, Any]] = None
     on_timeout: Optional[Dict[str, Any]] = None

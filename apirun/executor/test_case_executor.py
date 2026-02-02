@@ -107,7 +107,7 @@ class TestCaseExecutor:
         self._execute_global_teardown()
 
         # Collect results
-        result = self.result_collector.collect(self.test_case, step_results)
+        result = self.result_collector.collect(self.test_case, step_results, self.variable_manager)
 
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
@@ -218,8 +218,15 @@ class TestCaseExecutor:
         profile = self.test_case.config.profiles.get(profile_name)
 
         if profile:
+            # Prepare profile variables dict
+            profile_vars = profile.variables.copy() if profile.variables else {}
+
+            # Add base_url as a top-level variable
+            if profile.base_url:
+                profile_vars["base_url"] = profile.base_url
+
             # Set profile variables
-            self.variable_manager.set_profile(profile.variables)
+            self.variable_manager.set_profile(profile_vars)
 
             # Apply profile overrides
             if profile.overrides:
