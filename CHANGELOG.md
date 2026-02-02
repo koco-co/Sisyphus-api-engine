@@ -5,6 +5,83 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 规范，
 项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html) 规范。
 
+## [2.0.2] - 2026-02-02
+
+### 🐛 修复
+
+#### 日志系统bug修复
+- **修复错误消息格式化问题** (问题#6)
+  - 修复JSONPath提取器错误消息中的乱码字符
+  - 错误消息现在正确显示 `$` 符号而不是 `'`
+  - 提升错误消息可读性和调试体验
+
+- **修复性能指标单位显示错误** (问题#7)
+  - 修复性能指标日志将毫秒值直接显示为秒的问题
+  - 现在正确转换：1729.428ms → 1.729s
+  - 所有性能指标（total_time, dns_time, tcp_time, tls_time, server_time）均正确显示
+
+#### 测试增强
+- 新增5个单元测试验证日志bug修复：
+  - `test_error_message_formatting_no_garbled_quotes` - 验证错误消息无乱码
+  - `test_error_message_contains_helpful_suggestions` - 验证帮助建议
+  - `test_performance_metrics_unit_conversion` - 验证性能指标单位转换
+  - `test_performance_metrics_conversion_with_small_values` - 验证小数值转换
+  - `test_performance_metrics_conversion_with_large_values` - 验证大数值转换
+
+### 📝 质量提升
+
+| 指标 | 改进 |
+|------|------|
+| 单元测试通过率 | 100% (897/897) |
+| 新增单元测试 | +5 |
+| Bug修复总数 | 7个 |
+
+### 🔧 内部改进
+
+- 优化错误消息格式化逻辑
+- 增强性能指标日志可读性
+- 提升用户调试体验
+
+---
+
+## [2.0.1] - 2026-02-02
+
+### 🐛 修复
+
+#### 测试修复
+- **修复单元测试失败问题**
+  - 修复验证失败错误消息格式测试断言
+  - 修复统计计算测试中end_time类型错误
+  - 修复final_variables收集逻辑，现在包含配置变量
+  - 修复WebSocket通知异步调用测试（使用AsyncMock）
+  - 修复统计计算测试步骤数量不匹配问题
+  - 所有892个单元测试通过 ✅
+
+#### YAML验证器增强
+- **新增关键字支持**
+  - `seconds`, `max_wait` - 等待步骤关键字
+  - `capture_output` - 脚本步骤输出捕获
+  - `default` - 提取器默认值（v2.0.1+）
+  - `extract_all`, `condition`, `on_failure` - 提取器增强关键字
+  - `error_message` - 验证器自定义错误消息（v2.0.1+）
+  - `data_iterations`, `variable_prefix` - 数据驱动配置关键字
+  - `file_path`, `data_key` 等 - 数据源配置关键字
+- 所有41个YAML示例文件验证通过 ✅
+
+### 📝 文档更新
+
+- 创建 `examples/README.md` - YAML示例索引文档
+- 更新 `问题追踪清单.md` - Bug修复详细记录
+- 更新 `系统测试任务清单.md` - 完整测试任务规划
+
+### 🔧 内部改进
+
+- 优化 `final_variables` 收集逻辑，包含所有变量类型
+- 增强YAML验证器schema定义
+- 提升测试通过率从99.44%到100%
+
+---
+
 ## [2.0.0] - 2026-02-02
 
 ### ✨ 新增
@@ -98,6 +175,57 @@
   - 功能实现-异步轮询机制.md - 轮询机制完整文档
   - 功能实现总览.md - 所有功能实现状态总览
   - 完整功能实现与自测报告.md - v2.0.0 测试报告
+
+#### 增强型 YAML 验证器
+- **新增验证器模块** (`apirun/validator/`)
+  - `YamlValidator` - 核心验证器类，支持完整的 YAML 语法检查
+  - `ValidationResult` - 验证结果数据模型
+  - `TerminalFormatter` - 美观的终端输出（彩色 + Emoji）
+  - `validate_yaml_files()` - 批量验证入口函数
+
+- **验证功能**
+  - ✅ YAML 语法完整性检查
+  - ✅ 未定义关键字自动检测
+  - ✅ 支持检查范围：
+    - 测试用例顶层字段（name, description, config, steps, tags, enabled）
+    - config 配置节字段
+    - profile 环境配置
+    - 7种步骤类型关键字（request, database, wait, loop, script, poll, concurrent）
+    - 23种验证类型（status_code, eq, ne, gt, lt, contains, regex 等）
+    - 提取器配置
+    - 重试策略、数据源、输出配置等
+
+- **特殊语法支持**
+  - ✅ `!include` 标签支持（使用 yaml_include.Constructor）
+  - ✅ 步骤简写语法（步骤名称作为键）
+  - ✅ Profile 自定义变量（允许任意字段）
+  - ✅ 实验性功能字段（mock, performance, websocket 扩展）
+
+- **用户体验**
+  - 🎨 彩色终端输出（ANSI 颜色码）
+  - 😊 Emoji 图标（✓ ✗ ⚠ ℹ）
+  - 🇨🇳 中文错误提示和位置信息
+  - 📊 验证统计汇总
+
+- **使用示例**
+  ```bash
+  # 验证单个文件
+  sisyphus-validate test_case.yaml
+
+  # 验证整个目录
+  sisyphus-validate examples/
+
+  # 静默模式（仅显示汇总）
+  sisyphus-validate examples/ -q
+
+  # 查看中文帮助
+  sisyphus-validate -H
+  ```
+
+- **测试覆盖**
+  - 新增 `tests/validator/test_yaml_validator.py`
+  - 22个单元测试覆盖所有验证功能
+  - 所有 27 个示例文件验证通过（100%）
 
 - **协议规范更新**
   - API-Engine输入协议规范.md 更新至 v2.0.0

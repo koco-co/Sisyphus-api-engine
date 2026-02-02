@@ -193,6 +193,20 @@ def main() -> int:
     )
 
     parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=['debug', 'info', 'warning', 'error'],
+        default='info',
+        help="Set logging level (debug, info, warning, error)",
+    )
+
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        help="Log file path for detailed execution logs",
+    )
+
+    parser.add_argument(
         "--validate",
         action="store_true",
         help="Validate YAML syntax without execution",
@@ -408,6 +422,8 @@ def main() -> int:
                     lang=args.lang,
                     use_color=not args.no_color,
                     use_emoji=not args.no_emoji,
+                    log_level=args.log_level,
+                    log_file=args.log_file,
                 )
                 all_results.append(result)
 
@@ -864,6 +880,8 @@ def execute_test_case(
     lang: str = "zh",
     use_color: bool = True,
     use_emoji: bool = True,
+    log_level: str = "info",
+    log_file: Optional[str] = None,
 ) -> dict:
     """Execute test case and return results.
 
@@ -875,6 +893,19 @@ def execute_test_case(
         ws_host: WebSocket server host
         ws_port: WebSocket server port
         env_prefix: Environment variable prefix (overrides YAML config)
+        overrides: Variable overrides from command line
+        debug: Enable debug mode
+        output: Output file path
+        format_type: Output format (text/json/csv/html/junit)
+        allure: Generate Allure report
+        allure_dir: Allure results directory
+        allure_clean: Clean allure directory before execution
+        allure_silent: Suppress Allure generation messages
+        lang: Output language (zh/en)
+        use_color: Use colored output
+        use_emoji: Use emoji in output
+        log_level: Logging level (debug/info/warning/error)
+        log_file: Log file path
         overrides: Configuration overrides (list of "key=value" strings)
         debug: Enable debug mode (overrides YAML config)
         output: Output file path (overrides YAML config)
@@ -887,6 +918,22 @@ def execute_test_case(
     Returns:
         Execution result as dictionary
     """
+    # Initialize logging system
+    from apirun.utils.logger import setup_logger_from_args
+
+    # Map verbose flag to log level if verbose is set
+    effective_log_level = "debug" if verbose else log_level
+
+    # Setup logger
+    logger = setup_logger_from_args(
+        log_level=effective_log_level,
+        log_file=log_file
+    )
+
+    logger.info(f"📋 开始执行测试用例: {case_path}")
+    if log_file:
+        logger.info(f"📄 日志文件: {log_file}")
+
     # Parse YAML
     parser = V2YamlParser()
     test_case = parser.parse(case_path)

@@ -71,6 +71,7 @@
 - **实时推送** - WebSocket 实时推送测试进度和结果
 - **变量追踪** - 调试模式下追踪变量变化
 - **🆕 彩色输出（v1.0.3+）** - 支持 ANSI 颜色和 Emoji 图标，中英文双语界面
+- **🆕 增强型验证器（v2.0.0+）** - YAML 语法检查、未定义关键字检测、美观中文提示
 
 ### 🌟 v2.0.0 新功能亮点
 
@@ -78,6 +79,8 @@
 - **🆕 异步轮询机制** - 新增 `poll` 步骤类型，支持等待异步操作完成
 - **🆕 多种轮询策略** - 支持 fixed/exponential/linear 退避策略
 - **🆕 超时处理** - 支持 fail/continue 两种超时行为
+- **🆕 提取器默认值（v2.0.1+）** - 提取器支持默认值，字段不存在时使用默认值
+- **🆕 自定义错误消息（v2.0.1+）** - 验证失败时显示自定义错误消息，提升测试报告可读性
 - **彩色命令行输出** - ANSI 颜色 + Emoji 图标 + 中英文双语
 - **JSONPath 过滤表达式** - 支持 `$.users[?(@.role == 'admin')]` 语法
 - **微秒时间戳** - `now_us()` 返回 20 位唯一时间戳
@@ -112,7 +115,7 @@ pip install Sisyphus-api-engine
 # 查看帮助
 sisyphus --help
 
-# 验证 YAML 文件语法
+# 验证 YAML 文件语法（新增关键字检测、!include 支持、简写语法）
 sisyphus-validate examples/24_最佳实践.yaml
 
 # 验证多个文件
@@ -120,6 +123,9 @@ sisyphus-validate test1.yaml test2.yaml test3.yaml
 
 # 验证目录中的所有文件
 sisyphus-validate tests/
+
+# 静默模式（仅显示汇总）
+sisyphus-validate examples/ -q
 
 # 运行示例测试
 sisyphus --cases examples/24_最佳实践.yaml
@@ -307,10 +313,11 @@ steps: []                     # 必填：测试步骤列表
 - **[21_WebSocket实时推送.yaml](examples/21_WebSocket实时推送.yaml)** - WebSocket实时推送
 - **[22_性能测试.yaml](examples/22_性能测试.yaml)** - 性能测试与压测
 
-### ⭐⭐⭐⭐⭐ 专家级 (23-24)
+### ⭐⭐⭐⭐⭐ 专家级 (23-26)
 
 - **[23_数据库操作.yaml](examples/23_数据库操作.yaml)** - 数据库操作（MySQL/PostgreSQL/SQLite）
 - **[24_最佳实践.yaml](examples/24_最佳实践.yaml)** - 综合最佳实践示例
+- **[26_增强功能测试.yaml](examples/26_增强功能测试.yaml)** - 提取器默认值和自定义错误消息（v2.0.1+）
 
 ---
 
@@ -510,6 +517,75 @@ config:
 | `type` | 类型检查 | `- type: ["$.count", "number"]` |
 
 更多验证器请参考[输入协议规范](docs/API-Engine输入协议规范.md)。
+
+### 🆕 提取器默认值（v2.0.1+）
+
+提取器现在支持 `default` 参数，当提取的字段不存在时，使用指定的默认值：
+
+```yaml
+extractors:
+  # 字段存在时提取实际值
+  - type: jsonpath
+    name: user_id
+    path: "$.user.id"
+    default: "anonymous"  # 字段不存在时使用默认值
+
+  # 正则表达式匹配失败时使用默认值
+  - type: regex
+    name: order_id
+    path: "$.response"
+    pattern: "Order ID: (\\d+)"
+    default: "N/A"
+
+  # Header 不存在时使用默认值
+  - type: header
+    name: auth_token
+    path: "Authorization"
+    default: "Bearer default_token"
+```
+
+**适用场景**：
+- 可选字段提取（如用户昵称、头像等）
+- 向后兼容测试（新版本新增字段）
+- 降级处理（字段不存在时使用默认逻辑）
+
+### 🆕 自定义错误消息（v2.0.1+）
+
+验证器现在支持 `error_message` 参数，验证失败时显示自定义错误消息：
+
+```yaml
+validations:
+  # 简单验证 - 自定义错误消息
+  - type: eq
+    path: "$.status"
+    expect: "success"
+    error_message: "❌ 状态错误: 响应状态必须为'success'，请检查后端服务"
+    description: "验证状态为success"
+
+  # 数值验证 - 带详细说明
+  - type: between
+    path: "$.age"
+    expect: [18, 65]
+    error_message: "⚠️ 年龄限制: 用户年龄必须在18-65岁之间，当前值不符合要求"
+    description: "验证年龄范围"
+
+  # 逻辑运算符 - 统一错误消息
+  - type: and
+    error_message: "❌ 业务验证失败: 状态必须为success且码为1"
+    sub_validations:
+      - type: eq
+        path: "$.status"
+        expect: "success"
+      - type: eq
+        path: "$.code"
+        expect: 1
+```
+
+**优势**：
+- ✅ 更清晰的错误提示，快速定位问题
+- ✅ 支持多语言错误消息（中文/英文）
+- ✅ 提升测试报告的可读性
+- ✅ 便于向开发团队反馈具体问题
 
 ### JSONPath 增强函数
 
