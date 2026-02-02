@@ -115,6 +115,7 @@ class YamlValidator:
         "verify_ssl",
         "debug",
         "env_vars",
+        "performance",
     }
 
     # Valid keywords in profile section
@@ -143,6 +144,8 @@ class YamlValidator:
         "validations",
         "extractors",
         "validate",
+        "mock",
+        "performance",
     }
 
     # Valid keywords for request steps
@@ -291,6 +294,11 @@ class YamlValidator:
         "enabled",
         "host",
         "port",
+        "server_url",
+        "ssl_enabled",
+        "heartbeat_interval",
+        "reconnect",
+        "message_queue",
     }
 
     # Valid keywords in output config
@@ -375,9 +383,20 @@ class YamlValidator:
 
         try:
             import yaml
+            from yaml_include import Constructor
 
+            # Get base directory for relative paths
+            base_dir = os.path.dirname(os.path.abspath(file_path))
+
+            # Create include constructor with base_dir
+            constructor = Constructor(base_dir=base_dir)
+
+            # Register constructor globally to yaml.FullLoader
+            yaml.add_constructor("!include", constructor, yaml.FullLoader)
+
+            # Load YAML with FullLoader (supports !include tag)
             with open(file_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
+                data = yaml.load(f, yaml.FullLoader)
 
             if data is None:
                 result.syntax_errors.append("YAML 文件为空")
@@ -467,14 +486,15 @@ class YamlValidator:
                         continue
 
                     # Check for unknown keywords in profile
-                    # Note: Skip 'variables' key since users can define custom variables
+                    # Note: Users can define custom variables at profile level
+                    # We only warn about clearly invalid keywords
+                    # Common valid keywords: base_url, variables, timeout, verify_ssl, headers
+                    # Any other field is treated as a custom variable (allowed)
                     for key in profile_config.keys():
-                        if key == "variables":
-                            continue  # Users can define any variables here
-                        if key not in self.VALID_PROFILE_KEYWORDS:
-                            result.unknown_keywords.append(
-                                (key, f"profiles.{profile_name}")
-                            )
+                        if key in self.VALID_PROFILE_KEYWORDS:
+                            continue
+                        # Allow any other field as custom variable
+                        # Don't report as unknown keyword
 
         # Validate retry_policy
         retry_policy = config.get("retry_policy")
@@ -537,6 +557,27 @@ class YamlValidator:
                     f"{step_location}: 步骤必须是对象/字典类型"
                 )
                 continue
+
+            # Support shorthand syntax: step name as key
+            # Example: - 步骤1_测试GET请求:
+            #            type: request
+            if len(step) == 1 and "type" not in step:
+                # Extract the actual step content from the shorthand syntax
+                step_name = list(step.keys())[0]
+                step_content = step[step_name]
+
+                if not isinstance(step_content, dict):
+                    result.syntax_errors.append(
+                        f"{step_location}: 步骤内容必须是对象/字典类型"
+                    )
+                    continue
+
+                # Use step_content as the step for validation
+                # Add name to step_content if not present
+                if "name" not in step_content:
+                    step_content = dict(step_content, name=step_name)
+
+                step = step_content
 
             # Check step type
             step_type = step.get("type", "request")  # Default is request
