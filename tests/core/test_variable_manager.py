@@ -613,3 +613,152 @@ class TestVariablePriority:
 
         assert value == "profile"
         assert source == "profile"
+
+
+class TestConfigContext:
+    """Tests for config context and nested variable references."""
+
+    def test_set_config_context(self):
+        """Test setting config context."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {
+                "dev": {"variables": {"api_key": "dev_key"}},
+                "prod": {"variables": {"api_key": "prod_key"}}
+            },
+            "active_profile": "dev"
+        }
+
+        manager.set_config_context(config)
+
+        assert manager.config_context == config
+        assert manager.config_context["active_profile"] == "dev"
+
+    def test_get_all_variables_includes_config(self):
+        """Test that get_all_variables includes config context."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {"dev": {"variables": {"api_key": "123"}}},
+            "active_profile": "dev"
+        }
+
+        manager.set_config_context(config)
+        manager.global_vars = {"global_var": "value"}
+
+        all_vars = manager.get_all_variables()
+
+        assert "config" in all_vars
+        assert all_vars["config"]["active_profile"] == "dev"
+        assert all_vars["global_var"] == "value"
+
+    def test_render_string_with_config_reference(self):
+        """Test rendering string with config reference."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {
+                "dev": {
+                    "variables": {
+                        "test_suffix": "0202093000"
+                    }
+                }
+            },
+            "active_profile": "dev"
+        }
+
+        manager.set_config_context(config)
+        manager.global_vars = {"category_name": "test_${config.profiles.dev.variables.test_suffix}"}
+
+        rendered = manager.render_string("${category_name}")
+
+        assert rendered == "test_0202093000"
+
+    def test_render_nested_config_references(self):
+        """Test rendering with nested config references."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {
+                "ci_62": {
+                    "variables": {
+                        "test_suffix": "0202093000",
+                        "env": "ci"
+                    }
+                }
+            },
+            "active_profile": "ci_62"
+        }
+
+        manager.set_config_context(config)
+
+        # Test nested reference
+        template = "${config.profiles.ci_62.variables.test_suffix}_${config.profiles.ci_62.variables.env}"
+        rendered = manager.render_string(template)
+
+        assert rendered == "0202093000_ci"
+
+    def test_render_config_with_active_profile(self):
+        """Test rendering with active_profile variable."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {
+                "dev": {"base_url": "http://dev.example.com"},
+                "prod": {"base_url": "http://prod.example.com"}
+            },
+            "active_profile": "dev"
+        }
+
+        manager.set_config_context(config)
+
+        # Reference using active_profile
+        template = "${config.active_profile}"
+        rendered = manager.render_string(template)
+
+        assert rendered == "dev"
+
+    def test_render_complex_nested_reference(self):
+        """Test complex nested reference scenario."""
+        manager = VariableManager()
+
+        config = {
+            "profiles": {
+                "test": {
+                    "variables": {
+                        "suffix": "12345",
+                        "prefix": "test"
+                    }
+                }
+            },
+            "active_profile": "test"
+        }
+
+        manager.set_config_context(config)
+        manager.global_vars = {
+            "datasource_name": "${config.profiles.test.variables.prefix}_${config.profiles.test.variables.suffix}"
+        }
+
+        all_vars = manager.get_all_variables()
+        rendered = manager.render_string("${datasource_name}")
+
+        assert rendered == "test_12345"
+
+    def test_config_context_invalidation(self):
+        """Test that changing config context invalidates cache."""
+        manager = VariableManager()
+
+        config1 = {"profiles": {"dev": {"variables": {"key": "value1"}}}}
+        config2 = {"profiles": {"dev": {"variables": {"key": "value2"}}}}
+
+        manager.set_config_context(config1)
+        all_vars1 = manager.get_all_variables()
+
+        assert all_vars1["config"]["profiles"]["dev"]["variables"]["key"] == "value1"
+
+        # Change config context
+        manager.set_config_context(config2)
+        all_vars2 = manager.get_all_variables()
+
+        assert all_vars2["config"]["profiles"]["dev"]["variables"]["key"] == "value2"
