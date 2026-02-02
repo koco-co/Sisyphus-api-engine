@@ -100,6 +100,58 @@ class TestJSONPathExtractor:
         with pytest.raises(ValueError):
             extractor.extract("$.nonexistent", sample_data)
 
+    def test_error_message_formatting_no_garbled_quotes(self, extractor, sample_data):
+        """Test that error messages are properly formatted without garbled text."""
+        """修复bug: 验证错误消息不包含乱码的引号字符"""
+        with pytest.raises(ValueError) as exc_info:
+            extractor.extract("$.nonexistent.deep.field", sample_data)
+
+        error_message = str(exc_info.value)
+        # Should contain proper formatting with $ symbol
+        assert "应以 $ 开头" in error_message or "$" in error_message
+        # Should NOT contain the garbled pattern (quotes around $ alone)
+        assert "以 ' 开头" not in error_message
+        assert "以 '$" not in error_message
+        # Should be helpful Chinese message
+        assert "JSONPath" in error_message or "提取" in error_message
+
+    def test_error_message_contains_helpful_suggestions(self, extractor, sample_data):
+        """Test that error messages contain helpful debugging suggestions."""
+        """修复bug: 验证错误消息包含有用的调试建议"""
+        with pytest.raises(ValueError) as exc_info:
+            extractor.extract("$.nonexistent", sample_data)
+
+        error_message = str(exc_info.value)
+        # Should contain helpful suggestions
+        assert any(keyword in error_message for keyword in
+                   ["请检查", "路径", "字段", "建议"])
+
+    def test_extract_with_default_value(self, extractor, sample_data):
+        """Test extracting non-existent field with default value."""
+        result = extractor.extract("$.nonexistent", sample_data, default="N/A")
+        assert result == "N/A"
+
+    def test_extract_with_default_none(self, extractor, sample_data):
+        """Test extracting existing field with default=None should return actual value."""
+        result = extractor.extract("$.user.name", sample_data, default=None)
+        assert result == "John Doe"
+
+    def test_extract_with_default_integer(self, extractor, sample_data):
+        """Test extracting with integer default value."""
+        result = extractor.extract("$.user.age", sample_data, default=18)
+        assert result == 18
+
+    def test_extract_with_default_dict(self, extractor, sample_data):
+        """Test extracting with dict default value."""
+        default_config = {"theme": "dark", "lang": "en"}
+        result = extractor.extract("$.user.preferences", sample_data, default=default_config)
+        assert result == default_config
+
+    def test_extract_nested_with_default(self, extractor, sample_data):
+        """Test extracting nested non-existent field with default."""
+        result = extractor.extract("$.user.phone.number", sample_data, default="000-0000")
+        assert result == "000-0000"
+
     def test_extract_index_out_of_range(self, extractor, sample_data):
         """Test extracting with index out of range."""
         with pytest.raises(ValueError, match="Index.*out of range"):
@@ -194,6 +246,27 @@ class TestRegexExtractor:
         """Test extracting with no match."""
         result = extractor.extract(r"\d+", "no numbers here")
         assert result is None
+
+    def test_extract_with_default_value(self, extractor):
+        """Test extracting with no match but with default value."""
+        result = extractor.extract(r"\d+", "no numbers here", default="0")
+        assert result == "0"
+
+    def test_extract_match_with_default_ignored(self, extractor):
+        """Test extracting with match should ignore default value."""
+        result = extractor.extract(r"\d+", "user id=12345", default="0")
+        assert result == "12345"
+
+    def test_extract_no_match_with_default_dict(self, extractor):
+        """Test extracting with no match, return dict default."""
+        default_data = {"id": "unknown", "name": "anonymous"}
+        result = extractor.extract(r"id=(\d+)", "no id", default=default_data)
+        assert result == default_data
+
+    def test_extract_group_out_of_range_with_default(self, extractor):
+        """Test extracting with group index out of range, should return default."""
+        result = extractor.extract(r"(\d+)", "id=123", index=5, default="N/A")
+        assert result == "N/A"
 
     def test_extract_from_non_string(self, extractor):
         """Test extracting from non-string data."""
@@ -298,6 +371,16 @@ class TestHeaderExtractor:
         result = extractor.extract("Non-Existent", response_data)
         assert result is None
 
+    def test_extract_nonexistent_header_with_default(self, extractor, response_data):
+        """Test extracting non-existent header with default value."""
+        result = extractor.extract("Non-Existent", response_data, default="text/html")
+        assert result == "text/html"
+
+    def test_extract_existing_header_with_default(self, extractor, response_data):
+        """Test extracting existing header with default should return actual value."""
+        result = extractor.extract("Content-Type", response_data, default="text/plain")
+        assert result == "application/json"
+
     def test_extract_from_non_dict_data(self, extractor):
         """Test extracting from non-dict data."""
         result = extractor.extract("Content-Type", "not a dict")
@@ -359,6 +442,16 @@ class TestCookieExtractor:
         """Test extracting non-existent cookie."""
         result = extractor.extract("nonexistent", response_data)
         assert result is None
+
+    def test_extract_nonexistent_cookie_with_default(self, extractor, response_data):
+        """Test extracting non-existent cookie with default value."""
+        result = extractor.extract("nonexistent", response_data, default="default_cookie")
+        assert result == "default_cookie"
+
+    def test_extract_existing_cookie_with_default(self, extractor, response_data):
+        """Test extracting existing cookie with default should return actual value."""
+        result = extractor.extract("session_id", response_data, default="fallback")
+        assert result == "abc123"
 
     def test_extract_from_non_dict_data(self, extractor):
         """Test extracting from non-dict data."""
@@ -480,3 +573,288 @@ class TestExtractorEdgeCases:
         data = {"cookies": {"session": "abc123/xyz=789"}}
         result = extractor.extract("session", data)
         assert result == "abc123/xyz=789"
+
+
+class TestMultiValueExtraction:
+    """Tests for multi-value extraction (extract_all parameter)."""
+
+    @pytest.fixture
+    def extractor(self):
+        """Create JSONPathExtractor instance."""
+        return JSONPathExtractor()
+
+    @pytest.fixture
+    def sample_array_data(self):
+        """Sample data with arrays for testing."""
+        return {
+            "users": [
+                {"id": 1, "name": "Alice", "role": "admin"},
+                {"id": 2, "name": "Bob", "role": "user"},
+                {"id": 3, "name": "Charlie", "role": "user"}
+            ],
+            "tags": ["python", "java", "go"],
+            "scores": [85, 90, 78, 92]
+        }
+
+    def test_extract_all_names(self, extractor, sample_array_data):
+        """Test extracting all values with index=-1."""
+        result = extractor.extract("$.users[*].name", sample_array_data, index=-1)
+        assert result == ["Alice", "Bob", "Charlie"]
+
+    def test_extract_all_ids(self, extractor, sample_array_data):
+        """Test extracting all user IDs."""
+        result = extractor.extract("$.users[*].id", sample_array_data, index=-1)
+        assert result == [1, 2, 3]
+
+    def test_extract_all_simple_array(self, extractor, sample_array_data):
+        """Test extracting all elements from simple array."""
+        result = extractor.extract("$.tags[*]", sample_array_data, index=-1)
+        assert result == ["python", "java", "go"]
+
+    def test_extract_first_value(self, extractor, sample_array_data):
+        """Test extracting first value (default behavior)."""
+        result = extractor.extract("$.users[*].name", sample_array_data, index=0)
+        assert result == "Alice"
+
+    def test_extract_second_value(self, extractor, sample_array_data):
+        """Test extracting second value."""
+        result = extractor.extract("$.users[*].name", sample_array_data, index=1)
+        assert result == "Bob"
+
+    def test_extract_last_value(self, extractor, sample_array_data):
+        """Test extracting last value."""
+        result = extractor.extract("$.users[*].name", sample_array_data, index=2)
+        assert result == "Charlie"
+
+    def test_extract_all_with_nested_path(self, extractor, sample_array_data):
+        """Test extracting all with nested path."""
+        result = extractor.extract("$.users[*].role", sample_array_data, index=-1)
+        assert result == ["admin", "user", "user"]
+
+    def test_extract_with_filter_multiple_results(self, extractor):
+        """Test extracting filtered results (multiple matches)."""
+        data = {
+            "items": [
+                {"category": "A", "price": 100},
+                {"category": "B", "price": 200},
+                {"category": "A", "price": 150}
+            ]
+        }
+        # Extract all category A items' prices
+        result = extractor.extract("$.items[?(@.category == 'A')].price", data, index=-1)
+        assert result == [100, 150]
+
+    def test_extract_single_value_does_not_return_array(self, extractor, sample_array_data):
+        """Test that single value extraction with index=0 returns scalar, not array."""
+        result = extractor.extract("$.users[*].name", sample_array_data, index=0)
+        assert isinstance(result, str)
+        assert result == "Alice"
+
+    def test_extract_empty_array_returns_empty_list(self, extractor):
+        """Test extracting from empty array returns empty list."""
+        data = {"items": []}
+        result = extractor.extract("$.items[*]", data, index=-1)
+        assert result == []
+
+    def test_extract_all_numbers(self, extractor, sample_array_data):
+        """Test extracting all numbers from array."""
+        result = extractor.extract("$.scores[*]", sample_array_data, index=-1)
+        assert result == [85, 90, 78, 92]
+
+
+class TestConditionalExtraction:
+    """Tests for conditional extraction (condition parameter)."""
+
+    @pytest.fixture
+    def sample_data(self):
+        """Sample data for conditional extraction testing."""
+        return {
+            "code": 200,
+            "success": True,
+            "data": {
+                "id": "task-123",
+                "name": "Test Task",
+                "status": "active"
+            },
+            "items": [
+                {"id": 1, "name": "Item 1"},
+                {"id": 2, "name": "Item 2"}
+            ]
+        }
+
+    def test_condition_eq_true(self, sample_data):
+        """Test condition with equality check (true)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        # Create a mock executor with minimal setup
+        from apirun.core.variable_manager import VariableManager
+        vm = VariableManager()
+
+        # Simulate condition evaluation
+        result = StepExecutor._evaluate_simple_condition("$.code == 200",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_eq_false(self, sample_data):
+        """Test condition with equality check (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code == 404",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_ne_true(self, sample_data):
+        """Test condition with not-equal check (true)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code != 404",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_ne_false(self, sample_data):
+        """Test condition with not-equal check (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code != 200",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_gt_true(self, sample_data):
+        """Test condition with greater-than check (true)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code > 100",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_gt_false(self, sample_data):
+        """Test condition with greater-than check (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code > 300",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_lt_true(self, sample_data):
+        """Test condition with less-than check (true)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.code < 300",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_boolean_true(self, sample_data):
+        """Test condition with boolean check (true)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.success == true",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_boolean_false(self, sample_data):
+        """Test condition with boolean check (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.success == false",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_exists(self, sample_data):
+        """Test condition checking if field exists."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.data",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_not_exists(self, sample_data):
+        """Test condition checking if field doesn't exist."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.nonexistent",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_with_string_value(self, sample_data):
+        """Test condition with string comparison."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition('$.data.status == "active"',
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_and_logic(self, sample_data):
+        """Test condition with AND logic."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_condition("$.code == 200 and $.success == true",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_and_logic_false(self, sample_data):
+        """Test condition with AND logic (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_condition("$.code == 200 and $.code == 404",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_or_logic(self, sample_data):
+        """Test condition with OR logic."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_condition("$.code == 404 or $.success == true",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_or_logic_false(self, sample_data):
+        """Test condition with OR logic (false)."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_condition("$.code == 404 or $.success == false",
+            sample_data
+        )
+        assert result is False
+
+    def test_condition_with_array_length(self, sample_data):
+        """Test condition with array length check."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.items.length() > 0",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_with_null_check(self, sample_data):
+        """Test condition with null check."""
+        from apirun.executor.step_executor import StepExecutor
+
+        result = StepExecutor._evaluate_simple_condition("$.data != null",
+            sample_data
+        )
+        assert result is True
+
+    def test_condition_with_nonexistent_null_check(self):
+        """Test condition with null check on non-existent field."""
+        from apirun.executor.step_executor import StepExecutor
+
+        data = {"data": None}
+        result = StepExecutor._evaluate_simple_condition("$.data != null",
+            data
+        )
+        assert result is False

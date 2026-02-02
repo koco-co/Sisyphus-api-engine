@@ -187,7 +187,8 @@ class TestAPIExecutor:
 
         assert result.status == "failure"
         assert result.error_info is not None
-        assert "Validation failed" in result.error_info.message
+        # Updated to support new error message format from v2.0.0
+        assert "Validation" in result.error_info.message and "failed" in result.error_info.message.lower()
 
     @patch("apirun.executor.api_executor.requests.Session.request")
     def test_execute_request_with_network_error(self, mock_request):

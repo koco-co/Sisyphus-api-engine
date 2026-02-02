@@ -159,8 +159,10 @@ data = json.dumps({"key": "value"})
         result = sandbox.execute(script)
 
         assert result["success"] is True
-        assert "json" in result["variables"]
-        assert '{"key": "value"}' in result["variables"]["data"]
+        # json module should not be in exported variables (it's a system module)
+        assert "json" not in result["variables"]
+        # User-created variable should be exported
+        assert result["variables"]["data"] == '{"key": "value"}'
 
     def test_safe_import_blocked_module(self):
         """Test importing a blocked module."""
@@ -456,3 +458,158 @@ is_valid = (code == 200 and body.get("status") == "ok")
 
         assert result.status == "success"
         assert var_manager.get_variable("is_valid") is True
+
+
+class TestScriptExecutorEnhancements:
+    """Test enhanced script features: external files, arguments, output capture."""
+
+    def test_execute_script_with_args(self):
+        """Test script execution with arguments."""
+        var_manager = VariableManager()
+
+        step = TestStep(
+            name="test_args",
+            type="script",
+            script="""
+api_url = args.get("api_url", "default")
+config_name = args.get("config_name", "default")
+result = {"url": api_url, "config": config_name}
+""",
+            script_type="python",
+            args={"api_url": "https://api.example.com", "config_name": "test_config"},
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        result = executor.execute()
+
+        assert result.status == "success"
+        result_data = var_manager.get_variable("result")
+        assert result_data["url"] == "https://api.example.com"
+        assert result_data["config"] == "test_config"
+
+    def test_execute_script_with_file(self, tmp_path):
+        """Test script execution from external file."""
+        import os
+
+        # Create a temporary script file
+        script_file = tmp_path / "test_script.py"
+        script_file.write_text("""
+# Simple test script
+def multiply(a, b):
+    return a * b
+
+result = multiply(5, 3)
+print(f"Multiplication result: {result}")
+""")
+
+        var_manager = VariableManager()
+
+        step = TestStep(
+            name="test_file",
+            type="script",
+            script_file=str(script_file),
+            script_type="python",
+            allow_imports=True,
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        result = executor.execute()
+
+        assert result.status == "success"
+        assert var_manager.get_variable("result") == 15
+
+    def test_execute_script_with_recursive_function(self):
+        """Test script with recursive function calls."""
+        var_manager = VariableManager()
+
+        step = TestStep(
+            name="test_recursive",
+            type="script",
+            script="""
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+result = fibonacci(10)
+""",
+            script_type="python",
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        result = executor.execute()
+
+        assert result.status == "success"
+        assert var_manager.get_variable("result") == 55
+
+    def test_execute_script_output_capture(self):
+        """Test script output capture."""
+        var_manager = VariableManager()
+
+        step = TestStep(
+            name="test_capture",
+            type="script",
+            script="""
+print("Line 1")
+print("Line 2")
+result = "test"
+""",
+            script_type="python",
+            capture_output=True,
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        result = executor.execute()
+
+        assert result.status == "success"
+        # Check that output was captured
+        assert "Line 1" in result.response["output"]
+        assert "Line 2" in result.response["output"]
+        assert var_manager.get_variable("result") == "test"
+
+    def test_execute_script_without_output_capture(self):
+        """Test script execution without output capture."""
+        var_manager = VariableManager()
+
+        step = TestStep(
+            name="test_no_capture",
+            type="script",
+            script="""
+print("This should not be captured")
+result = "test"
+""",
+            script_type="python",
+            capture_output=False,
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        result = executor.execute()
+
+        assert result.status == "success"
+        # Result should still have output but capture_output=False doesn't prevent execution
+        assert var_manager.get_variable("result") == "test"
+
+    def test_render_step_with_new_fields(self):
+        """Test rendering steps with new script fields."""
+        var_manager = VariableManager()
+        var_manager.set_variable("base_path", "/scripts")
+
+        step = TestStep(
+            name="test_render",
+            type="script",
+            script_file="${base_path}/test.py",
+            args={"param1": "${base_path}"},
+            script_type="python",
+            allow_imports=True,
+            capture_output=True,
+        )
+
+        executor = ScriptExecutor(var_manager, step)
+        rendered = executor._render_step()
+
+        assert rendered["script_file"] == "/scripts/test.py"
+        assert rendered["args"]["param1"] == "/scripts"
+        assert rendered["script_type"] == "python"
+        assert rendered["allow_imports"] is True
+        assert rendered["capture_output"] is True
+

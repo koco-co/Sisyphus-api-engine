@@ -279,6 +279,170 @@ class TestValidationEngine:
         assert results[0]["description"] == description
 
 
+class TestCustomErrorMessage:
+    """Tests for custom error message functionality.
+
+    测试自定义错误消息功能，确保：
+    1. 自定义错误消息在验证失败时正确显示
+    2. 默认错误消息在没有自定义消息时仍然工作
+    3. 错误消息字段在验证结果中正确返回
+    """
+
+    def test_custom_error_message_on_validation_failure(self):
+        """Test custom error message is used when validation fails."""
+        engine = ValidationEngine()
+        data = {"status": 404, "message": "Not Found"}
+
+        custom_error = "❌ 状态码错误: 期望值为200，但实际为404。请联系后端开发人员检查。"
+        rules = [
+            {
+                "type": "eq",
+                "path": "$.status",
+                "expect": 200,
+                "error_message": custom_error,
+                "description": "验证HTTP状态码"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert len(results) == 1
+        assert results[0]["passed"] is False
+        assert results[0]["error"] == custom_error
+
+    def test_custom_error_message_on_validation_success(self):
+        """Test custom error message is defined but validation passes."""
+        engine = ValidationEngine()
+        data = {"status": 200}
+
+        custom_error = "❌ 状态码错误"
+        rules = [
+            {
+                "type": "eq",
+                "path": "$.status",
+                "expect": 200,
+                "error_message": custom_error,
+                "description": "验证HTTP状态码"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        # 验证通过时，error 字段应该为空
+        assert results[0]["passed"] is True
+        assert results[0].get("error", "") == ""
+
+    def test_default_error_message_without_custom(self):
+        """Test default error message is used when no custom message provided."""
+        engine = ValidationEngine()
+        data = {"count": 5}
+
+        rules = [
+            {
+                "type": "gt",
+                "path": "$.count",
+                "expect": 10,
+                "description": "验证数量大于10"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert results[0]["passed"] is False
+        # 默认错误消息应该包含实际值和期望值
+        assert "5" in results[0]["error"]
+        assert "10" in results[0]["error"]
+        assert "failed" in results[0]["error"]
+
+    def test_custom_error_message_with_different_validators(self):
+        """Test custom error messages work with different validator types."""
+        engine = ValidationEngine()
+        data = {
+            "email": "invalid-email",
+            "age": 15,
+            "status": "pending"
+        }
+
+        rules = [
+            {
+                "type": "regex",
+                "path": "$.email",
+                "expect": r"^[a-z]+@[a-z]+\.[a-z]+$",
+                "error_message": "⚠️ 邮箱格式错误: 必须符合 xxx@xxx.xx 格式",
+                "description": "验证邮箱格式"
+            },
+            {
+                "type": "between",
+                "path": "$.age",
+                "expect": [18, 65],
+                "error_message": "❌ 年龄不符合: 年龄必须在18-65岁之间",
+                "description": "验证年龄范围"
+            },
+            {
+                "type": "in_list",
+                "path": "$.status",
+                "expect": ["active", "inactive"],
+                "error_message": "⚠️ 状态错误: 只能是 active 或 inactive",
+                "description": "验证状态值"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert len(results) == 3
+        # 所有验证都应该失败
+        assert all(not r["passed"] for r in results)
+        # 验证自定义错误消息
+        assert "邮箱格式错误" in results[0]["error"]
+        assert "年龄不符合" in results[1]["error"]
+        assert "状态错误" in results[2]["error"]
+
+    def test_custom_error_message_with_logical_operators(self):
+        """Test custom error messages work with logical operators (and/or/not)."""
+        engine = ValidationEngine()
+        data = {"status": "failed", "code": 0}
+
+        rules = [
+            {
+                "type": "and",
+                "error_message": "❌ 业务验证失败: 状态必须为success且码为1",
+                "sub_validations": [
+                    {"type": "eq", "path": "$.status", "expect": "success"},
+                    {"type": "eq", "path": "$.code", "expect": 1}
+                ]
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert results[0]["passed"] is False
+        assert "业务验证失败" in results[0]["error"]
+
+    def test_mixed_custom_and_default_error_messages(self):
+        """Test mixing custom and default error messages in same validation."""
+        engine = ValidationEngine()
+        data = {"username": "ab", "age": 15}
+
+        rules = [
+            {
+                "type": "length_eq",
+                "path": "$.username",
+                "expect": 5,
+                "description": "验证用户名长度"
+            },
+            {
+                "type": "ge",
+                "path": "$.age",
+                "expect": 18,
+                "error_message": "❌ 年龄限制: 用户必须年满18岁",
+                "description": "验证年龄"
+            }
+        ]
+        results = engine.validate(rules, data)
+
+        assert len(results) == 2
+        # 第一个使用默认错误消息
+        assert not results[0]["passed"]
+        # 第二个使用自定义错误消息
+        assert not results[1]["passed"]
+        assert "年龄限制" in results[1]["error"]
+
+
 class TestValidationEngineWildcardExtraction:
     """Tests for wildcard extraction in validation - Bug fix verification."""
 

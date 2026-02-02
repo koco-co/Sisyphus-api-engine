@@ -392,6 +392,235 @@ class TestHTMLExporter(unittest.TestCase):
         self.assertIn('#ffffff', light_html)  # Light theme
         self.assertIn('#1e1e1e', dark_html)  # Dark theme
 
+    def test_new_visualization_sections(self):
+        """Test new visualization sections (timeline, variable flow, dependency, performance)."""
+        # Create steps with performance metrics and variable data
+        step1 = StepResult(
+            name="Step 1",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            performance=PerformanceMetrics(total_time=150.0, dns_time=20.0, tcp_time=30.0),
+            extracted_vars={"user_id": "12345"},
+            variables_snapshot={},
+        )
+
+        step2 = StepResult(
+            name="Step 2",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            performance=PerformanceMetrics(total_time=200.0, server_time=100.0),
+            extracted_vars={"token": "abc123"},
+            variables_snapshot={"user_id": "12345"},
+            variables_delta={"token": {"new_value": "abc123"}},
+        )
+
+        result = TestCaseResult(
+            name="Visualization Test",
+            status="passed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            duration=1.0,
+            total_steps=2,
+            passed_steps=2,
+            failed_steps=0,
+            skipped_steps=0,
+            step_results=[step1, step2],
+            final_variables={"user_id": "12345", "token": "abc123"},
+        )
+
+        # Export to HTML
+        html_content = self.exporter.to_html(result)
+
+        # Verify new visualization sections exist
+        self.assertIn('Execution Timeline', html_content)
+        self.assertIn('Variable Flow', html_content)
+        self.assertIn('Dependency Graph', html_content)
+        self.assertIn('Performance Analysis', html_content)
+
+        # Verify timeline components
+        self.assertIn('timeline-container', html_content)
+        self.assertIn('timeline-bar-wrapper', html_content)
+
+        # Verify variable flow components
+        self.assertIn('variable-flow-container', html_content)
+        self.assertIn('variable-flow-event', html_content)
+
+        # Verify dependency components
+        self.assertIn('dependency-container', html_content)
+
+        # Verify performance analysis components
+        self.assertIn('performance-overview', html_content)
+        self.assertIn('response-time-chart', html_content)
+        self.assertIn('Total Execution Time', html_content)
+        self.assertIn('Average Response Time', html_content)
+
+    def test_timeline_with_multiple_steps(self):
+        """Test timeline visualization with multiple steps."""
+        steps = []
+        for i in range(5):
+            step = StepResult(
+                name=f"Step {i+1}",
+                status="success" if i < 4 else "failure",
+                start_time=datetime.now(),
+                end_time=datetime.now(),
+                performance=PerformanceMetrics(total_time=100.0 + i * 50),
+            )
+            steps.append(step)
+
+        result = TestCaseResult(
+            name="Timeline Test",
+            status="failed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            duration=5.0,
+            total_steps=5,
+            passed_steps=4,
+            failed_steps=1,
+            skipped_steps=0,
+            step_results=steps,
+            final_variables={},
+        )
+
+        # Export to HTML
+        html_content = self.exporter.to_html(result)
+
+        # Verify timeline bars are generated
+        self.assertIn('timeline-bar-fill', html_content)
+        # Check that timeline section exists and contains multiple bars
+        self.assertIn('timeline-container', html_content)
+        self.assertIn('timeline-chart', html_content)
+        # Verify at least some timeline bars are present
+        self.assertGreater(html_content.count('timeline-bar-wrapper'), 0)
+
+    def test_performance_analysis_metrics(self):
+        """Test performance analysis visualization."""
+        steps = []
+        total_times = [100, 250, 150, 300, 200]
+
+        for i, time in enumerate(total_times):
+            step = StepResult(
+                name=f"API Request {i+1}",
+                status="success",
+                start_time=datetime.now(),
+                end_time=datetime.now(),
+                performance=PerformanceMetrics(
+                    total_time=time,
+                    dns_time=10.0,
+                    tcp_time=20.0,
+                    server_time=time * 0.5,
+                ),
+            )
+            steps.append(step)
+
+        result = TestCaseResult(
+            name="Performance Test",
+            status="passed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            duration=5.0,
+            total_steps=5,
+            passed_steps=5,
+            failed_steps=0,
+            skipped_steps=0,
+            step_results=steps,
+            final_variables={},
+        )
+
+        # Export to HTML
+        html_content = self.exporter.to_html(result)
+
+        # Verify performance sections
+        self.assertIn('Slowest Steps', html_content)
+        self.assertIn('Fastest Steps', html_content)
+        self.assertIn('Response Time Distribution', html_content)
+        self.assertIn('perf-bar-item', html_content)
+
+        # Check that statistics are calculated
+        self.assertIn('1000.00ms', html_content)  # Total time (sum of all)
+        self.assertIn('200.00ms', html_content)  # Average time
+
+    def test_variable_flow_tracking(self):
+        """Test variable flow diagram."""
+        step1 = StepResult(
+            name="Login",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            extracted_vars={"user_id": "123", "session_token": "xyz"},
+        )
+
+        step2 = StepResult(
+            name="Get Profile",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            extracted_vars={"username": "john"},
+            variables_snapshot={"user_id": "123"},
+        )
+
+        result = TestCaseResult(
+            name="Variable Flow Test",
+            status="passed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            duration=1.0,
+            total_steps=2,
+            passed_steps=2,
+            failed_steps=0,
+            skipped_steps=0,
+            step_results=[step1, step2],
+            final_variables={"user_id": "123", "session_token": "xyz", "username": "john"},
+        )
+
+        # Export to HTML
+        html_content = self.exporter.to_html(result)
+
+        # Verify variable flow events are shown
+        self.assertIn('variable-flow-event', html_content)
+        self.assertIn('Created', html_content)
+        self.assertIn('user_id', html_content)
+        self.assertIn('session_token', html_content)
+
+    def test_chinese_language_support(self):
+        """Test Chinese language support for new visualizations."""
+        zh_exporter = HTMLExporter(language="zh")
+
+        step1 = StepResult(
+            name="测试步骤",
+            status="success",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            performance=PerformanceMetrics(total_time=100.0),
+            extracted_vars={"user_id": "123"},
+        )
+
+        result = TestCaseResult(
+            name="测试用例",
+            status="passed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            duration=1.0,
+            total_steps=1,
+            passed_steps=1,
+            failed_steps=0,
+            skipped_steps=0,
+            step_results=[step1],
+            final_variables={"user_id": "123"},
+        )
+
+        # Export to HTML
+        html_content = zh_exporter.to_html(result)
+
+        # Verify Chinese labels
+        self.assertIn('执行时序图', html_content)
+        self.assertIn('变量流转图', html_content)
+        self.assertIn('依赖关系图', html_content)
+        self.assertIn('性能分析', html_content)
+        self.assertIn('总执行时间', html_content)
+        self.assertIn('平均响应时间', html_content)
+
 
 if __name__ == '__main__':
     unittest.main()
