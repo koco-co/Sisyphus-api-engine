@@ -18,19 +18,20 @@ class RegexExtractor:
     - Multiple match modes
     """
 
-    def extract(self, pattern: str, data: Any, index: int = 0) -> Optional[str]:
+    def extract(self, pattern: str, data: Any, index: int = 0, default: Any = None) -> Optional[str]:
         """Extract value from data using regex.
 
         Args:
             pattern: Regular expression pattern
             data: Data to extract from (will be converted to string)
             index: Group index to return (0 for full match, 1+ for groups)
+            default: Default value to return if extraction fails (default: None)
 
         Returns:
-            Extracted string value or None if no match
+            Extracted string value or default value if no match
 
         Raises:
-            ValueError: If pattern is invalid or index out of range
+            ValueError: If pattern is invalid
         """
         # Convert data to string for regex matching
         # For dict/list, use json.dumps() to preserve JSON formatting (double quotes)
@@ -46,15 +47,15 @@ class RegexExtractor:
             match = re.search(pattern, data)
 
             if not match:
-                return None
+                return default
 
             if index == 0:
                 return match.group(0)
             elif 0 < index <= len(match.groups()):
                 return match.group(index)
             else:
-                # Index out of range - return None (extractor failed)
-                return None
+                # Index out of range - return default
+                return default
 
         except re.error as e:
             raise ValueError(

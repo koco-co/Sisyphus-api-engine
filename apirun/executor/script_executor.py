@@ -95,6 +95,7 @@ class ScriptSandbox:
         # Start with safe built-ins
         self.global_vars = {
             "__builtins__": safe_builtins,
+            "__name__": "__main__",  # Set __name__ for if __name__ == "__main__" checks
             "print": self._safe_print,
             "True": True,
             "False": False,
@@ -187,16 +188,18 @@ class ScriptSandbox:
         return self.variable_manager.get_all_variables()
 
     def _safe_print(self, *args, **kwargs) -> None:
-        """Safe print function that captures output.
+        """Safe print function that outputs to stdout.
 
         Args:
             *args: Arguments to print
             **kwargs: Keyword arguments for print
         """
+        # Write directly to stdout so it can be captured by redirect_stdout
+        import sys
+        print(*args, **kwargs, file=sys.stdout)
+        # Also store for later retrieval
         output = io.StringIO()
-        with redirect_stdout(output):
-            print(*args, **kwargs)
-        # Store output for later retrieval
+        print(*args, **kwargs, file=output)
         if not hasattr(self, "_print_output"):
             self._print_output = []
         self._print_output.append(output.getvalue())
@@ -209,11 +212,21 @@ class ScriptSandbox:
         """
         return getattr(self, "_print_output", [])
 
-    def execute(self, script: str) -> Dict[str, Any]:
+    def inject_args(self, args: Dict[str, Any]) -> None:
+        """Inject arguments into the sandbox environment.
+
+        Args:
+            args: Dictionary of arguments to inject
+        """
+        if args:
+            self.global_vars.update(args)
+
+    def execute(self, script: str, capture_output: bool = True) -> Dict[str, Any]:
         """Execute a script in the sandbox.
 
         Args:
             script: Python script code to execute
+            capture_output: Whether to capture stdout/stderr (default: True)
 
         Returns:
             Execution result dictionary with output and variables
@@ -233,13 +246,13 @@ class ScriptSandbox:
             raise ScriptSecurityError(f"Syntax error in script: {e}")
 
         # Execute script
-        local_vars = {}
+        # Use the same dict for globals and locals to allow recursive function calls
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()
 
         try:
             with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                exec(compile(tree, filename="<script>", mode="exec"), self.global_vars, local_vars)
+                exec(compile(tree, filename="<script>", mode="exec"), self.global_vars, self.global_vars)
 
         except Exception as e:
             # Get full traceback
@@ -258,11 +271,23 @@ class ScriptSandbox:
         stderr_output = stderr_capture.getvalue()
         print_output = self.get_print_output()
 
-        # Extract new/modified variables
+        # Extract new/modified variables (non-system, non-private)
+        # We track what was added during this execution
         exported_vars = {}
-        for name, value in local_vars.items():
-            if not name.startswith("_"):
-                exported_vars[name] = value
+        system_vars = {"__builtins__", "__name__", "print", "True", "False", "None",
+                      "get_var", "set_var", "get_all_vars"}
+
+        # Get all allowed modules
+        for module_name in self.DEFAULT_ALLOWED_MODULES:
+            system_vars.add(module_name)
+
+        # Extract variables that were added in this script execution
+        for name, value in self.global_vars.items():
+            if not name.startswith("_") and name not in system_vars:
+                # Only include if it's not a built-in module or function
+                import types
+                if not isinstance(value, types.ModuleType) or name not in self.DEFAULT_ALLOWED_MODULES:
+                    exported_vars[name] = value
 
         return {
             "output": stdout_output,
@@ -364,11 +389,18 @@ class ScriptExecutor(StepExecutor):
 
         # Get script configuration
         script = rendered_step.get("script")
+        script_file = rendered_step.get("script_file")
         script_type = rendered_step.get("script_type", "python")
         allow_imports = rendered_step.get("allow_imports", True)
+        args = rendered_step.get("args", {})
+        capture_output = rendered_step.get("capture_output", True)
+
+        # Load script from file if specified
+        if script_file and not script:
+            script = self._load_script_from_file(script_file)
 
         if not script:
-            raise ValueError("Script step must specify 'script' code to execute")
+            raise ValueError("Script step must specify 'script' code or 'script_file'")
 
         if script_type != "python":
             raise ValueError(f"Unsupported script type: {script_type}. Only 'python' is supported.")
@@ -378,9 +410,13 @@ class ScriptExecutor(StepExecutor):
             self.variable_manager, allow_imports=allow_imports
         )
 
+        # Inject arguments into sandbox as 'args' variable
+        if args:
+            self.sandbox.global_vars["args"] = args
+
         # Execute script
         try:
-            result = self.sandbox.execute(script)
+            result = self.sandbox.execute(script, capture_output=capture_output)
         except ScriptSecurityError as e:
             raise ScriptSecurityError(f"Security error: {e}")
         except Exception as e:
@@ -400,14 +436,52 @@ class ScriptExecutor(StepExecutor):
         return {
             "response": {
                 "script_type": script_type,
+                "script_file": script_file,
                 "output": result.get("output", ""),
                 "print_output": result.get("print_output", []),
                 "errors": result.get("errors", ""),
                 "exported_variables": list(result.get("variables", {}).keys()),
+                "args": args,
             },
             "performance": self._create_performance_metrics(total_time=elapsed * 1000),
             "extracted_vars": result.get("variables", {}),
         }
+
+    def _load_script_from_file(self, script_file: str) -> str:
+        """Load script content from external file.
+
+        Args:
+            script_file: Path to the script file
+
+        Returns:
+            Script content as string
+
+        Raises:
+            ValueError: If file cannot be read
+            FileNotFoundError: If file doesn't exist
+        """
+        from pathlib import Path
+
+        file_path = Path(script_file)
+
+        # Check if file exists
+        if not file_path.exists():
+            # Try relative to current working directory
+            if not file_path.is_absolute():
+                # Try relative to test file directory
+                import os
+                test_dir = Path(os.getcwd())
+                file_path = test_dir / script_file
+
+                if not file_path.exists():
+                    raise FileNotFoundError(f"Script file not found: {script_file}")
+
+        # Read file content
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            raise ValueError(f"Failed to read script file '{script_file}': {e}")
 
     def _render_step(self) -> Dict[str, Any]:
         """Render variables in script step definition.
@@ -422,9 +496,23 @@ class ScriptExecutor(StepExecutor):
             "type": self.step.type,
         }
 
-        # Render script
+        # Render script (inline)
         if self.step.script:
             rendered["script"] = render_template(self.step.script, context)
+
+        # Render script_file (external file path)
+        if self.step.script_file:
+            rendered["script_file"] = render_template(self.step.script_file, context)
+
+        # Render args (arguments)
+        if self.step.args:
+            rendered_args = {}
+            for key, value in self.step.args.items():
+                if isinstance(value, str):
+                    rendered_args[key] = render_template(value, context)
+                else:
+                    rendered_args[key] = value
+            rendered["args"] = rendered_args
 
         # Render script_type
         if self.step.script_type:
@@ -433,6 +521,10 @@ class ScriptExecutor(StepExecutor):
         # Render allow_imports
         if self.step.allow_imports is not None:
             rendered["allow_imports"] = self.step.allow_imports
+
+        # Render capture_output
+        if self.step.capture_output is not None:
+            rendered["capture_output"] = self.step.capture_output
 
         return rendered
 

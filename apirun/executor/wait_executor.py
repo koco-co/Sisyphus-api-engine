@@ -64,7 +64,8 @@ class APIConditionalWait:
             result = api_executor.execute()
 
             # Extract response data for condition check
-            response_data = result.get("response", {})
+            # result is StepResult object, access response attribute
+            response_data = result.response if result.response else {}
 
             # Create a temporary variable context with response data
             temp_vars = {

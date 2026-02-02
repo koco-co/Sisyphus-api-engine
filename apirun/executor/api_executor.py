@@ -172,7 +172,9 @@ class APIExecutor(StepExecutor):
         for val_result in validation_results:
             if not val_result["passed"]:
                 # Create exception with response data attached for debugging
-                error = AssertionError(f"Validation failed: {val_result['description']}")
+                # Use custom error message if provided, otherwise use description
+                error_msg = val_result.get('error') or f"Validation failed: {val_result['description']}"
+                error = AssertionError(error_msg)
                 # Attach response data to exception for Allure reporting
                 error.response = response_data
                 error.validation_results = validation_results
