@@ -118,6 +118,7 @@ class ValidationEngine:
         path = validation.get("path", "$")
         expect = validation.get("expect")
         description = validation.get("description", "")
+        error_message = validation.get("error_message", "")
 
         # Check for logical operators
         if val_type in ("and", "or", "not"):
@@ -151,7 +152,8 @@ class ValidationEngine:
             # Generate error message if failed
             error = ""
             if not passed:
-                error = self._generate_error_message(val_type, path, actual, expect)
+                # Use custom error message if provided, otherwise generate default
+                error = error_message if error_message else self._generate_error_message(val_type, path, actual, expect)
 
             return ValidationResult(
                 passed=passed,
@@ -171,7 +173,7 @@ class ValidationEngine:
                 actual=None,
                 expected=expect,
                 description=description,
-                error=f"Comparator error: {e}",
+                error=error_message if error_message else f"Comparator error: {e}",
             )
 
         except Exception as e:
@@ -182,7 +184,7 @@ class ValidationEngine:
                 actual=None,
                 expected=expect,
                 description=description,
-                error=f"Validation error: {e}",
+                error=error_message if error_message else f"Validation error: {e}",
             )
 
     def _validate_logical(
@@ -199,6 +201,7 @@ class ValidationEngine:
         """
         val_type = validation.get("type")
         description = validation.get("description", "")
+        error_message = validation.get("error_message", "")
         sub_validations = validation.get("sub_validations", [])
 
         if not sub_validations:
@@ -209,7 +212,7 @@ class ValidationEngine:
                 actual=None,
                 expected=None,
                 description=description,
-                error=f"Logical operator '{val_type}' requires sub_validations",
+                error=error_message if error_message else f"Logical operator '{val_type}' requires sub_validations",
             )
 
         # Recursively validate sub-validations
@@ -223,18 +226,22 @@ class ValidationEngine:
             # All sub-validations must pass
             passed = all(r.passed for r in sub_results)
             failed_results = [r for r in sub_results if not r.passed]
-            error = (
-                f"AND validation failed: {len(failed_results)} out of {len(sub_results)} sub-validations failed. "
-                f"Failed: {[r.error for r in failed_results]}"
-                if failed_results
-                else ""
-            )
+            # Use custom error message if provided, otherwise generate default
+            if not passed and error_message:
+                error = error_message
+            else:
+                error = (
+                    f"AND validation failed: {len(failed_results)} out of {len(sub_results)} sub-validations failed. "
+                    f"Failed: {[r.error for r in failed_results]}"
+                    if failed_results
+                    else ""
+                )
 
         elif val_type == "or":
             # At least one sub-validation must pass
             passed = any(r.passed for r in sub_results)
             if not passed:
-                error = f"OR validation failed: All {len(sub_results)} sub-validations failed"
+                error = error_message if error_message else f"OR validation failed: All {len(sub_results)} sub-validations failed"
             else:
                 error = ""
 
@@ -243,7 +250,7 @@ class ValidationEngine:
             passed = not any(r.passed for r in sub_results)
             passed_results = [r for r in sub_results if r.passed]
             if passed_results:
-                error = f"NOT validation failed: {len(passed_results)} sub-validations passed when all should fail"
+                error = error_message if error_message else f"NOT validation failed: {len(passed_results)} sub-validations passed when all should fail"
             else:
                 error = ""
 
@@ -255,7 +262,7 @@ class ValidationEngine:
                 actual=None,
                 expected=None,
                 description=description,
-                error=f"Unknown logical operator: {val_type}",
+                error=error_message if error_message else f"Unknown logical operator: {val_type}",
             )
 
         return ValidationResult(
@@ -307,29 +314,62 @@ class ValidationEngine:
         Returns:
             Error message
         """
-        messages = {
-            "eq": f"Expected {expected} but got {actual}",
-            "ne": f"Expected not equal to {expected} but got {actual}",
-            "gt": f"Expected {actual} > {expected} but failed",
-            "lt": f"Expected {actual} < {expected} but failed",
-            "ge": f"Expected {actual} >= {expected} but failed",
-            "le": f"Expected {actual} <= {expected} but failed",
-            "contains": f"Expected '{actual}' to contain '{expected}'",
-            "not_contains": f"Expected '{actual}' to not contain '{expected}'",
-            "regex": f"'{actual}' does not match pattern '{expected}'",
-            "type": f"Expected type {expected} but got {type(actual).__name__}",
-            "in": f"Expected {actual} to be in {expected}",
-            "not_in": f"Expected {actual} to not be in {expected}",
-            "length_eq": f"Expected length {expected} but got {len(actual)}",
-            "length_gt": f"Expected length > {expected} but got {len(actual)}",
-            "length_lt": f"Expected length < {expected} but got {len(actual)}",
-            "is_empty": f"Expected value to be empty but got {actual}",
-            "is_null": f"Expected null but got {actual}",
-            "status_code": f"Expected status code {expected} but got {actual}",
-            "exists": f"Expected value to exist but got None or empty",
-            "between": f"Expected {actual} to be between {expected[0]} and {expected[1]}",
-        }
-
-        return messages.get(
-            val_type, f"Validation failed: path={path}, expected={expected}, actual={actual}"
-        )
+        # Generate error messages dynamically based on validator type
+        if val_type == "eq":
+            return f"Expected {expected} but got {actual}"
+        elif val_type == "ne":
+            return f"Expected not equal to {expected} but got {actual}"
+        elif val_type == "gt":
+            return f"Expected {actual} > {expected} but failed"
+        elif val_type == "lt":
+            return f"Expected {actual} < {expected} but failed"
+        elif val_type == "ge":
+            return f"Expected {actual} >= {expected} but failed"
+        elif val_type == "le":
+            return f"Expected {actual} <= {expected} but failed"
+        elif val_type == "contains":
+            return f"Expected '{actual}' to contain '{expected}'"
+        elif val_type == "not_contains":
+            return f"Expected '{actual}' to not contain '{expected}'"
+        elif val_type == "regex":
+            return f"'{actual}' does not match pattern '{expected}'"
+        elif val_type == "type":
+            return f"Expected type {expected} but got {type(actual).__name__}"
+        elif val_type == "in_list":
+            return f"Expected {actual} to be in {expected}"
+        elif val_type == "not_in_list":
+            return f"Expected {actual} to not be in {expected}"
+        elif val_type == "in":
+            return f"Expected {actual} to be in {expected}"
+        elif val_type == "not_in":
+            return f"Expected {actual} to not be in {expected}"
+        elif val_type == "length_eq":
+            try:
+                return f"Expected length {expected} but got {len(actual)}"
+            except TypeError:
+                return f"Expected length {expected} but value has no length"
+        elif val_type == "length_gt":
+            try:
+                return f"Expected length > {expected} but got {len(actual)}"
+            except TypeError:
+                return f"Expected length > {expected} but value has no length"
+        elif val_type == "length_lt":
+            try:
+                return f"Expected length < {expected} but got {len(actual)}"
+            except TypeError:
+                return f"Expected length < {expected} but value has no length"
+        elif val_type == "is_empty":
+            return f"Expected value to be empty but got {actual}"
+        elif val_type == "is_null":
+            return f"Expected null but got {actual}"
+        elif val_type == "status_code":
+            return f"Expected status code {expected} but got {actual}"
+        elif val_type == "exists":
+            return f"Expected value to exist but got None or empty"
+        elif val_type == "between":
+            try:
+                return f"Expected {actual} to be between {expected[0]} and {expected[1]}"
+            except (TypeError, IndexError):
+                return f"Expected value to be between min and max but validation failed"
+        else:
+            return f"Validation failed: path={path}, expected={expected}, actual={actual}"

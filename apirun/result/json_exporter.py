@@ -45,13 +45,14 @@ class JSONExporter:
         self.sensitive_patterns = sensitive_patterns or DEFAULT_SENSITIVE_PATTERNS.copy()
 
     def collect(
-        self, test_case: TestCase, step_results: List[StepResult]
+        self, test_case: TestCase, step_results: List[StepResult], variable_manager=None
     ) -> TestCaseResult:
         """Collect and aggregate test case results.
 
         Args:
             test_case: Test case that was executed
             step_results: List of step execution results
+            variable_manager: Optional variable manager to collect final variables
 
         Returns:
             TestCaseResult object
@@ -86,8 +87,24 @@ class JSONExporter:
         else:
             status = "passed"
 
-        # Collect final variables
+        # Collect final variables (including global, profile, and extracted variables)
         final_variables = {}
+
+        # Add global config variables
+        if test_case.config and test_case.config.variables:
+            final_variables.update(test_case.config.variables)
+
+        # Add active profile variables (including base_url)
+        if test_case.config and test_case.config.active_profile and test_case.config.profiles:
+            profile_name = test_case.config.active_profile
+            profile = test_case.config.profiles.get(profile_name)
+            if profile:
+                if profile.variables:
+                    final_variables.update(profile.variables)
+                if profile.base_url:
+                    final_variables["base_url"] = profile.base_url
+
+        # Add extracted variables from steps
         for sr in step_results:
             final_variables.update(sr.extracted_vars)
 

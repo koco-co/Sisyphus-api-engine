@@ -209,7 +209,23 @@ class EnhancedJSONPath:
             matches = jsonpath_expr.find(data)
 
             if not matches:
-                # No matches found at all - return sentinel
+                # No matches found at all
+                # Special handling: if index == -1 (extract all), check if base path exists and is an array
+                if index == -1:
+                    # Try to extract base path (remove [*] wildcard if present)
+                    import re as regex_module
+                    base_match = regex_module.match(r'(\$[^[\]]+)', path)
+                    if base_match:
+                        base_path = base_match.group(1)
+                        try:
+                            base_expr = parse(base_path)
+                            base_matches = base_expr.find(data)
+                            if base_matches and isinstance(base_matches[0].value, list):
+                                # Base path exists and is an array - return empty list
+                                return []
+                        except Exception:
+                            pass
+                # Return sentinel for no match
                 return _NO_MATCH
 
             # Extract values from matches

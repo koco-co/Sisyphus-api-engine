@@ -344,8 +344,11 @@ class V2YamlParser:
 
         # Parse script-specific fields
         script = step_details.get("script")
+        script_file = step_details.get("script_file")
         script_type = step_details.get("script_type", "python")
         allow_imports = step_details.get("allow_imports", True)
+        args = step_details.get("args")
+        capture_output = step_details.get("capture_output")
 
         # Parse poll-specific fields
         poll_config = step_details.get("poll_config")
@@ -415,8 +418,11 @@ class V2YamlParser:
             max_concurrency=max_concurrency,
             concurrent_steps=concurrent_steps,
             script=script,
+            script_file=script_file,
             script_type=script_type,
             allow_imports=allow_imports,
+            args=args,
+            capture_output=capture_output,
             poll_config=poll_config,
             on_timeout=on_timeout,
         )
@@ -437,6 +443,7 @@ class V2YamlParser:
         path = val_data.get("path", "$")
         expect = val_data.get("expect")
         description = val_data.get("description", "")
+        error_message = val_data.get("error_message", "")
 
         # Parse logical operators (and/or/not)
         if val_type in ("and", "or", "not"):
@@ -455,10 +462,15 @@ class V2YamlParser:
                 description=description,
                 logical_operator=val_type,
                 sub_validations=sub_validations,
+                error_message=error_message,
             )
 
         return ValidationRule(
-            type=val_type, path=path, expect=expect, description=description
+            type=val_type,
+            path=path,
+            expect=expect,
+            description=description,
+            error_message=error_message,
         )
 
     def _parse_extractor(self, ext_data: Dict[str, Any]) -> Optional[Extractor]:
@@ -475,6 +487,11 @@ class V2YamlParser:
 
         name = ext_data.get("name")
         ext_type = ext_data.get("type", "jsonpath")
+        description = ext_data.get("description", "")
+        default = ext_data.get("default")
+        extract_all = ext_data.get("extract_all", False)
+        condition = ext_data.get("condition")
+        on_failure = ext_data.get("on_failure")
 
         # Support field aliases for different extractor types
         # - regex extractors: support 'pattern' and 'group' as aliases for 'path' and 'index'
@@ -489,7 +506,17 @@ class V2YamlParser:
         if not name:
             return None
 
-        return Extractor(name=name, type=ext_type, path=path, index=index)
+        return Extractor(
+            name=name,
+            type=ext_type,
+            path=path,
+            index=index,
+            extract_all=extract_all,
+            default=default,
+            description=description,
+            condition=condition,
+            on_failure=on_failure
+        )
 
     def validate_yaml(self, yaml_file: str) -> List[str]:
         """Validate YAML file without parsing.
