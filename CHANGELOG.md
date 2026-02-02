@@ -5,6 +5,135 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 规范，
 项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html) 规范。
 
+## [2.0.0] - 2026-02-02
+
+### ✨ 新增
+
+#### 变量嵌套引用增强
+- **支持 config 嵌套引用**
+  - 可在顶层 `config.variables` 中嵌套引用 `config.profiles.*` 的值
+  - 支持引用 `config.active_profile` 动态获取当前环境
+  - 支持多级嵌套组合（如 `${config.active_profile}_${config.profiles.dev.variables.env}`）
+  - 完全向后兼容，不影响现有变量引用语法
+
+- **示例**：
+  ```yaml
+  config:
+    variables:
+      # 引用特定 profile 的变量
+      category_name: "test_${config.profiles.dev.variables.test_suffix}"
+      # 引用 active_profile
+      environment: "${config.active_profile}"
+  ```
+
+#### 异步轮询机制
+- **新增 `poll` 步骤类型**
+  - 支持等待异步操作完成（如项目创建、数据处理等）
+  - 支持 JSONPath 和状态码两种条件检查方式
+  - 提供 8 种比较运算符（eq/ne/gt/lt/ge/le/contains/exists）
+
+- **多种轮询策略**
+  - `fixed` - 固定间隔轮询
+  - `exponential` - 指数退避（间隔翻倍：1s, 2s, 4s, 8s...）
+  - `linear` - 线性增长（间隔递增：1s, 2s, 3s, 4s...）
+
+- **超时处理**
+  - 支持 `fail` 模式：超时后标记步骤失败
+  - 支持 `continue` 模式：超时后继续执行后续步骤
+  - 可配置超时错误消息
+
+- **可配置参数**
+  - `max_attempts` - 最大轮询次数（默认 30）
+  - `interval` - 轮询间隔毫秒数（默认 2000）
+  - `timeout` - 总超时时间毫秒数（默认 60000）
+  - `backoff` - 退避策略（默认 fixed）
+
+- **示例**：
+  ```yaml
+  - name: "等待项目就绪"
+    type: poll
+    url: "/api/project/status"
+    poll_config:
+      condition:
+        type: jsonpath
+        path: "$.data.status"
+        operator: "eq"
+        expect: "ACTIVE"
+      max_attempts: 30
+      interval: 2000
+      timeout: 60000
+      backoff: "exponential"
+    on_timeout:
+      behavior: "fail"
+      message: "项目初始化超时"
+  ```
+
+### 🔧 变更
+- **VariableManager 扩展**
+  - 添加 `config_context` 属性用于支持 config 嵌套引用
+  - 添加 `set_config_context()` 方法设置配置上下文
+  - `get_all_variables()` 方法现在包含 config 上下文
+
+- **TestStep 模型扩展**
+  - 添加 `poll_config` 字段用于配置轮询参数
+  - 添加 `on_timeout` 字段用于配置超时处理
+
+- **V2YamlParser 更新**
+  - 解析器现在支持解析 `poll_config` 和 `on_timeout` 字段
+  - 在渲染变量前构建 config_context 以支持嵌套引用
+
+### 🐛 修复
+- **JSONPath 提取器初始化**
+  - 修复 PollStepExecutor 中 JSONPathExtractor 的初始化问题
+  - 现在正确传递 path 和 response 参数
+
+- **浮点数精度**
+  - 修复线性退避策略中的浮点数比较精度问题
+  - 使用近似比较避免浮点数误差
+
+### 📝 文档
+- **新增功能文档**（问题跟踪文档/）
+  - 任务清单.md - 12个功能的完整进度跟踪
+  - 功能实现-变量嵌套引用.md - 变量嵌套引用详细说明
+  - 功能实现-异步轮询机制.md - 轮询机制完整文档
+  - 功能实现总览.md - 所有功能实现状态总览
+  - 完整功能实现与自测报告.md - v2.0.0 测试报告
+
+- **协议规范更新**
+  - API-Engine输入协议规范.md 更新至 v2.0.0
+  - 新增 3.6 Poll 步骤完整文档
+  - 新增 4.2 变量嵌套引用详细说明
+
+- **README 更新**
+  - 版本号更新至 v2.0.0
+  - 新增 v2.0.0 功能亮点章节
+
+### ✅ 测试
+- **新增单元测试**
+  - `tests/parser/test_nested_variable_reference.py` - 9个集成测试
+  - `tests/executor/test_poll_executor.py` - 20个轮询执行器测试
+  - `tests/core/test_variable_manager.py` - 新增TestConfigContext类（7个测试）
+
+- **新增YAML示例**
+  - `examples/变量嵌套引用示例.yaml` - 5个验证步骤
+  - `examples/异步轮询示例.yaml` - 6个轮询场景
+  - `examples/综合功能测试.yaml` - 10个功能验证步骤
+
+- **测试覆盖**
+  - 总计 363 个测试（36个新增 + 282个现有）
+  - 测试通过率：100%
+  - 向后兼容：无回归问题
+
+### 🔒 安全
+- 无安全相关变更
+
+### ⚠️ 重大变更
+- 本次更新为主版本升级（Major Release）
+- **完全向后兼容**：所有现有测试用例无需修改即可继续使用
+- 新增功能为可选特性，不影响现有配置
+
+---
+
 ## [1.0.3] - 2026-01-31
 
 ### ✨ 新增
