@@ -99,11 +99,11 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
     print(f"\n{messages['description']}\n")
     if lang == "zh":
         print("用法:")
-        print("  sisyphus-validate <路径>...\n")
+        print("  sisyphus-validate <路径>... [选项]\n")
         print("参数:")
     else:
         print("Usage:")
-        print("  sisyphus-validate <paths>...\n")
+        print("  sisyphus-validate <paths>... [options]\n")
         print("Arguments:")
 
     # Format and display arguments
@@ -121,6 +121,8 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
         help_text = ""
         if action.dest == "paths":
             help_text = messages["args"].get("paths", "")
+        elif action.dest == "quiet":
+            help_text = messages["args"].get("-q/--quiet", "")
         else:
             help_text = action.help or ""
 
@@ -705,6 +707,7 @@ def validate_main() -> int:
     """CLI entry point for validation-only mode.
 
     This is a dedicated command for validating YAML syntax without execution.
+    Uses the enhanced validator with keyword checking and beautiful output.
 
     Returns:
         Exit code (0 for valid, non-zero for invalid)
@@ -736,6 +739,13 @@ def validate_main() -> int:
         help="Path(s) to YAML file(s) or directory",
     )
 
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Quiet mode, only show summary",
+    )
+
     # Check for help flags first
     import sys
     if "-H" in sys.argv or "--中文帮助" in sys.argv:
@@ -749,50 +759,15 @@ def validate_main() -> int:
     args = parser.parse_args()
 
     try:
-        all_valid = True
-        validator = V2YamlParser()
+        from apirun.validator.yaml_validator import validate_yaml_files
 
-        for path_str in args.paths:
-            path = Path(path_str)
+        show_details = not args.quiet
+        exit_code, _ = validate_yaml_files(args.paths, show_details=show_details)
 
-            if not path.exists():
-                print(f"Error: Path not found: {path_str}", file=sys.stderr)
-                all_valid = False
-                continue
-
-            if path.is_file():
-                yaml_files = [path]
-            elif path.is_dir():
-                yaml_files = list(path.glob("**/*.yaml"))
-                if not yaml_files:
-                    print(f"Warning: No YAML files found in {path_str}")
-                    continue
-            else:
-                print(f"Error: Invalid path: {path_str}", file=sys.stderr)
-                all_valid = False
-                continue
-
-            for yaml_file in yaml_files:
-                print(f"Validating: {yaml_file}")
-                errors = validator.validate_yaml(str(yaml_file))
-
-                if errors:
-                    all_valid = False
-                    print(f"  ❌ Validation failed:")
-                    for error in errors:
-                        print(f"    - {error}")
-                else:
-                    print(f"  ✓ Valid")
-
-        if all_valid:
-            print("\n✓ All YAML files are valid!")
-            return 0
-        else:
-            print("\n❌ Some YAML files have validation errors.")
-            return 1
+        return exit_code
 
     except Exception as e:
-        print(f"Unexpected Error: {e}", file=sys.stderr)
+        print(f"意外错误: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return 1

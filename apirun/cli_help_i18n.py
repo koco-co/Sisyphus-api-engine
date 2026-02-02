@@ -149,9 +149,13 @@ Examples:
 
   # Validate multiple files
   sisyphus-validate test1.yaml test2.yaml test3.yaml
+
+  # Quiet mode (only show summary)
+  sisyphus-validate examples/ -q
     """,
     "args": {
         "paths": "Path(s) to YAML file(s) or directory",
+        "-q/--quiet": "Quiet mode, only show summary",
     }
 }
 
@@ -167,9 +171,13 @@ ZH_VALIDATE_HELP = {
 
   # 验证多个文件
   sisyphus-validate test1.yaml test2.yaml test3.yaml
+
+  # 静默模式（仅显示汇总信息）
+  sisyphus-validate examples/ -q
     """,
     "args": {
         "paths": "YAML 文件或目录路径",
+        "-q/--quiet": "静默模式（仅显示汇总信息）",
     }
 }
 
