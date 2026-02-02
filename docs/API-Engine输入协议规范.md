@@ -1068,7 +1068,7 @@ extractors:
 
 1. **使用详细输出模式**
 ```bash
-sisyphus-api-engine --cases test.yaml -v
+sisyphus --cases test.yaml -v
 ```
 详细模式会显示完整的响应数据结构，帮助您确认字段路径。
 

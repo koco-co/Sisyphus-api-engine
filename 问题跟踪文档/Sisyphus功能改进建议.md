@@ -715,7 +715,7 @@ variables:
 }
 
 # 命令行支持
-sisyphus-api-engine test.yaml --performance-report
+sisyphus test.yaml --performance-report
 ```
 
 ---
@@ -725,7 +725,7 @@ sisyphus-api-engine test.yaml --performance-report
 **期望行为**:
 ```bash
 # 生成依赖关系图
-sisyphus-api-engine test.yaml --graph-deps
+sisyphus test.yaml --graph-deps
 
 # 输出 Mermaid 图表
 graph TD

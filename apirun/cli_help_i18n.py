@@ -10,40 +10,40 @@ EN_HELP_MESSAGES = {
     "epilog": """
 Examples:
   # Run a single test case
-  sisyphus-api-engine --cases test_case.yaml
+  sisyphus --cases test_case.yaml
 
   # Run multiple test cases
-  sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+  sisyphus --cases test1.yaml test2.yaml test3.yaml
 
   # Run all test cases in a directory
-  sisyphus-api-engine --cases tests/
+  sisyphus --cases tests/
 
   # Mix files and directories
-  sisyphus-api-engine --cases test1.yaml tests/ integration/
+  sisyphus --cases test1.yaml tests/ integration/
 
   # Run with verbose output
-  sisyphus-api-engine --cases test_case.yaml -v
+  sisyphus --cases test_case.yaml -v
 
   # Run and save results to JSON
-  sisyphus-api-engine --cases test_case.yaml -o result.json
+  sisyphus --cases test_case.yaml -o result.json
 
   # Generate HTML report (English)
-  sisyphus-api-engine --cases test_case.yaml --format html --report-lang en -o report.html
+  sisyphus --cases test_case.yaml --format html --report-lang en -o report.html
 
   # Generate HTML report (Chinese)
-  sisyphus-api-engine --cases test_case.yaml --format html --report-lang zh -o report.html
+  sisyphus --cases test_case.yaml --format html --report-lang zh -o report.html
 
   # Validate YAML syntax
-  sisyphus-api-engine --validate test_case.yaml
+  sisyphus --validate test_case.yaml
 
   # Validate multiple files
-  sisyphus-api-engine --validate test1.yaml test2.yaml
+  sisyphus --validate test1.yaml test2.yaml
 
   # Validate all files in directory
-  sisyphus-api-engine --validate tests/
+  sisyphus --validate tests/
 
   # Or use the dedicated validate command
-  sisyphus-api-validate test_case.yaml
+  sisyphus-validate test_case.yaml
 
 Documentation:
   Full documentation: https://github.com/koco-co/Sisyphus-api-engine
@@ -76,40 +76,40 @@ ZH_HELP_MESSAGES = {
     "epilog": """
 使用示例:
   # 运行单个测试用例
-  sisyphus-api-engine --cases test_case.yaml
+  sisyphus --cases test_case.yaml
 
   # 运行多个测试用例
-  sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+  sisyphus --cases test1.yaml test2.yaml test3.yaml
 
   # 运行目录中的所有测试用例
-  sisyphus-api-engine --cases tests/
+  sisyphus --cases tests/
 
   # 混合文件和目录
-  sisyphus-api-engine --cases test1.yaml tests/ integration/
+  sisyphus --cases test1.yaml tests/ integration/
 
   # 启用详细输出
-  sisyphus-api-engine --cases test_case.yaml -v
+  sisyphus --cases test_case.yaml -v
 
   # 运行并保存结果到 JSON
-  sisyphus-api-engine --cases test_case.yaml -o result.json
+  sisyphus --cases test_case.yaml -o result.json
 
   # 生成 HTML 报告（英文）
-  sisyphus-api-engine --cases test_case.yaml --format html --report-lang en -o report.html
+  sisyphus --cases test_case.yaml --format html --report-lang en -o report.html
 
   # 生成 HTML 报告（中文）
-  sisyphus-api-engine --cases test_case.yaml --format html --report-lang zh -o report.html
+  sisyphus --cases test_case.yaml --format html --report-lang zh -o report.html
 
   # 验证 YAML 语法
-  sisyphus-api-engine --validate test_case.yaml
+  sisyphus --validate test_case.yaml
 
   # 验证多个文件
-  sisyphus-api-engine --validate test1.yaml test2.yaml
+  sisyphus --validate test1.yaml test2.yaml
 
   # 验证目录中的所有文件
-  sisyphus-api-engine --validate tests/
+  sisyphus --validate tests/
 
   # 或使用专用验证命令
-  sisyphus-api-validate test_case.yaml
+  sisyphus-validate test_case.yaml
 
 文档支持:
   完整文档: https://github.com/koco-co/Sisyphus-api-engine
@@ -142,13 +142,13 @@ EN_VALIDATE_HELP = {
     "epilog": """
 Examples:
   # Validate a single file
-  sisyphus-api-validate test_case.yaml
+  sisyphus-validate test_case.yaml
 
   # Validate all files in a directory
-  sisyphus-api-validate examples/
+  sisyphus-validate examples/
 
   # Validate multiple files
-  sisyphus-api-validate test1.yaml test2.yaml test3.yaml
+  sisyphus-validate test1.yaml test2.yaml test3.yaml
     """,
     "args": {
         "paths": "Path(s) to YAML file(s) or directory",
@@ -160,13 +160,13 @@ ZH_VALIDATE_HELP = {
     "epilog": """
 使用示例:
   # 验证单个文件
-  sisyphus-api-validate test_case.yaml
+  sisyphus-validate test_case.yaml
 
   # 验证目录中的所有文件
-  sisyphus-api-validate examples/
+  sisyphus-validate examples/
 
   # 验证多个文件
-  sisyphus-api-validate test1.yaml test2.yaml test3.yaml
+  sisyphus-validate test1.yaml test2.yaml test3.yaml
     """,
     "args": {
         "paths": "YAML 文件或目录路径",

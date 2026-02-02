@@ -31,11 +31,11 @@ def show_help(parser: argparse.ArgumentParser, lang: str = "en") -> None:
     print(f"\n{messages['description']}\n")
     if lang == "zh":
         print("用法:")
-        print("  sisyphus-api-engine --cases <路径...> [选项]\n")
+        print("  sisyphus --cases <路径...> [选项]\n")
         print("参数:")
     else:
         print("Usage:")
-        print("  sisyphus-api-engine --cases <paths...> [options]\n")
+        print("  sisyphus --cases <paths...> [options]\n")
         print("Arguments:")
 
     # Format and display arguments
@@ -99,11 +99,11 @@ def show_validate_help(parser: argparse.ArgumentParser, lang: str = "en") -> Non
     print(f"\n{messages['description']}\n")
     if lang == "zh":
         print("用法:")
-        print("  sisyphus-api-validate <路径>...\n")
+        print("  sisyphus-validate <路径>...\n")
         print("参数:")
     else:
         print("Usage:")
-        print("  sisyphus-api-validate <paths>...\n")
+        print("  sisyphus-validate <paths>...\n")
         print("Arguments:")
 
     # Format and display arguments

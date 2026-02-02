@@ -83,8 +83,8 @@ class TestCaseRunner:
         start_time = datetime.now()
 
         try:
-            # Run sisyphus-api-engine command
-            cmd = ["sisyphus-api-engine", "--cases", str(yaml_file)]
+            # Run sisyphus command
+            cmd = ["sisyphus", "--cases", str(yaml_file)]
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,

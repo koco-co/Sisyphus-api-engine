@@ -78,8 +78,8 @@ all = [
 "Changelog" = "https://github.com/koco-co/Sisyphus-api-engine/blob/main/README.md#-更新日志"
 
 [project.scripts]
-sisyphus-api-engine = "apirun.cli:main"
-sisyphus-api-validate = "apirun.cli:validate_main"
+sisyphus = "apirun.cli:main"
+sisyphus-validate = "apirun.cli:validate_main"
 
 [tool.setuptools]
 zip-safe = false

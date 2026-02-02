@@ -623,7 +623,7 @@ class AllureExporter:
         labels.append({"name": "package", "value": "sisyphus.tests"})
 
         # Add framework label
-        labels.append({"name": "framework", "value": "sisyphus-api-engine"})
+        labels.append({"name": "framework", "value": "sisyphus"})
 
         # Add language label
         labels.append({"name": "language", "value": "python"})

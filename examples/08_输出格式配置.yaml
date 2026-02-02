@@ -243,7 +243,7 @@ steps:
         - html: "用于人工查看测试结果"
         - csv: "用于数据分析和报表"
       configuration_example:
-        command: "sisyphus-api-engine --cases test.yaml -o result.json --format allure,junit,html"
+        command: "sisyphus --cases test.yaml -o result.json --format allure,junit,html"
         output_files:
           - "result.json"
           - "allure-results/"

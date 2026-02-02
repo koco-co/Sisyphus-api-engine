@@ -110,19 +110,19 @@ pip install Sisyphus-api-engine
 
 ```bash
 # 查看帮助
-sisyphus-api-engine --help
+sisyphus --help
 
 # 验证 YAML 文件语法
-sisyphus-api-validate examples/24_最佳实践.yaml
+sisyphus-validate examples/24_最佳实践.yaml
 
 # 验证多个文件
-sisyphus-api-validate test1.yaml test2.yaml test3.yaml
+sisyphus-validate test1.yaml test2.yaml test3.yaml
 
 # 验证目录中的所有文件
-sisyphus-api-validate tests/
+sisyphus-validate tests/
 
 # 运行示例测试
-sisyphus-api-engine --cases examples/24_最佳实践.yaml
+sisyphus --cases examples/24_最佳实践.yaml
 ```
 
 ---
@@ -158,43 +158,43 @@ steps:
 
 ```bash
 # 基本运行（单个文件，中文彩色输出）
-sisyphus-api-engine --cases my_first_test.yaml
+sisyphus --cases my_first_test.yaml
 
 # 英文界面
-sisyphus-api-engine --lang en --cases my_first_test.yaml
+sisyphus --lang en --cases my_first_test.yaml
 
 # 禁用颜色（适合脚本）
-sisyphus-api-engine --no-color --cases my_first_test.yaml
+sisyphus --no-color --cases my_first_test.yaml
 
 # 禁用 Emoji
-sisyphus-api-engine --no-emoji --cases my_first_test.yaml
+sisyphus --no-emoji --cases my_first_test.yaml
 
 # 详细输出（显示每个步骤的详细信息）
-sisyphus-api-engine --cases my_first_test.yaml -v
+sisyphus --cases my_first_test.yaml -v
 
 # 运行多个测试文件
-sisyphus-api-engine --cases test1.yaml test2.yaml test3.yaml
+sisyphus --cases test1.yaml test2.yaml test3.yaml
 
 # 运行目录中的所有测试
-sisyphus-api-engine --cases tests/
+sisyphus --cases tests/
 
 # 混合文件和目录
-sisyphus-api-engine --cases smoke_test.yaml tests/ integration/
+sisyphus --cases smoke_test.yaml tests/ integration/
 
 # 保存结果到 JSON
-sisyphus-api-engine --cases my_first_test.yaml -o result.json
+sisyphus --cases my_first_test.yaml -o result.json
 
 # 导出为 CSV
-sisyphus-api-engine --cases my_first_test.yaml --format csv -o result.csv
+sisyphus --cases my_first_test.yaml --format csv -o result.csv
 
 # 导出为 HTML（中文报告）
-sisyphus-api-engine --cases my_first_test.yaml --format html --report-lang zh -o report.html
+sisyphus --cases my_first_test.yaml --format html --report-lang zh -o report.html
 
 # 导出为 HTML（英文报告）
-sisyphus-api-engine --cases my_first_test.yaml --format html --report-lang en -o report.html
+sisyphus --cases my_first_test.yaml --format html --report-lang en -o report.html
 
 # 生成 Allure 报告
-sisyphus-api-engine --cases my_first_test.yaml --allure
+sisyphus --cases my_first_test.yaml --allure
 
 # 查看 Allure 报告（会自动打开浏览器）
 allure serve allure-results
@@ -204,7 +204,7 @@ allure generate allure-results --clean -o allure-report
 allure open allure-report
 
 # 启用 WebSocket 实时推送
-sisyphus-api-engine --cases my_first_test.yaml --ws-server
+sisyphus --cases my_first_test.yaml --ws-server
 ```
 
 ### 3. 查看结果
@@ -381,13 +381,13 @@ config: !include config/environments.yaml
 
 ```bash
 # 开发环境
-sisyphus-api-engine --cases test.yaml --profile dev
+sisyphus --cases test.yaml --profile dev
 
 # 预发布环境
-sisyphus-api-engine --cases test.yaml --profile staging
+sisyphus --cases test.yaml --profile staging
 
 # 生产环境
-sisyphus-api-engine --cases test.yaml --profile prod
+sisyphus --cases test.yaml --profile prod
 ```
 
 ### 优势
@@ -413,12 +413,12 @@ sisyphus-api-engine --cases test.yaml --profile prod
 ```bash
 # 验证所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-api-validate "$file"
+    sisyphus-validate "$file"
 done
 
 # 运行所有 YAML 示例
 for file in examples/*.yaml; do
-    sisyphus-api-engine --cases "$file"
+    sisyphus --cases "$file"
 done
 ```
 
@@ -670,7 +670,7 @@ if step.type == "my_type":
 使用 `--profile` 参数：
 
 ```bash
-sisyphus-api-engine --cases test.yaml --profile staging
+sisyphus --cases test.yaml --profile staging
 ```
 
 或在 YAML 中设置：
@@ -688,7 +688,7 @@ config:
 使用 `-v` 参数查看详细输出：
 
 ```bash
-sisyphus-api-engine --cases test.yaml -v
+sisyphus --cases test.yaml -v
 ```
 
 这将显示每个步骤的详细信息，包括请求、响应、验证结果等。

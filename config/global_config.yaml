@@ -6,9 +6,9 @@
 #   config: !include ../config/global_config.yaml
 #
 # 环境切换：
-#   sisyphus-api-engine --cases test.yaml --profile dev
-#   sisyphus-api-engine --cases test.yaml --profile staging
-#   sisyphus-api-engine --cases test.yaml --profile prod
+#   sisyphus --cases test.yaml --profile dev
+#   sisyphus --cases test.yaml --profile staging
+#   sisyphus --cases test.yaml --profile prod
 # ==============================================================================
 
 # 环境配置

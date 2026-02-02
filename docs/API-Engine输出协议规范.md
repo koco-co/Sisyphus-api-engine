@@ -448,13 +448,13 @@
 **完整模式（verbose）**：包含所有测试信息
 
 ```bash
-sisyphus-api-engine --cases test.yaml --format json -v
+sisyphus --cases test.yaml --format json -v
 ```
 
 **超紧凑模式（默认）**：仅包含步骤名称和响应
 
 ```bash
-sisyphus-api-engine --cases test.yaml --format json
+sisyphus --cases test.yaml --format json
 ```
 
 ### 5.2 CSV 格式
@@ -462,7 +462,7 @@ sisyphus-api-engine --cases test.yaml --format json
 **详细模式（verbose）**：包含所有性能指标
 
 ```bash
-sisyphus-api-engine --cases test.yaml --format csv -v
+sisyphus --cases test.yaml --format csv -v
 ```
 
 输出列：
@@ -487,7 +487,7 @@ sisyphus-api-engine --cases test.yaml --format csv -v
 **紧凑模式（默认）**：仅包含步骤基本信息
 
 ```bash
-sisyphus-api-engine --cases test.yaml --format csv
+sisyphus --cases test.yaml --format csv
 ```
 
 输出列：
@@ -501,10 +501,10 @@ HTML 格式支持中英文双语，通过 `--report-lang` 参数指定语言：
 
 ```bash
 # 生成中文报告
-sisyphus-api-engine --cases test.yaml --format html --report-lang zh -o report.html
+sisyphus --cases test.yaml --format html --report-lang zh -o report.html
 
 # 生成英文报告
-sisyphus-api-engine --cases test.yaml --format html --report-lang en -o report.html
+sisyphus --cases test.yaml --format html --report-lang en -o report.html
 ```
 
 **特性：**
@@ -520,13 +520,13 @@ sisyphus-api-engine --cases test.yaml --format html --report-lang en -o report.h
 ### 5.4 JUnit 格式
 
 ```bash
-sisyphus-api-engine --cases test.yaml --format junit -o junit.xml
+sisyphus --cases test.yaml --format junit -o junit.xml
 ```
 
 ### 5.5 Allure 报告
 
 ```bash
-sisyphus-api-engine --cases test.yaml --allure
+sisyphus --cases test.yaml --allure
 allure generate allure-results -o allure-report
 ```
 
