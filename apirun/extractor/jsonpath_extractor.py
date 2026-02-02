@@ -36,19 +36,20 @@ class JSONPathExtractor:
     - matches(pattern): Regex match
     """
 
-    def extract(self, path: str, data: Any, index: int = 0) -> Any:
+    def extract(self, path: str, data: Any, index: int = 0, default: Any = None) -> Any:
         """Extract value from data using JSONPath.
 
         Args:
             path: JSONPath expression (may include function calls)
             data: Data to extract from
             index: Index to return if multiple matches (default: 0)
+            default: Default value to return if extraction fails (default: None)
 
         Returns:
-            Extracted value
+            Extracted value or default value if extraction fails
 
         Raises:
-            ValueError: If path is invalid or no match found
+            ValueError: If path is invalid and no default is provided
 
         Examples:
             >>> extractor = JSONPathExtractor()
@@ -59,10 +60,16 @@ class JSONPathExtractor:
             2
             >>> extractor.extract("$.users[0].name", data)
             "Alice"
+            >>> extractor.extract("$.nonexistent", data, default="N/A")
+            "N/A"
         """
         try:
             return extract_value(path, data, index)
         except Exception as e:
+            # If default is provided, return it
+            if default is not None:
+                return default
+
             # Provide detailed and helpful error message
             error_msg = str(e)
 
@@ -71,7 +78,7 @@ class JSONPathExtractor:
                 raise ValueError(
                     f"JSONPath 提取失败: 路径 '{path}' 在响应中未找到数据。\n"
                     f"请检查:\n"
-                    f"  1. 路径是否正确（应以 '$' 开头）\n"
+                    f"  1. 路径是否正确（应以 $ 开头）\n"
                     f"  2. 字段名称是否正确（区分大小写）\n"
                     f"  3. 响应数据中是否包含该字段\n"
                     f"  4. 数组索引是否超出范围\n"
@@ -82,7 +89,7 @@ class JSONPathExtractor:
                 raise ValueError(
                     f"JSONPath 语法错误: '{path}'\n"
                     f"错误详情: {error_msg}\n"
-                    f"请检查 JSONPath 表达式语法。"
+                    f"请检查 JSONPath 表达式语法。\n"
                     f"参考: $.field 或 $.data[0].field"
                 )
             else:
