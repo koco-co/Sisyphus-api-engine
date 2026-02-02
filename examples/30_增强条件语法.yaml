@@ -1,0 +1,227 @@
+# ==============================================================================
+# Sisyphus API Engine - 增强条件语法功能测试
+# ==============================================================================
+# 功能说明：演示增强的 condition 参数功能
+# =============================================================================
+
+name: "增强条件语法功能测试"
+description: "演示使用增强的 condition 语法实现复杂的条件逻辑"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: in 操作符 - 检查值是否在数组中
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: in 操作符 - 数组成员检查"
+    description: "检查状态码是否在成功码列表中"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      code: 200
+      message: "Success"
+      data:
+        status_codes: [200, 201, 204]
+    extractors:
+      # 只有在 200 在 status_codes 数组中时才提取
+      - type: jsonpath
+        name: is_success
+        path: "$.json.data.status_codes"
+        condition: "$.json.data.status_codes in 200"
+        description: "200 在数组中,提取数组"
+        default: []
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试2: not in 操作符 - 检查值是否不在数组中
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: not in 操作符"
+    description: "检查错误码不在成功码列表中"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      code: 500
+      message: "Server Error"
+      data:
+        status_codes: [200, 201, 204]
+    extractors:
+      # 500 不在成功码数组中,应该使用默认值
+      - type: jsonpath
+        name: error_type
+        path: "$.json.code"
+        condition: "$.json.data.status_codes not in 500"
+        on_failure:
+          use_default: "server_error"
+        description: "500 不在数组中,使用默认值"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试3: contains 操作符 - 字符串包含检查
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: contains 操作符 - 字符串包含"
+    description: "检查消息中包含特定关键词"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      message: "Operation completed successfully"
+      status: "success"
+    extractors:
+      # 消息包含 'success',提取消息
+      - type: jsonpath
+        name: success_message
+        path: "$.json.message"
+        condition: "$.json.message contains 'success'"
+        description: "消息包含 success,提取它"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 括号优先级 - 复杂逻辑表达式
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: 括号改变优先级"
+    description: "演示使用括号控制逻辑优先级"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      code: 200
+      status: "active"
+      role: "admin"
+    extractors:
+      # code == 200 且 (status == active 或 status == pending)
+      - type: jsonpath
+        name: should_extract
+        path: "$.json.code"
+        condition: "$.json.code == 200 and ($.json.status == 'active' or $.json.status == 'pending')"
+        description: "code==200 且 status为active或pending"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试5: 浮点数和负数比较
+  # ----------------------------------------------------------------------------
+
+  - name: "测试5: 数值类型比较"
+    description: "演示浮点数和负数的比较"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      price: 99.99
+      discount: -5.5
+      stock: 0
+    extractors:
+      # price > 50
+      - type: jsonpath
+        name: is_expensive
+        path: "$.json.price"
+        condition: "$.json.price > 50"
+        description: "价格大于50"
+
+      # discount < 0
+      - type: jsonpath
+        name: has_discount
+        path: "$.json.discount"
+        condition: "$.json.discount < 0"
+        description: "有折扣(负数)"
+
+      # stock >= 0
+      - type: jsonpath
+        name: in_stock
+        path: "$.json.stock"
+        condition: "$.json.stock >= 0"
+        description: "库存充足"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试6: 复杂组合条件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试6: 复杂组合条件"
+    description: "演示多个条件的复杂组合"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        id: 123
+        name: "Alice"
+        role: "admin"
+        status: "active"
+        tags: ["vip", "premium"]
+      system:
+        version: "2.0.1"
+        maintenance: false
+    extractors:
+      # 复杂条件: user 是 admin 且 system 不在维护模式 且 tags 包含 vip
+      - type: jsonpath
+        name: admin_access
+        path: "$.json.user.role"
+        condition: "$.json.user.role == 'admin' and $.json.system.maintenance == false and $.json.user.tags in 'vip'"
+        description: "满足管理员访问所有条件"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "提取器"
+  - "条件提取"
+  - "condition"
+  - "增强语法"
+  - "括号"
+  - "in操作符"
+  - "contains"
+
+enabled: true

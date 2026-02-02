@@ -1,0 +1,189 @@
+# ==============================================================================
+# Sisyphus API Engine - 脚本封装增强功能测试
+# ==============================================================================
+# 功能说明：演示增强的 Python 脚本执行功能
+# =============================================================================
+
+name: "Python 脚本封装增强测试"
+description: "演示外部脚本文件加载、参数传递和输出捕获"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 内联脚本执行
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: 内联脚本"
+    description: "执行简单的内联 Python 脚本"
+    type: script
+    script: |
+      # 计算 Fibonacci 数列
+      def fibonacci(n):
+          if n <= 1:
+              return n
+          return fibonacci(n-1) + fibonacci(n-2)
+
+      result = fibonacci(10)
+      print(f"Fibonacci(10) = {result}")
+
+      # 导出变量供后续使用
+      set_var("fib_result", result)
+    allow_imports: false
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 使用外部脚本文件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: 外部脚本文件"
+    description: "从外部文件加载并执行脚本"
+    type: script
+    script_file: "./scripts/test_script.py"
+    allow_imports: true
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 带参数的脚本执行
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: 脚本参数传递"
+    description: "向脚本传递参数"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get"
+    extractors:
+      - type: jsonpath
+        name: response_url
+        path: "$.url"
+        description: "提取响应 URL"
+
+  - name: "测试4: 使用参数的脚本"
+    description: "使用前面步骤提取的数据作为参数"
+    type: script
+    script: |
+      # 访问传入的参数
+      input_url = args.get("api_url", "default_url")
+      config_name = args.get("config_name", "default_config")
+
+      print(f"API URL: {input_url}")
+      print(f"Config Name: {config_name}")
+
+      # 使用参数进行计算
+      result = {
+          "processed": True,
+          "url_length": len(input_url),
+          "config": config_name
+      }
+
+      print(f"Result: {result}")
+
+      # 导出结果
+      set_var("process_result", result)
+    args:
+      api_url: "${response_url}"
+      config_name: "test_config"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试5: 数据处理脚本
+  # ----------------------------------------------------------------------------
+
+  - name: "测试5: 复杂数据处理"
+    description: "使用脚本处理复杂的数据结构"
+    type: request
+    method: POST
+    url: "https://httpbin.org/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      users:
+        - name: "Alice"
+          age: 30
+          city: "New York"
+        - name: "Bob"
+          age: 25
+          city: "London"
+        - name: "Charlie"
+          age: 35
+          city: "Paris"
+
+  - name: "测试6: 数据处理脚本"
+    description: "处理响应中的 JSON 数据"
+    type: script
+    script: |
+      import json
+
+      # 模拟获取响应数据（实际应该从变量中获取）
+      users_data = [
+          {"name": "Alice", "age": 30, "city": "New York"},
+          {"name": "Bob", "age": 25, "city": "London"},
+          {"name": "Charlie", "age": 35, "city": "Paris"}
+      ]
+
+      # 计算平均年龄
+      avg_age = sum(u["age"] for u in users_data) / len(users_data)
+      print(f"Average age: {avg_age}")
+
+      # 按城市分组
+      cities = {}
+      for user in users_data:
+          city = user["city"]
+          if city not in cities:
+              cities[city] = []
+          cities[city].append(user["name"])
+
+      print(f"Users by city: {cities}")
+
+      # 导出处理结果
+      set_var("avg_age", avg_age)
+      set_var("city_groups", cities)
+      set_var("user_count", len(users_data))
+    allow_imports: true
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试6: 验证脚本导出的变量
+  # ----------------------------------------------------------------------------
+
+  - name: "测试7: 验证脚本结果"
+    description: "验证脚本导出的变量"
+    type: script
+    script: |
+      # 验证 Fibonacci 结果
+      fib = get_var("fib_result", 0)
+      print(f"Fibonacci result: {fib}")
+      assert fib == 55, f"Expected 55, got {fib}"
+
+      # 验证数据处理结果
+      avg_age = get_var("avg_age", 0)
+      print(f"Average age: {avg_age}")
+      assert abs(avg_age - 30.0) < 0.01, f"Expected 30.0, got {avg_age}"
+
+      city_groups = get_var("city_groups", {})
+      print(f"City groups: {city_groups}")
+      assert len(city_groups) == 3, f"Expected 3 cities, got {len(city_groups)}"
+
+      print("All validations passed!")
+    capture_output: true
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "脚本"
+  - "script"
+  - "封装"
+  - "外部文件"
+  - "参数传递"
+
+enabled: true

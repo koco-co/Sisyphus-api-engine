@@ -1,0 +1,94 @@
+# =============================================================================#
+# Sisyphus API Engine - 详细执行日志测试
+# =============================================================================#
+# 功能说明：演示详细的执行日志功能
+# =============================================================================#
+
+name: "详细执行日志测试"
+description: "演示 --log-level 和 --log-file 参数的使用"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 简单请求，展示步骤开始/结束日志
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: 基础请求日志"
+    description: "展示步骤开始和完成的日志"
+    type: request
+    method: GET
+    url: "https://httpbin.org/get"
+    extractors:
+      - type: jsonpath
+        name: response_url
+        path: "$.url"
+        description: "提取响应URL"
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 重试日志
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: 重试日志"
+    description: "展示重试时的日志输出"
+    type: request
+    method: GET
+    url: "https://httpbin.org/status/500"
+    retry_policy:
+      max_attempts: 2
+      strategy: fixed
+      base_delay: 0.5
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 变量变更历史
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: 多变量提取"
+    description: "展示多个变量提取的日志"
+    type: request
+    method: GET
+    url: "https://httpbin.org/headers"
+    extractors:
+      - type: jsonpath
+        name: host_header
+        path: "$.headers.Host"
+        description: "提取Host头"
+      - type: jsonpath
+        name: user_agent
+        path: "$.headers['User-Agent']"
+        description: "提取User-Agent"
+      - type: jsonpath
+        name: accept_encoding
+        path: "$.headers['Accept-Encoding']"
+        description: "提取Accept-Encoding"
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 性能指标日志
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: 性能日志"
+    description: "展示性能指标日志（仅在debug级别）"
+    type: request
+    method: GET
+    url: "https://httpbin.org/delay/1"
+    timeout: 10
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "日志"
+  - "logging"
+  - "调试"
+  - "debug"
+
+enabled: true

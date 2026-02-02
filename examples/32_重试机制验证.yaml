@@ -1,0 +1,179 @@
+# ==============================================================================
+# Sisyphus API Engine - 重试机制功能验证
+# ==============================================================================
+# 功能说明：验证 retry_policy 的各种重试策略正常工作
+# =============================================================================
+
+name: "重试机制功能验证"
+description: "验证重试机制的各种策略配置"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 固定延迟策略 - 成功案例
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: 固定延迟策略"
+    description: "使用 fixed 策略,请求成功"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/status/200"
+    retry_policy:
+      max_attempts: 3
+      strategy: fixed
+      base_delay: 0.5
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 指数退避策略 - 成功案例
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: 指数退避策略"
+    description: "使用 exponential 策略,请求成功"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/status/201"
+    retry_policy:
+      max_attempts: 2
+      strategy: exponential
+      base_delay: 0.5
+      max_delay: 5.0
+      backoff_multiplier: 2.0
+      jitter: false
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "201"
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 线性增长策略 - 成功案例
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: 线性增长策略"
+    description: "使用 linear 策略,请求成功"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      message: "Test linear retry"
+    retry_policy:
+      max_attempts: 2
+      strategy: linear
+      base_delay: 0.5
+      max_delay: 3.0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.message"
+        expect: "Test linear retry"
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 复杂配置 - 带重试条件过滤
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: 带错误类型过滤"
+    description: "只对特定错误类型重试"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/status/200"
+    retry_policy:
+      max_attempts: 3
+      strategy: exponential
+      base_delay: 1.0
+      retry_on:
+        - network
+        - timeout
+        - server_error
+      stop_on:
+        - client_error
+        - assertion
+        - validation
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试5: Legacy retry_times - 向后兼容
+  # ----------------------------------------------------------------------------
+
+  - name: "测试5: 传统 retry_times 参数"
+    description: "验证传统的 retry_times 参数仍然有效"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/status/204"
+    retry_times: 2
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "204"
+
+  # ----------------------------------------------------------------------------
+  # 测试6: 无重试配置
+  # ----------------------------------------------------------------------------
+
+  - name: "测试6: 无重试配置(默认)"
+    description: "不配置重试,验证默认行为"
+    type: request
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # ----------------------------------------------------------------------------
+  # 测试7: POST 请求带重试
+  # ----------------------------------------------------------------------------
+
+  - name: "测试7: POST 请求带重试"
+    description: "POST 请求配置重试策略"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      User-Agent: "Sisyphus-Test/1.0"
+    body:
+      test: "retry with POST"
+      data:
+        items: [1, 2, 3]
+    retry_policy:
+      max_attempts: 2
+      strategy: fixed
+      base_delay: 0.3
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.test"
+        expect: "retry with POST"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "重试"
+  - "retry_policy"
+  - "功能验证"
+
+enabled: true

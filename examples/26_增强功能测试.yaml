@@ -1,0 +1,271 @@
+# ==============================================================================
+# Sisyphus API Engine - 增强功能测试
+# ==============================================================================
+# 功能说明：演示新增的增强功能
+# 1. 提取器支持默认值
+# 2. 自定义错误消息
+# ==============================================================================
+
+name: "增强功能测试"
+description: "演示提取器默认值和自定义错误消息功能"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+# ============================================================================
+# 测试步骤
+# ============================================================================
+steps:
+  # ----------------------------------------------------------------------------
+  # 步骤1: 测试提取器默认值功能
+  # 用途：当提取的字段不存在时，使用默认值
+  # ----------------------------------------------------------------------------
+  - name: "提取器默认值-字段不存在时使用默认值"
+    description: "测试JSONPath提取器的default参数"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      existing_field: "value1"
+      # 故意不包含 non_existent_field
+    extractors:
+      # 提取存在的字段
+      - type: jsonpath
+        name: extracted_value
+        path: "$.json.existing_field"
+        description: "提取存在的字段"
+
+      # 提取不存在的字段，但提供默认值
+      - type: jsonpath
+        name: default_value
+        path: "$.json.non_existent_field"
+        default: "DEFAULT_VALUE"
+        description: "提取不存在的字段，使用默认值"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证HTTP状态码"
+
+      # 验证existing_field被正确提取
+      - type: eq
+        path: "$.json.existing_field"
+        expect: "value1"
+        description: "验证existing_field提取正确"
+
+  # ----------------------------------------------------------------------------
+  # 步骤2: 测试嵌套路径的默认值
+  # ----------------------------------------------------------------------------
+  - name: "提取器默认值-嵌套路径"
+    description: "测试嵌套路径不存在时使用默认值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        name: "test"
+      # 故意不包含 data.id 字段
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+    extractors:
+      # 提取不存在的嵌套字段，提供默认值
+      - type: jsonpath
+        name: user_id
+        path: "$.json.data.id"
+        default: "anonymous"
+        description: "用户ID不存在时使用匿名"
+
+      # 验证默认值被使用
+    validations:
+      - type: eq
+        path: "$.json.data.name"
+        expect: "test"
+        description: "验证数据正确"
+
+  # ----------------------------------------------------------------------------
+  # 步骤3: 测试自定义错误消息 - 成功场景
+  # ----------------------------------------------------------------------------
+  - name: "自定义错误消息-验证成功"
+    description: "验证成功时不显示错误消息"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      status: "success"
+      code: 1
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证HTTP状态码"
+
+      # 使用自定义错误消息，但验证会成功
+      - type: eq
+        path: "$.json.code"
+        expect: 1
+        error_message: "业务码必须为1，请检查响应数据"
+        description: "验证业务码为1"
+
+      - type: eq
+        path: "$.json.status"
+        expect: "success"
+        error_message: "状态必须为success"
+        description: "验证状态为success"
+
+  # ----------------------------------------------------------------------------
+  # 步骤4: 测试自定义错误消息 - 失败场景
+  # ----------------------------------------------------------------------------
+  - name: "自定义错误消息-验证失败"
+    description: "验证失败时显示自定义错误消息"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      status: "failed"
+      code: 0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证HTTP状态码"
+
+      # 这个验证会失败，显示自定义错误消息
+      - type: eq
+        path: "$.json.code"
+        expect: 1
+        error_message: "❌ 业务码错误: 期望值为1，但实际为0。请联系后端开发人员检查。"
+        description: "验证业务码（会失败）"
+
+      # 这个验证也会失败
+      - type: eq
+        path: "$.json.status"
+        expect: "success"
+        error_message: "⚠️ 状态验证失败: 系统状态应该为'success'，但实际为'failed'。请检查系统健康状态。"
+        description: "验证状态（会失败）"
+
+  # ----------------------------------------------------------------------------
+  # 步骤5: 测试正则表达式提取器的默认值
+  # ----------------------------------------------------------------------------
+  - name: "正则提取器默认值"
+    description: "测试正则表达式提取器的default参数"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      text: "Order ID: 12345"
+      # 故意不包含 Email 字段
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+    extractors:
+      # 使用正则提取订单号（存在）
+      - type: regex
+        name: order_id
+        path: "$.json.text"
+        default: "N/A"
+        description: "提取订单号"
+        pattern: "Order ID: (\\d+)"
+
+      # 尝试提取邮箱（不存在，使用默认值）
+      - type: jsonpath
+        name: email
+        path: "$.json.email"
+        default: "not@example.com"
+        description: "邮箱不存在时使用默认值"
+
+  # ----------------------------------------------------------------------------
+  # 步骤6: 综合测试 - 默认值与自定义错误消息结合
+  # ----------------------------------------------------------------------------
+  - name: "综合测试-默认值与自定义错误消息"
+    description: "在实际场景中结合使用默认值和自定义错误消息"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      user:
+        name: "Alice"
+        # age 字段故意省略
+      response:
+        code: 1
+        message: "OK"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+    extractors:
+      # 提取用户名
+      - type: jsonpath
+        name: username
+        path: "$.json.user.name"
+        description: "提取用户名"
+
+      # 提取年龄（不存在，使用默认值）
+      - type: jsonpath
+        name: age
+        path: "$.json.user.age"
+        default: 18
+        description: "年龄不存在时默认为18"
+
+      # 提取响应码
+      - type: jsonpath
+        name: response_code
+        path: "$.json.response.code"
+        description: "提取响应码"
+
+    validations:
+      # 验证用户名
+      - type: eq
+        path: "$.json.user.name"
+        expect: "Alice"
+        error_message: "用户名必须是Alice"
+        description: "验证用户名"
+
+      # 验证响应码
+      - type: eq
+        path: "$.json.response.code"
+        expect: 1
+        error_message: "响应码必须为1，表示成功"
+        description: "验证响应码"
+
+      # 验证消息
+      - type: eq
+        path: "$.json.response.message"
+        expect: "OK"
+        error_message: "响应消息必须是OK"
+        description: "验证响应消息"
+
+# ============================================================================
+# 标签（用于测试用例分类和过滤）
+# ============================================================================
+tags:
+  - "基础"
+  - "增强"
+  - "提取器"
+  - "错误消息"
+
+# 是否启用此测试用例（可选值: true/false）
+enabled: true

@@ -1,0 +1,246 @@
+# =============================================================================#
+# Sisyphus API Engine - 条件语法增强测试
+# =============================================================================#
+# 功能说明：演示增强的条件表达式语法
+# =============================================================================#
+
+name: "条件语法增强测试"
+description: "演示结构化和简洁的条件表达式"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 基础字符串条件（向后兼容）
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: 设置测试变量"
+    description: "设置变量供后续条件测试使用"
+    type: script
+    script: |
+      set_var("user_id", "12345")
+      set_var("role", "admin")
+      set_var("status", "active")
+      set_var("score", 95)
+      set_var("permissions", ["read", "write", "delete"])
+
+  - name: "测试1: 基础条件"
+    description: "测试传统字符串条件语法"
+    type: script
+    script: |
+      print("基础条件测试通过")
+    condition: "${user_id} != null"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 简洁的 AND 表达式
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: AND 条件（简洁）"
+    description: "使用 and 运算符的简洁表达式"
+    type: script
+    script: |
+      print("AND 条件测试通过")
+    condition: "${user_id} and ${role}"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 简洁的 OR 表达式
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: OR 条件（简洁）"
+    description: "使用 or 运算符的简洁表达式"
+    type: script
+    script: |
+      print("OR 条件测试通过")
+    condition: "${status} == active or ${status} == pending"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 简洁的 NOT 表达式
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: NOT 条件（简洁）"
+    description: "使用 not 运算符的简洁表达式"
+    type: script
+    script: |
+      print("NOT 条件测试通过")
+    condition: "not ${role} == guest"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试5: 复合逻辑表达式
+  # ----------------------------------------------------------------------------
+
+  - name: "测试5: 复合逻辑（简洁）"
+    description: "and 和 or 的组合使用"
+    type: script
+    script: |
+      print("复合逻辑测试通过")
+    condition: "${role} == admin and ${status} == active or ${score} > 90"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试6: 结构化 AND 条件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试6: 结构化 AND"
+    description: "使用结构化的 and 语法"
+    type: script
+    script: |
+      print("结构化 AND 测试通过")
+    condition:
+      and:
+        - "${user_id} != null"
+        - "${role} == admin"
+        - "${status} == active"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试7: 结构化 OR 条件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试7: 结构化 OR"
+    description: "使用结构化的 or 语法"
+    type: script
+    script: |
+      print("结构化 OR 测试通过")
+    condition:
+      or:
+        - "${role} == admin"
+        - "${role} == superuser"
+        - "${score} > 100"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试8: 结构化 NOT 条件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试8: 结构化 NOT"
+    description: "使用结构化的 not 语法"
+    type: script
+    script: |
+      print("结构化 NOT 测试通过")
+    condition:
+      not: "${role} == guest"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试9: 嵌套结构化条件
+  # ----------------------------------------------------------------------------
+
+  - name: "测试9: 嵌套结构化条件"
+    description: "and 和 or 的嵌套使用"
+    type: script
+    script: |
+      print("嵌套结构化条件测试通过")
+    condition:
+      and:
+        - "${user_id} != null"
+        - or:
+          - "${role} == admin"
+          - "${role} == superuser"
+        - "${status} == active"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试10: 比较运算符
+  # ----------------------------------------------------------------------------
+
+  - name: "测试10: 大于比较"
+    description: "使用 > 比较运算符"
+    type: script
+    script: |
+      print("大于比较测试通过")
+    condition: "${score} > 90"
+    capture_output: true
+
+  - name: "测试11: 小于等于比较"
+    description: "使用 <= 比较运算符"
+    type: script
+    script: |
+      print("小于等于比较测试通过")
+    condition: "${score} <= 100"
+    capture_output: true
+
+  # name: "测试12: in 运算符"
+  # description: "使用 in 运算符检查数组包含"
+  # type: script
+  # script: |
+    # print("in 运算符测试通过")
+  # condition: "'write' in ${permissions}"
+  # capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试13: skip_if 使用新语法
+  # ----------------------------------------------------------------------------
+
+  - name: "测试13: skip_if 跳过"
+    description: "使用新语法的 skip_if（应被跳过）"
+    type: script
+    script: |
+      print("这个步骤不应该执行")
+    skip_if:
+      or:
+        - "${role} == admin"
+        - "${score} > 50"
+
+  # ----------------------------------------------------------------------------
+  # 测试14: only_if 使用新语法
+  # ----------------------------------------------------------------------------
+
+  - name: "测试14: only_if 执行"
+    description: "使用新语法的 only_if（应执行）"
+    type: script
+    script: |
+      print("only_if 条件满足，执行此步骤")
+    only_if:
+      and:
+        - "${role} == admin"
+        - "${status} == active"
+    capture_output: true
+
+  # ----------------------------------------------------------------------------
+  # 测试15: 复杂实际场景
+  # ----------------------------------------------------------------------------
+
+  - name: "测试15: 实际场景"
+    description: "模拟实际测试场景的复杂条件"
+    type: script
+    script: |
+      print("实际场景测试通过")
+      print(f"用户ID: {get_var('user_id')}")
+      print(f"角色: {get_var('role')}")
+      print(f"状态: {get_var('status')}")
+      print(f"分数: {get_var('score')}")
+    condition:
+      and:
+        - "${user_id} != null"
+        - or:
+          - "${role} == admin"
+          - and:
+            - "${role} == user"
+            - "${score} > 80"
+        - "${status} == active"
+    capture_output: true
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "条件"
+  - "condition"
+  - "逻辑运算"
+  - "skip_if"
+  - "only_if"
+
+enabled: true

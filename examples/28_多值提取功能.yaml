@@ -1,0 +1,400 @@
+# ==============================================================================
+# Sisyphus API Engine - 多值提取功能测试
+# ==============================================================================
+# 功能说明：演示 extract_all 参数的基本使用
+# =============================================================================
+
+name: "多值提取功能测试"
+description: "演示使用 extract_all 参数提取多个值"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 使用 extract_all 提取所有值
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: extract_all提取所有用户名"
+    description: "验证extract_all参数正确提取所有匹配值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        users:
+          - id: 1
+            name: "Alice"
+            role: "admin"
+          - id: 2
+            name: "Bob"
+            role: "user"
+          - id: 3
+            name: "Charlie"
+            role: "user"
+    extractors:
+      # 使用 extract_all 提取所有用户名
+      - type: jsonpath
+        name: all_names
+        path: "$.json.data.users[*].name"
+        extract_all: true
+        description: "提取所有用户名作为数组"
+
+      # 使用 index=-1 提取所有ID（对比）
+      - type: jsonpath
+        name: all_ids
+        path: "$.json.data.users[*].id"
+        index: -1
+        description: "使用 index=-1 提取所有ID"
+
+      # 提取第一个值（默认行为）
+      - type: jsonpath
+        name: first_name
+        path: "$.json.data.users[*].name"
+        description: "只提取第一个用户名"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证有3个用户（直接验证响应体）
+      - type: eq
+        path: "$.json.data.users.length()"
+        expect: 3
+
+      # 验证第一个用户名（直接验证响应体）
+      - type: eq
+        path: "$.json.data.users[0].name"
+        expect: "Alice"
+        description: "验证第一个用户名为 Alice"
+
+      # 验证最后一个用户名（直接验证响应体）
+      - type: eq
+        path: "$.json.data.users[2].name"
+        expect: "Charlie"
+        description: "验证最后一个用户名为 Charlie"
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 验证提取的变量在后续步骤中可用
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: 使用提取的变量"
+    description: "验证提取的变量可以在后续步骤中使用"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      message: "Testing extracted variables"
+      # 使用提取的变量
+      first_user: "${first_name}"
+      all_user_ids: "${all_ids}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证提取的变量被正确传递到请求体
+      # httpbin.org 会将请求体放在 $.json 中
+      - type: eq
+        path: "$.json.first_user"
+        expect: "Alice"
+        description: "验证提取的第一个用户名被正确传递"
+
+      # 验证提取的所有ID被正确传递（应该是JSON数组字符串）
+      - type: contains
+        path: "$.json.all_user_ids"
+        expect: "[1, 2, 3]"
+        description: "验证提取的所有ID被正确传递"
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 使用过滤器 + extract_all
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: 过滤器与extract_all结合"
+    description: "验证使用过滤器提取特定条件的所有值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        items:
+          - id: 1
+            name: "Item A"
+            price: 100
+            category: "electronics"
+          - id: 2
+            name: "Item B"
+            price: 200
+            category: "books"
+          - id: 3
+            name: "Item C"
+            price: 150
+            category: "electronics"
+          - id: 4
+            name: "Item D"
+            price: 300
+            category: "books"
+    extractors:
+      # 提取所有电子产品名称（使用过滤器）
+      - type: jsonpath
+        name: electronics_names
+        path: "$.json.data.items[?(@.category == 'electronics')].name"
+        extract_all: true
+        description: "提取所有电子产品名称"
+
+      # 提取所有价格大于150的商品
+      - type: jsonpath
+        name: expensive_items
+        path: "$.json.data.items[?(@.price > 150)].name"
+        extract_all: true
+        description: "提取价格大于150的商品名称"
+
+      # 计算电子产品数量
+      - type: jsonpath
+        name: electronics_count
+        path: "$.json.data.items[?(@.category == 'electronics')].name.length()"
+        description: "计算电子产品数量"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证有4个商品
+      - type: eq
+        path: "$.json.data.items.length()"
+        expect: 4
+
+      # 验证电子产品数量为2（直接验证响应体）
+      - type: eq
+        path: "$.json.data.items[?(@.category == 'electronics')].name.length()"
+        expect: 2
+        description: "验证有2个电子产品"
+
+      # 验证第一个电子产品（通过索引访问响应体）
+      - type: eq
+        path: "$.json.data.items[0].name"
+        expect: "Item A"
+        description: "验证第一个商品为 Item A"
+
+      # 验证第一个商品的类别
+      - type: eq
+        path: "$.json.data.items[0].category"
+        expect: "electronics"
+        description: "验证第一个商品类别为 electronics"
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 使用JSONPath数组聚合函数
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: 数组聚合函数"
+    description: "验证JSONPath数组聚合函数与extract_all"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        products:
+          - name: "Product A"
+            price: 100
+            stock: 50
+          - name: "Product B"
+            price: 200
+            stock: 30
+          - name: "Product C"
+            price: 150
+            stock: 20
+    extractors:
+      # 提取所有价格
+      - type: jsonpath
+        name: all_prices
+        path: "$.json.data.products[*].price"
+        extract_all: true
+        description: "提取所有价格"
+
+      # 提取所有库存
+      - type: jsonpath
+        name: all_stocks
+        path: "$.json.data.products[*].stock"
+        extract_all: true
+        description: "提取所有库存"
+
+      # 直接使用聚合函数计算
+      - type: jsonpath
+        name: total_price
+        path: "$.json.data.products[*].price.sum()"
+        description: "计算价格总和"
+
+      - type: jsonpath
+        name: avg_price
+        path: "$.json.data.products[*].price.avg()"
+        description: "计算平均价格"
+
+      - type: jsonpath
+        name: total_stock
+        path: "$.json.data.products[*].stock.sum()"
+        description: "计算库存总和"
+
+      - type: jsonpath
+        name: product_count
+        path: "$.json.data.products.length()"
+        description: "产品数量"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 直接在响应体上验证产品数量
+      - type: eq
+        path: "$.json.data.products.length()"
+        expect: 3
+        description: "验证有3个产品"
+
+      # 直接在响应体上验证聚合函数
+      - type: eq
+        path: "$.json.data.products[*].price.sum()"
+        expect: 450
+        description: "验证价格总和为450"
+
+      - type: eq
+        path: "$.json.data.products[*].price.avg()"
+        expect: 150
+        description: "验证平均价格为150"
+
+      - type: eq
+        path: "$.json.data.products[*].stock.sum()"
+        expect: 100
+        description: "验证库存总和为100"
+
+      # 验证第一个产品的价格
+      - type: eq
+        path: "$.json.data.products[0].price"
+        expect: 100
+        description: "验证第一个产品价格"
+
+  # ----------------------------------------------------------------------------
+  # 测试5: 提取数组的第一个和最后一个元素
+  # ----------------------------------------------------------------------------
+
+  - name: "测试5: 首尾元素提取"
+    description: "验证使用index参数提取首尾元素"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        numbers: [10, 20, 30, 40, 50]
+    extractors:
+      # 提取所有数字
+      - type: jsonpath
+        name: all_numbers
+        path: "$.json.data.numbers[*]"
+        extract_all: true
+        description: "提取所有数字"
+
+      # 提取第一个数字（index=0，默认值）
+      - type: jsonpath
+        name: first_number
+        path: "$.json.data.numbers[*]"
+        index: 0
+        description: "提取第一个数字"
+
+      # 提取第二个数字（index=1）
+      - type: jsonpath
+        name: second_number
+        path: "$.json.data.numbers[*]"
+        index: 1
+        description: "提取第二个数字"
+
+      # 提取最后一个数字（index=-1，这里是全部提取）
+      - type: jsonpath
+        name: last_number
+        path: "$.json.data.numbers[*]"
+        index: -1
+        description: "提取所有数字作为数组"
+
+      # 使用first()函数
+      - type: jsonpath
+        name: first_num_func
+        path: "$.json.data.numbers.first()"
+        description: "使用first()函数提取"
+
+      # 使用last()函数
+      - type: jsonpath
+        name: last_num_func
+        path: "$.json.data.numbers.last()"
+        description: "使用last()函数提取"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证第一个数字（直接验证响应体）
+      - type: eq
+        path: "$.json.data.numbers[0]"
+        expect: 10
+        description: "验证第一个数字为10"
+
+      # 验证第二个数字
+      - type: eq
+        path: "$.json.data.numbers[1]"
+        expect: 20
+        description: "验证第二个数字为20"
+
+      # 验证最后一个数字
+      - type: eq
+        path: "$.json.data.numbers[4]"
+        expect: 50
+        description: "验证最后一个数字为50"
+
+      # 验证数组长度
+      - type: eq
+        path: "$.json.data.numbers.length()"
+        expect: 5
+        description: "验证有5个数字"
+
+      # 直接在响应体上验证first()函数
+      - type: eq
+        path: "$.json.data.numbers.first()"
+        expect: 10
+        description: "验证first()函数结果"
+
+      # 直接在响应体上验证last()函数
+      - type: eq
+        path: "$.json.data.numbers.last()"
+        expect: 50
+        description: "验证last()函数结果"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "提取器"
+  - "多值提取"
+  - "extract_all"
+  - "数组"
+  - "JSONPath"
+
+enabled: true

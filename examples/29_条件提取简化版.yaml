@@ -1,0 +1,171 @@
+# ==============================================================================
+# Sisyphus API Engine - 条件提取功能测试（简化版）
+# ==============================================================================
+# 功能说明：演示 condition 参数的基本使用
+# =============================================================================
+
+name: "条件提取功能测试"
+description: "演示使用 condition 参数实现条件变量提取"
+
+config:
+  name: "测试配置"
+  timeout: 30
+  retry_times: 0
+
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+
+  active_profile: "prod"
+
+steps:
+  # ----------------------------------------------------------------------------
+  # 测试1: 基本条件提取 - 条件满足时提取
+  # ----------------------------------------------------------------------------
+
+  - name: "测试1: 条件满足时提取"
+    description: "当 code == 200 时提取数据"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      code: 200
+      data:
+        id: "task-123"
+        name: "Test Task"
+    extractors:
+      # 提取 code 值用于验证
+      - type: jsonpath
+        name: response_code
+        path: "$.json.code"
+        description: "提取响应码"
+
+      # 只有在 code == 200 时才提取 task_id
+      - type: jsonpath
+        name: task_id
+        path: "$.json.data.id"
+        condition: "$.json.code == 200"
+        description: "当 code==200 时提取任务ID"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 直接验证响应体中的数据
+      - type: eq
+        path: "$.json.code"
+        expect: 200
+        description: "验证响应码为 200"
+
+      - type: eq
+        path: "$.json.data.id"
+        expect: "task-123"
+        description: "验证响应体中的任务ID"
+
+  # ----------------------------------------------------------------------------
+  # 测试2: 条件不满足时使用默认值
+  # ----------------------------------------------------------------------------
+
+  - name: "测试2: 条件不满足使用默认值"
+    description: "当 code != 1 时使用默认值"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      code: 0
+      message: "Error occurred"
+      data: null
+    extractors:
+      # code != 1，应该使用默认值
+      - type: jsonpath
+        name: task_id
+        path: "$.json.data.id"
+        condition: "$.json.code == 1"
+        on_failure:
+          use_default: "default-task-999"
+        description: "code!=1 时使用默认值"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证响应体中的 code
+      - type: eq
+        path: "$.json.code"
+        expect: 0
+        description: "验证响应码为 0"
+
+  # ----------------------------------------------------------------------------
+  # 测试3: 使用提取的变量（在后续步骤中验证）
+  # ----------------------------------------------------------------------------
+
+  - name: "测试3: 验证提取的变量"
+    description: "在后续步骤中使用提取的变量"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      # 使用前面步骤提取的变量
+      previous_task_id: "${task_id}"
+      message: "Testing extracted variable"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 验证提取的变量被传递到请求体
+      - type: eq
+        path: "$.json.previous_task_id"
+        expect: "default-task-999"
+        description: "验证使用了默认值"
+
+  # ----------------------------------------------------------------------------
+  # 测试4: 无条件提取（对比）
+  # ----------------------------------------------------------------------------
+
+  - name: "测试4: 无条件提取对比"
+    description: "无条件提取作为对比"
+    type: request
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      simple_value: "test-data"
+    extractors:
+      # 无条件提取
+      - type: jsonpath
+        name: extracted
+        path: "$.json.simple_value"
+        description: "无条件提取"
+
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+      # 直接验证响应体中的数据
+      - type: eq
+        path: "$.json.simple_value"
+        expect: "test-data"
+        description: "验证响应体中的数据"
+
+# ============================================================================
+# 标签
+# ============================================================================
+tags:
+  - "基础"
+  - "提取器"
+  - "条件提取"
+  - "condition"
+  - "on_failure"
+
+enabled: true
