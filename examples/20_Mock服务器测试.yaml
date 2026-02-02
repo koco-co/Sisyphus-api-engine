@@ -162,11 +162,12 @@ steps:
         description: "验证状态码为200"
 
   # ----------------------------------------------------------------------------
-  # 步骤4: Mock动态响应示例
+  # 步骤4: Mock动态响应示例（演示配置）
   # 用途：演示根据请求参数动态生成响应
+  # 注意：这是演示配置，使用示例值代替实际路径参数
   # ----------------------------------------------------------------------------
   - name: "Mock动态响应配置"
-    description: "演示根据请求参数动态生成Mock响应"
+    description: "演示根据请求参数动态生成Mock响应（示例配置）"
     type: request
     method: POST
     url: "${config.profiles.prod.base_url}/post"
@@ -178,11 +179,11 @@ steps:
         method: "GET"
         response:
           status_code: 200
-          # 动态响应：使用路径参数
+          # 动态响应：使用路径参数（示例值）
           body:
-            id: "${path_params.user_id}"
-            username: "mock_user_${path_params.user_id}"
-            email: "mock${path_params.user_id}@example.com"
+            id: "123"
+            username: "mock_user_123"
+            email: "mock123@example.com"
       advanced_features:
         - "路径参数提取"
         - "查询参数处理"
@@ -314,8 +315,8 @@ steps:
             response:
               status_code: 200
               body:
-                id: "${path_params.id}"
-                name: "User ${path_params.id}"
+                id: "456"
+                name: "User 456"
           # 创建用户
           - path: "/api/users"
             method: POST
@@ -330,7 +331,7 @@ steps:
             response:
               status_code: 200
               body:
-                id: "${path_params.id}"
+                id: "456"
                 message: "Updated"
           # 删除用户
           - path: "/api/users/{id}"
@@ -359,10 +360,12 @@ steps:
   # 步骤6: Mock条件判断 - 基于请求体的条件
   # 用途：演示根据请求内容返回不同的响应
   # 场景：金额超限时返回错误，否则返回成功
+  # 注意：需要Mock服务器运行，演示用 skip_if 跳过
   # ----------------------------------------------------------------------------
   - name: "Mock条件判断示例-请求体条件"
-    description: "演示基于请求体的条件Mock"
+    description: "演示基于请求体的条件Mock（需要Mock服务器）"
     type: request
+    skip_if: "true"  # 跳过：需要Mock服务器运行
     method: POST
     url: "http://localhost:8888/payment/create"
     headers:
@@ -405,10 +408,12 @@ steps:
   # 步骤7: Mock条件判断 - 基于请求路径和方法的条件
   # 用途：演示根据不同的API版本返回不同的响应
   # 场景：v1和v2 API返回不同的版本号
+  # 注意：需要Mock服务器运行，演示用 skip_if 跳过
   # ----------------------------------------------------------------------------
   - name: "Mock条件判断示例-API版本"
-    description: "演示基于API路径的条件Mock"
+    description: "演示基于API路径的条件Mock（需要Mock服务器）"
     type: request
+    skip_if: "true"  # 跳过：需要Mock服务器运行
     method: POST
     url: "http://localhost:8888/api/v1/test"
     headers:
@@ -455,10 +460,12 @@ steps:
   # 步骤8: Mock条件判断 - 基于请求头的条件
   # 用途：演示根据请求头返回不同的响应
   # 场景：带有特殊token的请求返回额外数据
+  # 注意：需要Mock服务器运行，演示用 skip_if 跳过
   # ----------------------------------------------------------------------------
   - name: "Mock条件判断示例-请求头条件"
-    description: "演示基于请求头的条件Mock"
+    description: "演示基于请求头的条件Mock（需要Mock服务器）"
     type: request
+    skip_if: "true"  # 跳过：需要Mock服务器运行
     method: GET
     url: "http://localhost:8888/api/data"
     headers:

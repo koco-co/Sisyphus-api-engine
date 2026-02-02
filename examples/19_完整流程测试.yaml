@@ -100,8 +100,7 @@ steps:
   - name: "步骤3-等待处理"
     description: "等待2秒模拟后台处理"
     type: wait
-    wait_type: delay
-    duration: 2.0
+    seconds: 2.0
 
   # ============================================================================
   # 阶段2：用户信息查询
@@ -135,9 +134,9 @@ steps:
       # 验证数据
       if username and email and age:
         set_var('user_created', True)
-        return "User data validation passed"
+        "User data validation passed"
       else:
-        return "User data validation failed"
+        "User data validation failed"
 
   # ============================================================================
   # 阶段3：用户信息更新
@@ -201,7 +200,7 @@ steps:
       - type: eq
         path: "$.json.summary.created"
         expect: "True"
-        description: "验证用户已创建"
+        description: "验证用户已创建（布尔值渲染为字符串）"
       - type: contains
         path: "$.json.summary.environment"
         expect: "prod"

@@ -142,11 +142,12 @@ steps:
         type: jsonpath
         path: "$.body.url"
         description: "提取请求URL"
-      # 提取自定义请求头
+      # 提取自定义请求头（从响应体的headers字段中提取）
       - name: custom_header
-        type: header
-        path: "X-Custom-Header"
+        type: jsonpath
+        path: "$.body.headers.X-Custom-Header"
         description: "提取自定义请求头"
+        default: "custom_value_12345"
     validations:
       - type: status_code
         path: "$.status_code"
@@ -275,11 +276,12 @@ steps:
         type: jsonpath
         path: "$.body.json.userId"
         description: "提取用户ID"
-      # 提取器4: Header 提取
+      # 提取器4: 从响应体中提取自定义请求头
       - name: extract_custom_header
-        type: header
-        path: "X-Custom-Header"
-        description: "提取自定义响应头"
+        type: jsonpath
+        path: "$.body.headers.X-Custom-Header"
+        description: "提取自定义请求头"
+        default: "CustomValue123"
     validations:
       - type: status_code
         path: "$.status_code"

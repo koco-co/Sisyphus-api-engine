@@ -17,42 +17,38 @@ config:
     prod:
       base_url: "https://httpbin.org"
   # 数据驱动配置
+  data_iterations: true  # 启用数据驱动迭代
+  variable_prefix: "data_"  # 数据变量前缀
   data_source:
-    # 数据源类型：csv/json/inline
-    type: inline
-    # 内联数据
-    data:
-      - username: "user1"
-        email: "user1@example.com"
-        age: 25
-      - username: "user2"
-        email: "user2@example.com"
-        age: 30
-      - username: "user3"
-        email: "user3@example.com"
-        age: 35
+    # 数据源类型：json
+    type: json
+    # JSON 文件路径
+    file_path: "examples/data/test_users.json"
+    # 数据键（可选，如果JSON是对象格式）
+    data_key: "users"
 
 # ============================================================================
 # 测试步骤
 # ============================================================================
 steps:
   # ----------------------------------------------------------------------------
-  # 步骤1: 使用内联数据驱动测试
-  # 用途：演示使用内联数据进行数据驱动测试
-  # 数据源：config.data_source.data中的3条用户数据
+  # 步骤1: 使用JSON数据源驱动测试
+  # 用途：演示使用JSON文件数据进行数据驱动测试
+  # 数据源：examples/data/test_users.json中的3条用户数据
+  # 变量前缀：data_ (变量名为 data_username, data_email, data_age)
   # ----------------------------------------------------------------------------
   - name: "测试用户数据"
-    description: "使用内联数据测试多个用户"
+    description: "使用JSON数据源测试多个用户"
     type: request
     method: POST
     url: "${config.profiles.prod.base_url}/post"
     headers:
       Content-Type: "application/json"
-    # 使用数据变量
+    # 使用数据变量（带 data_ 前缀）
     body:
-      username: "${data.username}"
-      email: "${data.email}"
-      age: "${data.age}"
+      username: "${data_username}"
+      email: "${data_email}"
+      age: "${data_age}"
     validations:
       - type: status_code
         path: "$.status_code"
@@ -60,15 +56,15 @@ steps:
         description: "验证状态码为200"
       - type: eq
         path: "$.json.username"
-        expect: "${data.username}"
+        expect: "${data_username}"
         description: "验证用户名正确"
       - type: eq
         path: "$.json.email"
-        expect: "${data.email}"
+        expect: "${data_email}"
         description: "验证邮箱正确"
       - type: eq
         path: "$.json.age"
-        expect: "${data.age}"
+        expect: "${data_age}"
         description: "验证年龄正确"
 
   # ----------------------------------------------------------------------------
