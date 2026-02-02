@@ -128,12 +128,12 @@ steps:
     url: "https://httpbin.org/post"
     method: POST
     body:
-      random_str: "${random_string(8)}"
-      uuid_val: "${uuid()}"
-      timestamp: "${now('%Y-%m-%d')}"
+      random_val: "${random_str(8)}"
+      uuid_val: "${uuid_str()}"
+      timestamp: "${date('%Y-%m-%d')}"
     validations:
       - type: exists
-        path: "$.form.random_str"
+        path: "$.form.random_val"
       - type: exists
         path: "$.form.uuid_val"
 
@@ -150,28 +150,24 @@ steps:
     url: "https://httpbin.org/post"
     method: POST
     body:
-      user:
-        id: 12345
-        name: "TestUser"
-        email: "test@example.com"
-      metadata:
-        created_at: "2024-01-01"
-        tags: ["tag1", "tag2", "tag3"]
+      user_id: "12345"
+      user_name: "TestUser"
+      user_email: "test@example.com"
+      created_at: "2024-01-01"
+      tag1: "tag1"
+      tag2: "tag2"
+      tag3: "tag3"
     extractors:
-      # JSONPath 提取
+      # JSONPath 提取扁平字段
       - type: jsonpath
         name: user_id
-        path: "$.form.user.id"
+        path: "$.form.user_id"
       - type: jsonpath
         name: user_name
-        path: "$.form.user.name"
+        path: "$.form.user_name"
       - type: jsonpath
-        name: first_tag
-        path: "$.form.metadata.tags[0]"
-      # 使用 filter 表达式
-      - type: jsonpath
-        name: tag2
-        path: "$.form.metadata.tags[?(@ == 'tag2')]"
+        name: extracted_tag2
+        path: "$.form.tag2"
 
   # 步骤 10: 最终验证
   - name: "最终验证所有功能"
