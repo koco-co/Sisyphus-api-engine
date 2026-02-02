@@ -18,10 +18,11 @@ steps:
       action: "create_project"
       project_name: "test_project"
       initial_status: "INITIALIZING"
+      project_id: "test_project_123"
     extractors:
       - type: jsonpath
         name: project_id
-        path: "$.data.project_id"
+        path: "$.form.project_id"
 
   - name: "轮询等待项目就绪"
     type: poll
@@ -35,7 +36,7 @@ steps:
     poll_config:
       condition:
         type: jsonpath
-        path: "$.data.current_status"
+        path: "$.form.current_status"
         operator: "eq"
         expect: "ACTIVE"
       max_attempts: 3
@@ -57,7 +58,7 @@ steps:
     poll_config:
       condition:
         type: jsonpath
-        path: "$.data.progress"
+        path: "$.form.progress"
         operator: "ge"  # 大于等于
         expect: 100
       max_attempts: 5
@@ -97,7 +98,7 @@ steps:
     poll_config:
       condition:
         type: jsonpath
-        path: "$.data.results"
+        path: "$.form.results"
         operator: "contains"
         expect: "target_item"
       max_attempts: 3
@@ -118,7 +119,7 @@ steps:
     poll_config:
       condition:
         type: jsonpath
-        path: "$.data.generated_data.id"
+        path: "$.form.generated_data"
         operator: "exists"
       max_attempts: 5
       interval: 1500
@@ -134,5 +135,5 @@ steps:
       message: "轮询测试完成"
     validations:
       - type: eq
-        path: "$.json.message"
+        path: "$.form.message"
         expect: "轮询测试完成"

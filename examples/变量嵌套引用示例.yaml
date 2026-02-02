@@ -54,7 +54,7 @@ steps:
       expected: "test_0202093000"
     validations:
       - type: eq
-        path: "$.json.message"
+        path: "$.form.message"
         expect: "Category name is: test_0202093000"
 
   - name: "验证变量渲染 - datasource_name"
@@ -66,7 +66,7 @@ steps:
       expected: "ds_0202093000"
     validations:
       - type: eq
-        path: "$.json.datasource"
+        path: "$.form.datasource"
         expect: "ds_0202093000"
 
   - name: "验证变量渲染 - environment"
@@ -78,7 +78,7 @@ steps:
       expected: "dev"
     validations:
       - type: eq
-        path: "$.json.env"
+        path: "$.form.env"
         expect: "dev"
 
   - name: "验证变量渲染 - api_endpoint"
@@ -90,7 +90,7 @@ steps:
       expected: "http://dev.example.com/api/v1"
     validations:
       - type: eq
-        path: "$.json.endpoint"
+        path: "$.form.endpoint"
         expect: "http://dev.example.com/api/v1"
 
   - name: "验证变量渲染 - full_resource_name"
@@ -102,5 +102,5 @@ steps:
       expected: "dev_0202093000"
     validations:
       - type: eq
-        path: "$.json.resource"
+        path: "$.form.resource"
         expect: "dev_0202093000"

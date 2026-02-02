@@ -29,12 +29,12 @@ steps:
       expected_id: "test_001_dev"
     validations:
       - type: eq
-        path: "$.json.full_id"
+        path: "$.form.full_id"
         expect: "test_001_dev"
     extractors:
       - type: jsonpath
         name: response_id
-        path: "$.json.test_id"
+        path: "$.form.test_id"
 
   # 步骤 2: 验证轮询机制 (任务2)
   - name: "轮询等待特定条件"
@@ -47,7 +47,7 @@ steps:
     poll_config:
       condition:
         type: jsonpath
-        path: "$.json.status_check"
+        path: "$.form.status_check"
         operator: "eq"
         expect: "ready"
       max_attempts: 2
@@ -72,10 +72,10 @@ steps:
       # 使用 filter 表达式提取特定元素
       - type: jsonpath
         name: target_item
-        path: "$.json.items[?(@.name == 'target')].value"
+        path: "$.form.items[?(@.name == 'target')].value"
     validations:
       - type: eq
-        path: "$.json.items[?(@.name == 'target')].value"
+        path: "$.form.items[?(@.name == 'target')].value"
         expect: 300
 
   # 步骤 4: 验证条件执行 (任务4)
@@ -99,13 +99,13 @@ steps:
     validations:
       # 多种验证器
       - type: eq
-        path: "$.json.status"
+        path: "$.form.status"
         expect: "success"
       - type: gt
-        path: "$.json.count"
+        path: "$.form.count"
         expect: 0
       - type: contains
-        path: "$.json.items"
+        path: "$.form.items"
         expect: "b"
 
   # 步骤 6: 验证重试机制 (任务6)
@@ -133,9 +133,9 @@ steps:
       timestamp: "${now('%Y-%m-%d')}"
     validations:
       - type: exists
-        path: "$.json.random_str"
+        path: "$.form.random_str"
       - type: exists
-        path: "$.json.uuid_val"
+        path: "$.form.uuid_val"
 
   # 步骤 8: 验证性能监控 (任务10)
   - name: "性能监控测试"
@@ -161,17 +161,17 @@ steps:
       # JSONPath 提取
       - type: jsonpath
         name: user_id
-        path: "$.json.user.id"
+        path: "$.form.user.id"
       - type: jsonpath
         name: user_name
-        path: "$.json.user.name"
+        path: "$.form.user.name"
       - type: jsonpath
         name: first_tag
-        path: "$.json.metadata.tags[0]"
+        path: "$.form.metadata.tags[0]"
       # 使用 filter 表达式
       - type: jsonpath
         name: tag2
-        path: "$.json.metadata.tags[?(@ == 'tag2')]"
+        path: "$.form.metadata.tags[?(@ == 'tag2')]"
 
   # 步骤 10: 最终验证
   - name: "最终验证所有功能"
@@ -192,14 +192,5 @@ steps:
         - "提取器"
     validations:
       - type: eq
-        path: "$.json.summary"
+        path: "$.form.summary"
         expect: "所有核心功能验证完成"
-
-  # 全局总结
-  setup:
-    name: "测试开始"
-    message: "开始综合功能测试"
-
-  teardown:
-    name: "测试结束"
-    message: "综合功能测试完成"
