@@ -3,7 +3,7 @@
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
 ![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.0.3-orange)
+![Version](https://img.shields.io/badge/version-2.0.0-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
@@ -72,14 +72,16 @@
 - **变量追踪** - 调试模式下追踪变量变化
 - **🆕 彩色输出（v1.0.3+）** - 支持 ANSI 颜色和 Emoji 图标，中英文双语界面
 
-### 🌟 v1.0.3+ 新功能亮点
+### 🌟 v2.0.0 新功能亮点
 
+- **🆕 变量嵌套引用增强** - 支持在顶层 variables 中嵌套引用 `config.profiles.*`
+- **🆕 异步轮询机制** - 新增 `poll` 步骤类型，支持等待异步操作完成
+- **🆕 多种轮询策略** - 支持 fixed/exponential/linear 退避策略
+- **🆕 超时处理** - 支持 fail/continue 两种超时行为
 - **彩色命令行输出** - ANSI 颜色 + Emoji 图标 + 中英文双语
 - **JSONPath 过滤表达式** - 支持 `$.users[?(@.role == 'admin')]` 语法
-- **变量嵌套引用** - `${base_url}${api_path}` 自动解析
 - **微秒时间戳** - `now_us()` 返回 20 位唯一时间戳
 - **数组通配符** - `$.items[*].name` 获取所有元素的字段
-- **Contains 验证增强** - 改进对数组和 None 值的处理
 
 ---
 

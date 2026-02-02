@@ -1,6 +1,6 @@
-# API-Engine 输入协议规范 v1.0
+# API-Engine 输入协议规范 v2.0
 
-> **版本说明**: 这是 Sisyphus API Engine v1.0.2 的实际输入协议规范，基于代码实现编写。
+> **版本说明**: 这是 Sisyphus API Engine v2.0.0 的实际输入协议规范，基于代码实现编写。
 
 ---
 
@@ -311,6 +311,70 @@ config:
 | `script_type` | string | ❌ | 脚本类型：python/javascript，默认python |
 | `allow_imports` | boolean | ❌ | 是否允许导入模块，默认true |
 
+### 3.6 Poll 步骤（异步轮询）⭐ v2.0.0 新增
+
+```yaml
+- name: "等待项目就绪"
+  type: poll
+  url: "/api/project/status"
+  method: POST
+  body:
+    project_id: "${project_id}"
+  poll_config:
+    # 轮询条件
+    condition:
+      type: jsonpath            # 条件类型: jsonpath 或 status_code
+      path: "$.data.status"
+      operator: "eq"            # 比较符: eq/ne/gt/lt/ge/le/contains/exists
+      expect: "ACTIVE"
+    # 轮询策略
+    max_attempts: 30            # 最大轮询次数
+    interval: 2000              # 轮询间隔（毫秒）
+    timeout: 60000              # 总超时时间（毫秒）
+    backoff: "fixed"            # 退避策略: fixed/exponential/linear
+  on_timeout:
+    behavior: "fail"            # 超时行为: fail 或 continue
+    message: "项目初始化超时"
+```
+
+#### Poll 步骤字段
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `type` | string | ✅ | 固定值：poll |
+| `poll_config` | object | ✅ | 轮询配置对象 |
+| `poll_config.condition` | object | ✅ | 轮询条件配置 |
+| `poll_config.condition.type` | string | ✅ | 条件类型：jsonpath/status_code |
+| `poll_config.condition.path` | string | ✅ | JSONPath表达式或响应路径 |
+| `poll_config.condition.operator` | string | ✅ | 比较运算符 |
+| `poll_config.condition.expect` | any | ✅ | 期望值 |
+| `poll_config.max_attempts` | int | ❌ | 最大轮询次数，默认30 |
+| `poll_config.interval` | int | ❌ | 轮询间隔（毫秒），默认2000 |
+| `poll_config.timeout` | int | ❌ | 总超时时间（毫秒），默认60000 |
+| `poll_config.backoff` | string | ❌ | 退避策略：fixed/exponential/linear，默认fixed |
+| `on_timeout` | object | ❌ | 超时处理配置 |
+| `on_timeout.behavior` | string | ❌ | 超时行为：fail/continue，默认fail |
+| `on_timeout.message` | string | ❌ | 超时错误消息 |
+
+#### 支持的比较运算符
+
+| 运算符 | 说明 | 示例 |
+|--------|------|------|
+| `eq` | 等于 | `expect: "ACTIVE"` |
+| `ne` | 不等于 | `expect: "PENDING"` |
+| `gt` | 大于 | `expect: 100` |
+| `lt` | 小于 | `expect: 10` |
+| `ge` | 大于等于 | `expect: 100` |
+| `le` | 小于等于 | `expect: 10` |
+| `contains` | 包含 | `expect: "target"` |
+| `exists` | 存在 | 无需expect值 |
+
+#### 退避策略说明
+
+1. **fixed（固定间隔）** - 每次轮询间隔相同
+2. **exponential（指数退避）** - 每次间隔翻倍（1s, 2s, 4s, 8s...）
+3. **linear（线性增长）** - 每次间隔线性增加（1s, 2s, 3s, 4s...）
+
 ---
 
 ## 4. 变量系统
@@ -325,6 +389,10 @@ variables:
   # 引用环境配置
   env: "${config.profiles.dev.env_mode}"
 
+  # 🆕 嵌套引用 config 变量（v2.0.0 新增）
+  category_name: "test_${config.profiles.dev.variables.test_suffix}"
+  full_resource: "${config.active_profile}_${config.profiles.dev.variables.env}"
+
   # 引用上一步提取的变量
   token: "${access_token}"
 
@@ -332,60 +400,46 @@ variables:
   url: "${base_url}/users/${user_id}"
 ```
 
-### 4.2 变量嵌套引用（v1.0.2+ 新增）
+### 4.2 变量嵌套引用 ⭐ v2.0.0 新增
 
-Sisyphus API Engine 现在支持变量的嵌套引用，允许在变量定义中引用其他变量。
-
-**基本嵌套引用**
+v2.0.0 支持在顶层 `config.variables` 中嵌套引用 `config.profiles.*` 的值：
 
 ```yaml
 config:
+  profiles:
+    dev:
+      base_url: "https://dev-api.example.com"
+      variables:
+        test_suffix: "001"
+        env: "dev"
+    prod:
+      base_url: "https://api.example.com"
+      variables:
+        test_suffix: "PROD"
+        env: "production"
+
+  active_profile: "dev"
+
+  # ✨ 可以在顶层嵌套引用 profile 变量
   variables:
-    # 基础变量
-    api_prefix: "/api"
-    api_version: "v1"
+    # 引用特定 profile 的变量
+    category_name: "test_${config.profiles.dev.variables.test_suffix}"
 
-    # 一级嵌套：引用 api_prefix
-    api_path: "${api_prefix}/${api_version}"  # → "/api/v1"
+    # 引用 active_profile
+    environment: "${config.active_profile}"
 
-    # 多级嵌套：引用 api_path
-    user_endpoint: "${api_path}/users"  # → "/api/v1/users"
+    # 组合多个嵌套引用
+    full_resource_name: "${config.active_profile}_${config.profiles.dev.variables.test_suffix}"
 
-    # 复杂嵌套
-    base_url: "https://example.com"
-    full_url: "${base_url}${user_endpoint}"  # → "https://example.com/api/v1/users"
+steps:
+  - name: "使用嵌套变量"
+    type: request
+    url: "${base_url}/api/category"
+    method: POST
+    body:
+      category: "${category_name}"  # 渲染为 "test_001"
+      env: "${environment}"          # 渲染为 "dev"
 ```
-
-**使用场景**
-
-```yaml
-# 场景 1: 构建 API 路径
-variables:
-  host: "https://api.example.com"
-  prefix: "/api/v2"
-  endpoint: "${prefix}/orders"
-  full_url: "${host}${endpoint}"  # "https://api.example.com/api/v2/orders"
-
-# 场景 2: 组合动态参数
-variables:
-  env: "prod"
-  app_name: "myapp"
-  # 嵌套引用
-  resource_name: "${app_name}-${env}"
-  # 最终结果: "myapp-prod"
-
-# 场景 3: 配置复用
-variables:
-  region: "us-west-1"
-  az: "${region}a"  # "us-west-1a"
-  subnet: "${region}-public"  # "us-west-1-public"
-```
-
-**注意事项**
-
-- 变量引用支持最多 10 层递归解析（防止循环引用）
-- 循环引用会在达到最大迭代次数后停止
-- 建议嵌套层级不超过 3 层，保持可读性
 
 ### 4.3 变量作用域优先级
 
@@ -396,7 +450,7 @@ variables:
 
 ### 4.4 内置模板函数
 
-#### 4.4.1 时间函数
+##### 4.4.1 时间函数
 
 | 函数 | 说明 | 返回值 | 示例 |
 |------|------|--------|------|
@@ -434,7 +488,7 @@ variables:
   session_id: "${now_us()}_${random_str(8)}"  # "20260129133045123456_aB3dX7kL"
 ```
 
-#### 4.4.2 随机函数
+##### 4.4.2 随机函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
@@ -444,7 +498,7 @@ variables:
 | `uuid()` | UUID 字符串 | `${uuid()}` |
 | `uuid4()` | UUID v4 | `${uuid4()}` |
 
-#### 4.4.3 其他函数
+##### 4.4.3 其他函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
