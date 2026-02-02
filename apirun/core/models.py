@@ -220,6 +220,15 @@ class TestStep:
         script: Script code to execute (for script steps)
         script_type: Script language type (python/javascript, default: python)
         allow_imports: Whether to allow module imports in scripts (default: true)
+        poll_config: Polling configuration for async operations
+            - condition: Poll condition to check (jsonpath/status_code/script)
+            - max_attempts: Maximum number of polling attempts
+            - interval: Polling interval in milliseconds
+            - timeout: Total timeout in milliseconds
+            - backoff: Backoff strategy (fixed/exponential)
+        on_timeout: Timeout handling configuration
+            - behavior: What to do on timeout (fail/continue)
+            - message: Timeout message
     """
 
     name: str
@@ -262,6 +271,9 @@ class TestStep:
     script: Optional[str] = None
     script_type: Optional[str] = None
     allow_imports: Optional[bool] = None
+    # Poll step fields (for async operation polling)
+    poll_config: Optional[Dict[str, Any]] = None
+    on_timeout: Optional[Dict[str, Any]] = None
 
 
 @dataclass

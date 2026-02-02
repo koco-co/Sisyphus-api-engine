@@ -200,10 +200,33 @@ class V2YamlParser:
         variables = config_data.get("variables", {})
 
         # Render template expressions in global variables
+        # Support nested references like ${config.profiles.dev.variables.xxx}
         if variables:
             from apirun.core.variable_manager import VariableManager
             vm = VariableManager()
-            # 首先设置原始变量（未渲染的）到变量管理器，支持嵌套引用
+
+            # Build config context for nested references
+            # Create a config dict that profiles can reference
+            config_context = {
+                "profiles": {},
+                "active_profile": active_profile,
+            }
+
+            # Add profiles to config context
+            for profile_name, profile_config in profiles.items():
+                config_context["profiles"][profile_name] = {
+                    "base_url": profile_config.base_url,
+                    "variables": profile_config.variables,
+                    "timeout": profile_config.timeout,
+                    "verify_ssl": profile_config.verify_ssl,
+                    "overrides": profile_config.overrides,
+                    "priority": profile_config.priority,
+                }
+
+            # Set config context in variable manager
+            vm.set_config_context(config_context)
+
+            # 首先设置原始变量(未渲染的)到变量管理器,支持嵌套引用
             vm.global_vars = variables.copy()
 
             rendered_variables = {}
@@ -324,6 +347,10 @@ class V2YamlParser:
         script_type = step_details.get("script_type", "python")
         allow_imports = step_details.get("allow_imports", True)
 
+        # Parse poll-specific fields
+        poll_config = step_details.get("poll_config")
+        on_timeout = step_details.get("on_timeout")
+
         # Parse validations
         validations = []
         validations_data = step_details.get("validations", [])
@@ -390,6 +417,8 @@ class V2YamlParser:
             script=script,
             script_type=script_type,
             allow_imports=allow_imports,
+            poll_config=poll_config,
+            on_timeout=on_timeout,
         )
 
     def _parse_validation(self, val_data: Dict[str, Any]) -> Optional[ValidationRule]:

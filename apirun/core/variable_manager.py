@@ -63,6 +63,9 @@ class VariableManager:
         self.env_vars_prefix = env_vars_prefix
         self.enable_tracking = enable_tracking
 
+        # Config context for supporting nested references like ${config.profiles.dev.variables.xxx}
+        self.config_context: Dict[str, Any] = {}
+
         # Variable change tracking
         self.change_history: List[Dict[str, Any]] = []
 
@@ -86,6 +89,18 @@ class VariableManager:
         """Invalidate the variable cache."""
         self._cache_dirty = True
         self._cache_version += 1
+
+    def set_config_context(self, config: Dict[str, Any]) -> None:
+        """Set config context for supporting nested references.
+
+        This allows variables to reference config values like:
+        ${config.profiles.dev.variables.api_key}
+
+        Args:
+            config: Config dictionary containing profiles, variables, etc.
+        """
+        self.config_context = config
+        self._invalidate_cache()
 
     def set_profile(self, profile_vars: Dict[str, Any]) -> None:
         """Set active profile variables.
@@ -382,7 +397,7 @@ class VariableManager:
         return default, "default"
 
     def get_all_variables(self) -> Dict[str, Any]:
-        """Get all variables merged (extracted > override > profile > env > global).
+        """Get all variables merged (extracted > override > profile > env > global > config).
 
         Note: Environment variables are not merged into this dict as they are
         checked separately in get_variable_with_source().
@@ -398,6 +413,10 @@ class VariableManager:
 
         # Build merged dictionary with shallow copies (faster than deepcopy)
         merged = {}
+
+        # Add config context first for nested references support
+        if self.config_context:
+            merged["config"] = self.config_context
 
         # Merge in priority order (lowest to highest)
         # Only do shallow copy for the base
