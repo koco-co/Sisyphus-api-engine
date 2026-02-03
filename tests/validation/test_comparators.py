@@ -153,9 +153,14 @@ class TestRegexComparator:
         assert result is True
 
     def test_compare_regex_non_string(self):
-        """Test regex comparator with non-string input."""
+        """Test regex comparator with non-string input (auto-convert to string)."""
         result = Comparators.regex(123, r"\d+")
-        assert result is False
+        assert result is True  # 123 converts to "123", which matches \d+
+
+    def test_compare_regex_integer_exact_match(self):
+        """Test regex comparator with integer exact match."""
+        result = Comparators.regex(1, r"^1$")
+        assert result is True  # 1 converts to "1", which matches ^1$
 
 
 class TestTypeComparator:
