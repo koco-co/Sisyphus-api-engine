@@ -3,7 +3,7 @@
 This package provides the core functionality for executing YAML-based API tests.
 """
 
-__version__ = "1.0.2"
+__version__ = "2.0.3"
 __author__ = "koco-co"
 
 from apirun.core.models import (
