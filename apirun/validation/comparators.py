@@ -178,7 +178,7 @@ class Comparators:
         """Check if actual matches regex pattern.
 
         Args:
-            actual: Actual value (string)
+            actual: Actual value (will be converted to string)
             expected: Regex pattern
 
         Returns:
@@ -187,11 +187,17 @@ class Comparators:
         Raises:
             ComparatorError: If pattern is invalid
         """
-        if not isinstance(actual, str):
-            return False
+        # Convert actual to string for matching
+        actual_str = str(actual) if actual is not None else ""
 
         try:
-            return bool(re.search(expected, actual))
+            # Check if pattern expects full match (^...$)
+            # If so, use fullmatch for better accuracy
+            if isinstance(expected, str) and expected.startswith("^") and expected.endswith("$"):
+                return bool(re.fullmatch(expected, actual_str))
+            else:
+                # Use search for partial matching
+                return bool(re.search(expected, actual_str))
         except re.error as e:
             raise ComparatorError(f"Invalid regex pattern: {e}")
 
@@ -481,14 +487,23 @@ def get_comparator(name: str):
     """
     # 别名映射，支持多种命名方式
     aliases = {
+        # 比较验证器别名
+        "gte": "ge",
+        "lte": "le",
+        # 字符串验证器别名
         "startswith": "starts_with",
         "endswith": "ends_with",
+        # 列表验证器别名
+        "in": "in_list",
+        "not_in": "not_in_list",
+        # 长度验证器别名
         "len_eq": "length_eq",
         "len_gt": "length_gt",
         "len_lt": "length_lt",
         "length_eq": "length_eq",
         "length_gt": "length_gt",
         "length_lt": "length_lt",
+        # 状态验证器别名
         "is_empty": "is_empty",
         "is_null": "is_null",
         "not_empty": "not_empty",
