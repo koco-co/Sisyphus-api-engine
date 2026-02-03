@@ -1,9 +1,9 @@
 # Sisyphus API Engine
 
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
-![Python](https://img.shields.io/badge/python-3.8%2B-brightgreen)
+![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-2.0.0-orange)
+![Version](https://img.shields.io/badge/version-2.0.3-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
