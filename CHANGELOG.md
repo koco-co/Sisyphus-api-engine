@@ -5,6 +5,240 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 规范，
 项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html) 规范。
 
+## [2.0.5] - 2026-02-03
+
+### ✨ 新功能
+
+#### 全局配置文件支持 ⭐ 配置管理增强
+- **新增项目级全局配置文件功能**
+  - **功能特性**:
+    - 支持项目根目录的 `.sisyphus/config.yaml` 全局配置文件
+    - 配置自动向上搜索，支持子目录中的测试用例
+    - 三级配置优先级：测试用例 config > 全局 config > 默认值
+    - 深度合并策略，支持部分覆盖
+    - 完全向后兼容现有测试用例
+  - **配置优先级**（从高到低）:
+    1. 测试用例文件中的 `config` 配置
+    2. `.sisyphus/config.yaml` 全局配置
+    3. 系统默认值
+  - **核心模块**:
+    - `GlobalConfigManager`: 全局配置管理器
+    - `_find_project_root()`: 向上目录搜索
+    - `get_merged_config()`: 配置合并
+    - `_deep_merge()`: 深度字典合并
+  - **实现位置**:
+    - `apirun/core/global_config_manager.py`: 新增模块
+    - `apirun/parser/v2_yaml_parser.py`: 解析器集成
+    - `apirun/executor/test_case_executor.py`: 执行器支持
+  - **测试验证**:
+    - 全局配置加载测试: ✅ 通过
+    - 配置优先级测试: ✅ 通过
+    - 向后兼容性测试: ✅ 通过
+    - 单元测试: 898 passed
+  - **使用示例**:
+
+```yaml
+# .sisyphus/config.yaml
+profiles:
+  dev:
+    base_url: "https://api.dev.com"
+    timeout: 60
+  prod:
+    base_url: "https://api.production.com"
+    timeout: 30
+
+variables:
+  common_headers:
+    User-Agent: "Sisyphus/2.0"
+```
+
+#### 版本化配置支持 ⭐ 多版本 API 管理
+- **新增嵌套 profiles 结构支持多版本 API**
+  - **功能特性**:
+    - 支持嵌套 profiles 结构（如 `v1.dev`, `v2.prod`）
+    - 自动展平嵌套结构为可访问的路径
+    - 模板中可使用 `${config.profiles.v2.dev.base_url}` 访问
+    - 兼容扁平化配置结构
+  - **配置格式**:
+
+```yaml
+# .sisyphus/config.yaml
+profiles:
+  v1:  # API v1 版本
+    dev:
+      base_url: "https://v1.api.dev.com"
+      variables:
+        api_version: "v1"
+    prod:
+      base_url: "https://v1.api.prod.com"
+  v2:  # API v2 版本
+    dev:
+      base_url: "https://v2.api.dev.com"
+      variables:
+        api_version: "v2"
+
+active_profile: "v2.dev"  # 使用 v2 版本的开发环境
+```
+
+  - **模板访问**:
+    - 嵌套访问: `${config.profiles.v2.dev.base_url}`
+    - 扁平访问: `${config.profiles['v2.dev'].base_url}`
+  - **核心方法**:
+    - `_flatten_profiles()`: 展平嵌套 profiles
+    - `_build_nested_profiles()`: 构建嵌套结构用于模板渲染
+    - `_build_nested_profiles_for_rendering()`: 执行器中构建渲染上下文
+  - **实现位置**:
+    - `apirun/parser/v2_yaml_parser.py`: 解析器支持
+    - `apirun/executor/test_case_executor.py`: 执行器支持
+    - `apirun/core/global_config_manager.py`: 配置管理器支持
+
+### 📝 文档
+
+#### 全局配置管理文档
+- **新增全局配置管理章节**:
+  - 配置文件位置说明
+  - 配置优先级规则
+  - 使用示例和最佳实践
+  - 版本化配置使用指南
+- **更新文件**:
+  - `CLAUDE.md`: 新增"全局配置管理"章节
+  - `README.md`: 新增"方案三（推荐）"配置方式
+
+## [2.0.4] - 2026-02-03
+
+### 🐛 修复
+
+#### YAML Validator 字段名不一致 ⭐ 严重问题修复
+- **修复 Database 步骤 YAML 验证失败** (问题#10)
+  - **问题根源**: `VALID_DATABASE_KEYWORDS` 缺少关键字段
+  - **解决方案**:
+    - 在 `yaml_validator.py` 中添加 `database` 字段（匹配 TestStep.database）
+    - 添加 `sql` 字段（匹配 TestStep.sql）
+    - 添加 `transaction` 字段（匹配 TestStep.transaction）
+  - **影响范围**: 所有 Database 步骤的 YAML 验证
+  - **修复位置**: `apirun/validator/yaml_validator.py:170-179`
+
+#### 测试级 Setup/Teardown 实现 ⭐ 重要功能实现
+- **完整实现测试级 Setup/Teardown 功能** (问题#11)
+  - **问题根源**: `TestCaseExecutor` 中 `setup`/`teardown` 方法仅有 TODO 占位符
+  - **解决方案**:
+    - 完整实现 `_execute_global_setup()` 方法
+    - 完整实现 `_execute_global_teardown()` 方法
+    - 支持单个步骤和步骤列表格式
+    - Setup 失败时抛出异常停止测试
+    - Teardown 失败时记录错误但继续执行
+  - **新增功能**:
+    - 支持测试级前置钩子（setup）
+    - 支持测试级后置钩子（teardown）
+    - 支持多种步骤类型（script, request, database 等）
+    - 完善的错误处理和日志记录
+  - **影响范围**: 所有需要环境准备和清理的测试场景
+  - **修复位置**: `apirun/executor/test_case_executor.py:236-298`
+
+#### TestCaseExecutor Logger 支持
+- **添加 Logger 支持到 TestCaseExecutor**
+  - 导入 `get_logger` 函数
+  - 在 `__init__` 中初始化 `self.logger`
+  - 支持 setup/teardown 执行的日志记录
+
+### ✨ 新功能
+
+#### Async Polling 轮询步骤 ⭐ 异步操作支持
+- **新增 Poll 步骤类型用于异步操作轮询** (问题#12)
+  - **功能特性**:
+    - 支持基于 JSONPath 的条件检查
+    - 支持基于状态码的条件检查
+    - 支持自定义退避策略（fixed/exponential/linear）
+    - 支持超时处理和失败行为配置
+    - 支持可配置的轮询间隔和最大尝试次数
+  - **配置参数**:
+    - `poll_config.condition`: 轮询条件（jsonpath/status_code）
+    - `poll_config.max_attempts`: 最大尝试次数
+    - `poll_config.interval`: 轮询间隔（毫秒）
+    - `poll_config.timeout`: 总超时时间（毫秒）
+    - `poll_config.backoff`: 退避策略（fixed/exponential/linear）
+    - `on_timeout.behavior`: 超时行为（fail/continue）
+    - `on_timeout.message`: 超时消息
+  - **实现位置**: `apirun/executor/poll_executor.py`
+  - **单元测试**: 20 passed
+
+### ✨ 示例
+
+#### 测试级 Setup/Teardown 使用示例
+
+```yaml
+name: "数据库测试用例"
+description: "演示测试级Setup和Teardown的使用"
+
+# 测试级 Setup: 准备测试环境
+setup:
+  - name: "Setup: 初始化测试数据"
+    type: script
+    script_type: python
+    script: |
+      set_var("setup_executed", True)
+      set_var("setup_timestamp", "2024-02-03")
+
+  - name: "Setup: 创建测试表"
+    type: database
+    database:
+      type: sqlite
+      path: "${base_url}/test.db"
+    operation: exec
+    sql: |
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+      );
+
+steps:
+  - name: "测试用户创建"
+    type: database
+    database:
+      type: sqlite
+      path: "${base_url}/test.db"
+    operation: exec
+    sql: "INSERT INTO users (name) VALUES ('Alice')"
+
+# 测试级 Teardown: 清理测试环境
+teardown:
+  - name: "Teardown: 清理测试数据"
+    type: database
+    database:
+      type: sqlite
+      path: "${base_url}/test.db"
+    operation: exec
+    sql: "DROP TABLE IF EXISTS users"
+
+  - name: "Teardown: 验证清理完成"
+    type: script
+    script_type: python
+    script: |
+      print("清理完成")
+```
+
+### ✅ 测试
+
+#### Setup/Teardown 功能测试
+- 创建 `testcases/scenariotest/__setup_teardown测试.yaml`
+  - 测试级 Setup 执行测试 - 通过 ✅
+  - 步骤级 Setup/Teardown 执行测试 - 通过 ✅
+  - 变量共享验证测试 - 通过 ✅
+  - 清理执行验证测试 - 通过 ✅
+- **测试通过率**: 4/4 (100%)
+
+#### Poll 轮询功能测试
+- **单元测试**: `tests/executor/test_poll_executor.py` - 20 passed
+  - 条件检查测试（JSONPath、状态码） - 通过 ✅
+  - 比较操作符测试（eq、ne、gt、contains等） - 通过 ✅
+  - 集成测试（首次成功、多次尝试、超时处理） - 通过 ✅
+  - 退避策略测试（fixed、exponential、linear） - 通过 ✅
+- **单元测试总计**: 918 passed (898 + 20)
+
+### 📝 文档
+
+- 更新 `IMPROVEMENT_TASKS.md`，标记 P0 和 P1 任务为已完成
+
 ## [2.0.3] - 2026-02-03
 
 ### 🐛 修复

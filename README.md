@@ -3,7 +3,7 @@
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-2.0.3-orange)
+![Version](https://img.shields.io/badge/version-2.0.5-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
@@ -72,6 +72,50 @@
 - **变量追踪** - 调试模式下追踪变量变化
 - **🆕 彩色输出（v1.0.3+）** - 支持 ANSI 颜色和 Emoji 图标，中英文双语界面
 - **🆕 增强型验证器（v2.0.0+）** - YAML 语法检查、未定义关键字检测、美观中文提示
+
+### 🌟 v2.0.5 新功能亮点
+
+- **🆕 项目级全局配置文件（v2.0.5+）** - 支持项目根目录的 `.sisyphus/config.yaml` 全局配置
+  - 配置自动向上搜索，支持子目录中的测试用例
+  - 三级配置优先级：测试用例 config > 全局 config > 默认值
+  - 深度合并策略，支持部分覆盖
+  - 完全向后兼容现有测试用例
+
+- **🆕 版本化配置支持（v2.0.5+）** - 支持多版本 API 管理
+  - 嵌套 profiles 结构（如 `v1.dev`, `v2.prod`）
+  - 自动展平嵌套结构为可访问的路径
+  - 模板中可使用 `${config.profiles.v2.dev.base_url}` 访问
+
+使用示例：
+
+```yaml
+# .sisyphus/config.yaml (项目根目录)
+profiles:
+  v1:  # API v1 版本
+    dev:
+      base_url: "https://v1.api.dev.com"
+      variables:
+        api_version: "v1"
+    prod:
+      base_url: "https://v1.api.prod.com"
+  v2:  # API v2 版本
+    dev:
+      base_url: "https://v2.api.dev.com"
+      variables:
+        api_version: "v2"
+
+active_profile: "v2.dev"
+
+variables:
+  common_headers:
+    User-Agent: "Sisyphus/2.0"
+```
+
+**优势**：
+- ✅ 配置集中管理，所有环境配置在一个文件中
+- ✅ 一键切换环境，无需修改用例
+- ✅ 配置复用，多个用例共享同一配置
+- ✅ 支持多版本 API 并行测试
 
 ### 🌟 v2.0.0 新功能亮点
 
@@ -383,6 +427,52 @@ active_profile: "dev"
 # 测试用例文件
 config: !include config/environments.yaml
 ```
+
+**方案三（推荐）:使用 `.sisyphus/config.yaml` 全局配置 (v2.0.5+)**
+
+在项目根目录创建 `.sisyphus/config.yaml`:
+
+```yaml
+# .sisyphus/config.yaml
+profiles:
+  dev:
+    base_url: "http://dev.example.com"
+    variables:
+      api_key: "dev-key-12345"
+  prod:
+    base_url: "https://api.example.com"
+    variables:
+      api_key: "prod-key-abcde"
+
+active_profile: "dev"
+```
+
+测试用例中无需配置（自动使用全局配置）:
+
+```yaml
+name: "我的测试"
+# 无需 config 部分，自动使用 .sisyphus/config.yaml
+
+steps:
+  - name: "测试请求"
+    type: request
+    url: "${config.profiles.dev.base_url}/api/users"
+```
+
+如需覆盖全局配置，在测试用例中添加 `config` 部分:
+
+```yaml
+name: "我的测试"
+config:
+  profiles:
+    dev:
+      base_url: "http://override.example.com"  # 覆盖全局配置
+```
+
+**配置优先级**（从高到低）:
+1. 测试用例中的 `config`
+2. `.sisyphus/config.yaml` 全局配置
+3. 系统默认值
 
 **一键切换环境:**
 
