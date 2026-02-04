@@ -97,6 +97,8 @@ class YamlValidator:
         "tags",
         "timeout",
         "enabled",
+        "setup",
+        "teardown",
     }
 
     # Valid keywords in config section
@@ -173,6 +175,9 @@ class YamlValidator:
         "query",
         "params",
         "operation",
+        "database",  # Database configuration (matches TestStep.database)
+        "sql",  # SQL statement (matches TestStep.sql)
+        "transaction",  # Transaction configuration
     }
 
     # Valid keywords for wait steps
