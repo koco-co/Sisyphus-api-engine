@@ -5,7 +5,7 @@ Following Google Python Style Guide.
 """
 
 import asyncio
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from apirun.core.models import TestCase, TestStep, GlobalConfig, ProfileConfig
 from apirun.core.variable_manager import VariableManager
@@ -17,6 +17,7 @@ from apirun.executor.concurrent_executor import ConcurrentExecutor
 from apirun.executor.script_executor import ScriptExecutor
 from apirun.executor.poll_executor import PollStepExecutor
 from apirun.result.json_exporter import JSONExporter
+from apirun.utils.logger import get_logger
 
 
 class TestCaseExecutor:
@@ -48,6 +49,7 @@ class TestCaseExecutor:
         self.variable_manager = VariableManager()
         self.result_collector = JSONExporter()
         self.notifier = notifier
+        self.logger = get_logger()
 
     def execute(self) -> dict:
         """Execute the test case.
@@ -150,34 +152,66 @@ class TestCaseExecutor:
         """Initialize global variables from config."""
         # Add config as a special variable
         if self.test_case.config:
+            # Build nested profiles structure for template rendering
+            nested_profiles = self._build_nested_profiles_for_rendering()
+
             self.variable_manager.global_vars = {
                 "config": {
                     "name": self.test_case.config.name,
                     "active_profile": self.test_case.config.active_profile,
-                    "profiles": {},
+                    "profiles": nested_profiles,
                     "variables": self.test_case.config.variables or {},
                     "timeout": self.test_case.config.timeout,
                     "retry_times": self.test_case.config.retry_times,
                 }
             }
 
-            # Add profiles
-            if self.test_case.config.profiles:
-                for name, profile in self.test_case.config.profiles.items():
-                    self.variable_manager.global_vars["config"]["profiles"][name] = {
-                        "base_url": profile.base_url,
-                        "variables": profile.variables,
-                        "timeout": profile.timeout,
-                        "verify_ssl": profile.verify_ssl,
-                        "overrides": profile.overrides,
-                        "priority": profile.priority,
-                    }
-
             # Add other global variables
             if self.test_case.config.variables:
                 self.variable_manager.global_vars.update(
                     self.test_case.config.variables
                 )
+
+    def _build_nested_profiles_for_rendering(self) -> Dict[str, Any]:
+        """Build nested profiles structure for template rendering.
+
+        Convert flattened profile keys (v1.dev, v2.prod) into nested structure
+        that allows template access like ${config.profiles.v2.dev.base_url}.
+
+        Returns:
+            Nested profiles dictionary
+        """
+        if not self.test_case.config.profiles:
+            return {}
+
+        nested = {}
+
+        for profile_key, profile in self.test_case.config.profiles.items():
+            # Create nested dict path from flattened key
+            parts = profile_key.split(".")
+            current = nested
+
+            # Navigate/create nested structure
+            for i, part in enumerate(parts[:-1]):
+                if part not in current:
+                    current[part] = {}
+                # If current[part] is not a dict (edge case), skip
+                if not isinstance(current.get(part), dict):
+                    current[part] = {}
+                current = current[part]
+
+            # Set the leaf profile
+            leaf_key = parts[-1]
+            current[leaf_key] = {
+                "base_url": profile.base_url,
+                "variables": profile.variables,
+                "timeout": profile.timeout,
+                "verify_ssl": profile.verify_ssl,
+                "overrides": profile.overrides,
+                "priority": profile.priority,
+            }
+
+        return nested
 
         # Apply debug configuration
         if self.test_case.config and self.test_case.config.debug:
@@ -238,16 +272,63 @@ class TestCaseExecutor:
         if not self.test_case.setup:
             return
 
-        # TODO: Implement hook execution
-        pass
+        # Execute setup steps
+        setup_data = self.test_case.setup
+        if isinstance(setup_data, dict):
+            # Single setup step
+            setup_steps = [setup_data]
+        elif isinstance(setup_data, list):
+            # Multiple setup steps
+            setup_steps = setup_data
+        else:
+            self.logger.warning(f"Invalid setup format: {type(setup_data)}")
+            return
+
+        # Convert dict to TestStep objects
+        for step_data in setup_steps:
+            if not isinstance(step_data, dict):
+                self.logger.warning(f"Skipping invalid setup step: {type(step_data)}")
+                continue
+
+            step = TestStep(**step_data)
+            try:
+                self._execute_step(step)
+                self.logger.debug(f"Setup step completed: {step.name}")
+            except Exception as e:
+                self.logger.error(f"Setup step failed: {step.name} - {e}")
+                raise  # Setup failure should stop test execution
 
     def _execute_global_teardown(self) -> None:
         """Execute global teardown hooks."""
         if not self.test_case.teardown:
             return
 
-        # TODO: Implement hook execution
-        pass
+        # Execute teardown steps
+        teardown_data = self.test_case.teardown
+        if isinstance(teardown_data, dict):
+            # Single teardown step
+            teardown_steps = [teardown_data]
+        elif isinstance(teardown_data, list):
+            # Multiple teardown steps
+            teardown_steps = teardown_data
+        else:
+            self.logger.warning(f"Invalid teardown format: {type(teardown_data)}")
+            return
+
+        # Convert dict to TestStep objects
+        for step_data in teardown_steps:
+            if not isinstance(step_data, dict):
+                self.logger.warning(f"Skipping invalid teardown step: {type(step_data)}")
+                continue
+
+            step = TestStep(**step_data)
+            try:
+                self._execute_step(step)
+                self.logger.debug(f"Teardown step completed: {step.name}")
+            except Exception as e:
+                # Teardown failures should be logged but not raise
+                self.logger.error(f"Teardown step failed: {step.name} - {e}")
+                # Continue with remaining teardown steps
 
     def _execute_step(self, step: TestStep, previous_results=None):
         """Execute a single test step.
