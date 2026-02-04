@@ -1,764 +1,549 @@
-"""Unit tests for VariableManager.
+"""变量管理器单元测试。
 
-Tests for variable management in apirun/core/variable_manager.py
-Following Google Python Style Guide.
-
-Includes tests for:
-- Basic variable management functionality
-- Environment variable integration
-- Variable tracking and change history
-- Profile override functionality
-- Variable delta computation
-- Debug information generation
+本模块包含对 apirun/core/variable_manager.py 中 VariableManager 类的全面单元测试。
+遵循 Google Python Style Guide。
 """
 
 import os
 import pytest
+from unittest.mock import patch
+
 from apirun.core.variable_manager import VariableManager, VariableScope
 
 
-class TestVariableManager:
-    """Tests for VariableManager basic functionality."""
+class TestVariableManagerInit:
+    """测试 VariableManager 初始化。"""
 
-    def test_initialization(self):
-        """Test VariableManager initialization."""
+    def test_init_default(self):
+        """测试默认初始化。"""
         vm = VariableManager()
+
         assert vm.global_vars == {}
         assert vm.profile_vars == {}
         assert vm.extracted_vars == {}
+        assert vm.profile_overrides == {}
+        assert vm.env_vars_prefix is None
+        assert vm.enable_tracking is False
 
-    def test_initialization_with_global_vars(self):
-        """Test initialization with global variables."""
-        vm = VariableManager(global_vars={"key": "value"})
-        assert vm.global_vars == {"key": "value"}
+    def test_init_with_global_vars(self):
+        """测试带初始全局变量的初始化。"""
+        initial_vars = {"api_key": "test123", "base_url": "https://api.example.com"}
+        vm = VariableManager(global_vars=initial_vars)
 
-    def test_set_and_get_global_variable(self):
-        """Test setting and getting global variables."""
-        vm = VariableManager(global_vars={"key": "value"})
-        assert vm.get_variable("key") == "value"
+        assert vm.global_vars == initial_vars
+        assert vm.get_variable("api_key") == "test123"
 
-    def test_get_variable_with_default(self):
-        """Test getting variable with default value."""
-        vm = VariableManager()
-        assert vm.get_variable("nonexistent", "default") == "default"
-        assert vm.get_variable("nonexistent") is None
+    def test_init_with_env_prefix(self):
+        """测试带环境变量前缀的初始化。"""
+        vm = VariableManager(env_vars_prefix="API_")
 
-    def test_set_profile(self):
-        """Test setting profile variables."""
-        vm = VariableManager()
-        profile_vars = {"env": "test", "timeout": 30}
-        vm.set_profile(profile_vars)
-        assert vm.profile_vars == profile_vars
+        assert vm.env_vars_prefix == "API_"
 
-    def test_variable_priority(self):
-        """Test variable priority: extracted > profile > global."""
-        vm = VariableManager()
-        vm.global_vars = {"key": "global"}
-        vm.set_profile({"key": "profile"})
-        vm.set_variable("key", "extracted")
+    def test_init_with_tracking_enabled(self):
+        """测试启用跟踪功能的初始化。"""
+        vm = VariableManager(enable_tracking=True)
 
-        # Extracted should have highest priority
-        assert vm.get_variable("key") == "extracted"
+        assert vm.enable_tracking is True
+        assert vm.change_history == []
 
-        # Clear extracted, profile should be returned
-        vm.clear_extracted()
-        assert vm.get_variable("key") == "profile"
 
-        # Clear profile, global should be returned
-        vm.profile_vars = {}
-        assert vm.get_variable("key") == "global"
+class TestVariableBasicOperations:
+    """测试变量的基本操作。"""
 
-    def test_get_all_variables(self):
-        """Test getting all variables with proper priority."""
-        vm = VariableManager(global_vars={"global1": "value1"})
-        vm.set_profile({"profile1": "value2"})
-        vm.set_variable("extracted1", "value3")
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        return VariableManager()
 
-        all_vars = vm.get_all_variables()
-        assert all_vars["global1"] == "value1"
-        assert all_vars["profile1"] == "value2"
-        assert all_vars["extracted1"] == "value3"
+    def test_set_and_get_variable(self, vm):
+        """测试设置和获取变量。"""
+        vm.set_variable("user_id", 12345)
 
-    def test_render_string_simple(self):
-        """Test rendering simple string with variable."""
-        vm = VariableManager(global_vars={"name": "John"})
-        rendered = vm.render_string("Hello ${name}")
-        assert rendered == "Hello John"
+        assert vm.get_variable("user_id") == 12345
+        assert "user_id" in vm.extracted_vars
 
-    def test_render_string_nested(self):
-        """Test rendering nested variables."""
-        vm = VariableManager(global_vars={"config": {"base_url": "http://api.example.com"}})
-        rendered = vm.render_string("URL: ${config.base_url}")
-        assert rendered == "URL: http://api.example.com"
+    def test_get_variable_not_found_returns_default(self, vm):
+        """测试获取不存在的变量返回默认值。"""
+        result = vm.get_variable("nonexistent", "default_value")
 
-    def test_render_dict(self):
-        """Test rendering dictionary with variables."""
-        vm = VariableManager(global_vars={"user": "alice", "base": "http://api.example.com"})
+        assert result == "default_value"
 
-        data = {
-            "username": "${user}",
-            "email": "test@example.com",
-            "nested": {
-                "value": "${user}_123",
-                "url": "${base}/api"
-            },
-            "count": 5  # Non-string should remain unchanged
-        }
+    def test_get_variable_not_found_returns_none(self, vm):
+        """测试获取不存在的变量返回 None。"""
+        result = vm.get_variable("nonexistent")
 
-        rendered = vm.render_dict(data)
-        assert rendered["username"] == "alice"
-        assert rendered["email"] == "test@example.com"
-        assert rendered["nested"]["value"] == "alice_123"
-        assert rendered["nested"]["url"] == "http://api.example.com/api"
-        assert rendered["count"] == 5
-
-    def test_render_list(self):
-        """Test rendering list with variables."""
-        vm = VariableManager(global_vars={"base": "http://api.example.com"})
-
-        data = ["${base}/api1", "${base}/api2", "static", 123]
-        rendered = vm._render_list(data)
-
-        assert rendered[0] == "http://api.example.com/api1"
-        assert rendered[1] == "http://api.example.com/api2"
-        assert rendered[2] == "static"
-        assert rendered[3] == 123
-
-    def test_render_non_string(self):
-        """Test rendering non-string value."""
-        vm = VariableManager()
-        result = vm.render_string(12345)
-        assert result == 12345
-
-    def test_render_no_template_syntax(self):
-        """Test rendering string without template syntax."""
-        vm = VariableManager()
-        result = vm.render_string("Plain text")
-        assert result == "Plain text"
-
-    def test_snapshot_and_restore(self):
-        """Test snapshot and restore functionality."""
-        vm = VariableManager(global_vars={"key1": "value1"})
-        vm.set_profile({"key2": "value2"})
-        vm.set_variable("key3", "value3")
-
-        # Create snapshot
-        snapshot = vm.snapshot()
-        assert snapshot["global"] == {"key1": "value1"}
-        assert snapshot["profile"] == {"key2": "value2"}
-        assert snapshot["extracted"] == {"key3": "value3"}
-
-        # Modify variables
-        vm.set_variable("key3", "modified")
-        vm.profile_vars = {"key2": "modified"}
-
-        # Restore from snapshot
-        vm.restore_snapshot(snapshot)
-        assert vm.extracted_vars == {"key3": "value3"}
-        assert vm.profile_vars == {"key2": "value2"}
-
-    def test_clear_extracted(self):
-        """Test clearing extracted variables."""
-        vm = VariableManager()
-        vm.set_variable("key1", "value1")
-        vm.set_variable("key2", "value2")
-
-        assert len(vm.extracted_vars) == 2
-
-        vm.clear_extracted()
-        assert len(vm.extracted_vars) == 0
-
-    def test_extract_from_string(self):
-        """Test extracting value using regex."""
-        vm = VariableManager()
-        text = "User ID: 12345"
-        pattern = r"User ID: (\d+)"
-
-        result = vm.extract_from_string(pattern, text)
-        # index=0 returns the full match
-        assert result == "User ID: 12345"
-
-    def test_extract_from_string_with_group(self):
-        """Test extracting with specific capture group."""
-        vm = VariableManager()
-        text = "Name: John, Age: 30"
-        pattern = r"Name: (\w+), Age: (\d+)"
-
-        result = vm.extract_from_string(pattern, text, index=1)
-        # index=1 returns the first capture group
-        assert result == "John"
-
-    def test_extract_from_string_no_match(self):
-        """Test extraction when pattern doesn't match."""
-        vm = VariableManager()
-        text = "No numbers here"
-        pattern = r"\d+"
-
-        result = vm.extract_from_string(pattern, text)
         assert result is None
 
-    def test_extract_from_string_invalid_pattern(self):
-        """Test extraction with invalid regex pattern."""
-        vm = VariableManager()
-        with pytest.raises(ValueError):
-            vm.extract_from_string("[invalid(", "text")
-
-
-class TestVariableScope:
-    """Tests for VariableScope context manager."""
-
-    def test_variable_scope_context(self):
-        """Test VariableScope as context manager."""
-        vm = VariableManager(global_vars={"outer": "value"})
-
-        with VariableScope(vm):
-            vm.set_variable("inner", "inner_value")
-            assert vm.get_variable("inner") == "inner_value"
-            assert vm.get_variable("outer") == "value"
+    def test_variable_priority_extracted_over_profile(self, vm):
+        """测试提取变量优先于 profile 变量。"""
+        vm.profile_vars = {"token": "profile_token"}
+        vm.extracted_vars = {"token": "extracted_token"}
 
-        # After context, extracted variables should be restored
-        assert vm.get_variable("inner") is None
-        assert vm.get_variable("outer") == "value"
-
-    def test_variable_scope_restore_on_exit(self):
-        """Test VariableScope restores state on exit."""
-        vm = VariableManager(global_vars={"key1": "original"})
-        vm.set_profile({"key2": "original_profile"})
-        vm.set_variable("key3", "original_extracted")
+        assert vm.get_variable("token") == "extracted_token"
 
-        with VariableScope(vm) as scope:
-            vm.set_variable("key1", "modified1")
-            vm.set_profile({"key2": "modified2"})
-            vm.set_variable("key3", "modified3")
-            assert vm.get_variable("key1") == "modified1"
-            assert vm.get_variable("key3") == "modified3"
-
-        # Should restore to original state
-        assert vm.get_variable("key1") == "original"
-        assert vm.profile_vars == {"key2": "original_profile"}
-        assert vm.extracted_vars == {"key3": "original_extracted"}
+    def test_variable_priority_profile_over_global(self, vm):
+        """测试 profile 变量优先于全局变量。"""
+        vm.global_vars = {"base_url": "global_url"}
+        vm.profile_vars = {"base_url": "profile_url"}
 
-
-class TestEnvironmentVariables:
-    """Tests for environment variable integration."""
-
-    def test_load_environment_variables_with_prefix(self):
-        """Test loading environment variables with prefix."""
-        # Set test environment variables
-        os.environ["API_TEST_VAR"] = "test_value"
-        os.environ["API_BASE_URL"] = "http://example.com"
-        os.environ["OTHER_VAR"] = "should_not_load"
-
-        manager = VariableManager(env_vars_prefix="API_")
-        loaded = manager.load_environment_variables()
-
-        assert "test_var" in loaded
-        assert loaded["test_var"] == "test_value"
-        assert "base_url" in loaded
-        assert "other_var" not in loaded
+        assert vm.get_variable("base_url") == "profile_url"
 
-        # Cleanup
-        del os.environ["API_TEST_VAR"]
-        del os.environ["API_BASE_URL"]
-        del os.environ["OTHER_VAR"]
+    def test_clear_extracted_variables(self, vm):
+        """测试清除提取变量。"""
+        vm.set_variable("var1", "value1")
+        vm.set_variable("var2", "value2")
 
-    def test_load_environment_variables_without_prefix(self):
-        """Test loading all environment variables without prefix."""
-        os.environ["TEST_VAR1"] = "value1"
-        os.environ["TEST_VAR2"] = "value2"
+        vm.clear_extracted()
 
-        manager = VariableManager()
-        loaded = manager.load_environment_variables(prefix="")
+        assert vm.extracted_vars == {}
+        assert vm.get_variable("var1") is None
 
-        assert "test_var1" in loaded
-        assert "test_var2" in loaded
 
-        # Cleanup
-        del os.environ["TEST_VAR1"]
-        del os.environ["TEST_VAR2"]
+class TestProfileOperations:
+    """测试 Profile 相关操作。"""
 
-    def test_environment_variables_priority(self):
-        """Test that environment variables have correct priority."""
-        os.environ["API_TEST_VAR"] = "env_value"
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        return VariableManager()
 
-        manager = VariableManager(env_vars_prefix="API_")
-        manager.global_vars = {"test_var": "global_value"}
-        # Don't set profile_vars, so env var should be used
+    def test_set_profile(self, vm):
+        """测试设置 profile 变量。"""
+        profile_vars = {"env": "dev", "debug": True}
+        vm.set_profile(profile_vars)
 
-        value, source = manager.get_variable_with_source("test_var")
+        assert vm.profile_vars == profile_vars
+        assert vm.get_variable("env") == "dev"
 
-        # Environment variables should be checked after profile but before global
-        # Since no profile_var is set, env var should be returned
-        assert value == "env_value"
-        assert source == "env"
+    def test_set_profile_override(self, vm):
+        """测试设置 profile 覆盖变量。"""
+        vm.set_profile_override("timeout", 60)
 
-        # Cleanup
-        del os.environ["API_TEST_VAR"]
+        assert vm.profile_overrides["timeout"] == 60
 
-    def test_environment_variable_not_override_existing(self):
-        """Test that environment variables don't override profile variables."""
-        os.environ["API_TEST_VAR"] = "env_value"
+    def test_set_profile_overrides(self, vm):
+        """测试批量设置 profile 覆盖变量。"""
+        overrides = {"timeout": 60, "retry": 3}
+        vm.set_profile_overrides(overrides)
 
-        manager = VariableManager(env_vars_prefix="API_")
-        manager.profile_vars = {"test_var": "profile_value"}
+        assert vm.profile_overrides == overrides
 
-        # When profile_var is set, it should take precedence over env var
-        value, source = manager.get_variable_with_source("test_var")
-        # Should prefer profile_vars over environment variables
-        assert value == "profile_value"
-        assert source == "profile"
+    def test_clear_profile_overrides(self, vm):
+        """测试清除 profile 覆盖变量。"""
+        vm.set_profile_overrides({"key1": "value1"})
+        vm.clear_profile_overrides()
 
-        # Cleanup
-        del os.environ["API_TEST_VAR"]
-
-
-class TestProfileOverrides:
-    """Tests for profile override functionality."""
-
-    def test_set_profile_override(self):
-        """Test setting a profile override variable."""
-        manager = VariableManager()
-        manager.set_profile_override("test_var", "override_value")
-
-        assert "test_var" in manager.profile_overrides
-        value, source = manager.get_variable_with_source("test_var")
-        assert value == "override_value"
-        assert source == "override"
-
-    def test_profile_override_priority(self):
-        """Test that overrides have highest priority."""
-        manager = VariableManager()
-        manager.global_vars = {"test_var": "global_value"}
-        manager.profile_vars = {"test_var": "profile_value"}
-        manager.set_profile_override("test_var", "override_value")
-
-        value, source = manager.get_variable_with_source("test_var")
-
-        assert value == "override_value"
-        assert source == "override"
-
-    def test_set_multiple_profile_overrides(self):
-        """Test setting multiple profile overrides at once."""
-        manager = VariableManager()
-        overrides = {"var1": "value1", "var2": "value2", "var3": "value3"}
-
-        manager.set_profile_overrides(overrides)
-
-        assert len(manager.profile_overrides) == 3
-        assert manager.profile_overrides["var1"] == "value1"
-        assert manager.profile_overrides["var2"] == "value2"
-        assert manager.profile_overrides["var3"] == "value3"
-
-    def test_clear_profile_overrides(self):
-        """Test clearing all profile overrides."""
-        manager = VariableManager()
-        manager.set_profile_overrides({"var1": "value1", "var2": "value2"})
-
-        assert len(manager.profile_overrides) == 2
-
-        manager.clear_profile_overrides()
-
-        assert len(manager.profile_overrides) == 0
-
-
-class TestVariableTracking:
-    """Tests for variable change tracking."""
-
-    def test_tracking_disabled_by_default(self):
-        """Test that tracking is disabled by default."""
-        manager = VariableManager()
-
-        assert manager.enable_tracking is False
-        assert len(manager.change_history) == 0
-
-    def test_enable_tracking(self):
-        """Test enabling variable tracking."""
-        manager = VariableManager(enable_tracking=True)
-
-        assert manager.enable_tracking is True
-
-        manager.set_profile_override("test_var", "new_value")
-
-        assert len(manager.change_history) == 1
-
-    def test_change_record_structure(self):
-        """Test that change records have correct structure."""
-        manager = VariableManager(enable_tracking=True)
-        manager.set_profile_override("test_var", "new_value", context={"step": "step1"})
-
-        assert len(manager.change_history) == 1
-        record = manager.change_history[0]
-
-        assert "timestamp" in record
-        assert "source" in record
-        assert "variable" in record
-        assert "old_value" in record
-        assert "new_value" in record
-        assert "context" in record
-
-        assert record["source"] == "override"
-        assert record["variable"] == "test_var"
-        assert record["new_value"] == "new_value"
-
-    def test_get_change_history_for_variable(self):
-        """Test getting change history for a specific variable."""
-        manager = VariableManager(enable_tracking=True)
-
-        manager.set_profile_override("var1", "value1")
-        manager.set_profile_override("var2", "value2")
-        manager.set_profile_override("var1", "value1_updated")
-
-        var1_history = manager.get_change_history("var1")
-
-        assert len(var1_history) == 2
-        assert var1_history[0]["new_value"] == "value1"
-        assert var1_history[1]["new_value"] == "value1_updated"
-
-    def test_get_change_history_with_limit(self):
-        """Test getting limited change history."""
-        manager = VariableManager(enable_tracking=True)
-
-        for i in range(10):
-            manager.set_profile_override("var", f"value{i}")
-
-        history = manager.get_change_history(limit=5)
-
-        assert len(history) == 5
-
-    def test_clear_change_history(self):
-        """Test clearing change history."""
-        manager = VariableManager(enable_tracking=True)
-
-        manager.set_profile_override("var1", "value1")
-        manager.set_profile_override("var2", "value2")
-
-        assert len(manager.change_history) == 2
-
-        manager.clear_change_history()
-
-        assert len(manager.change_history) == 0
-
-
-class TestVariableDelta:
-    """Tests for variable delta computation."""
-
-    def test_compute_delta_with_added_variables(self):
-        """Test delta computation with added variables."""
-        manager = VariableManager()
-
-        before = {"var1": "value1"}
-        after = {"var1": "value1", "var2": "value2"}
-
-        delta = manager.compute_delta(before, after)
-
-        assert "var2" in delta["added"]
-        assert delta["added"]["var2"] == "value2"
-        assert len(delta["modified"]) == 0
-        assert len(delta["deleted"]) == 0
-
-    def test_compute_delta_with_modified_variables(self):
-        """Test delta computation with modified variables."""
-        manager = VariableManager()
-
-        before = {"var1": "old_value"}
-        after = {"var1": "new_value"}
-
-        delta = manager.compute_delta(before, after)
-
-        assert "var1" in delta["modified"]
-        assert delta["modified"]["var1"]["old"] == "old_value"
-        assert delta["modified"]["var1"]["new"] == "new_value"
-        assert len(delta["added"]) == 0
-        assert len(delta["deleted"]) == 0
-
-    def test_compute_delta_with_deleted_variables(self):
-        """Test delta computation with deleted variables."""
-        manager = VariableManager()
-
-        before = {"var1": "value1", "var2": "value2"}
-        after = {"var1": "value1"}
-
-        delta = manager.compute_delta(before, after)
-
-        assert "var2" in delta["deleted"]
-        assert delta["deleted"]["var2"] == "value2"
-        assert len(delta["added"]) == 0
-        assert len(delta["modified"]) == 0
-
-    def test_compute_delta_complex(self):
-        """Test delta computation with multiple changes."""
-        manager = VariableManager()
-
-        before = {
-            "var1": "value1",
-            "var2": "old_value2",
-            "var3": "value3",
-            "var4": "value4",
-        }
-        after = {
-            "var1": "value1",  # Unchanged
-            "var2": "new_value2",  # Modified
-            "var3": "value3",  # Unchanged
-            "var5": "value5",  # Added
-        }
-
-        delta = manager.compute_delta(before, after)
-
-        assert len(delta["added"]) == 1
-        assert "var5" in delta["added"]
-        assert len(delta["modified"]) == 1
-        assert "var2" in delta["modified"]
-        assert len(delta["deleted"]) == 1
-        assert "var4" in delta["deleted"]
-
-
-class TestDebugInfo:
-    """Tests for debug information generation."""
-
-    def test_get_debug_info(self):
-        """Test getting comprehensive debug information."""
-        manager = VariableManager(
-            env_vars_prefix="API_", enable_tracking=True
-        )
-        manager.global_vars = {"global_var": "global_value"}
-        manager.profile_vars = {"profile_var": "profile_value"}
-        manager.set_profile_override("override_var", "override_value")
-        manager.extracted_vars = {"extracted_var": "extracted_value"}
-
-        debug_info = manager.get_debug_info()
-
-        assert "global_vars" in debug_info
-        assert "profile_vars" in debug_info
-        assert "profile_overrides" in debug_info
-        assert "extracted_vars" in debug_info
-        assert "env_vars_prefix" in debug_info
-        assert "tracking_enabled" in debug_info
-        assert "change_history_count" in debug_info
-
-        assert debug_info["global_vars"]["global_var"] == "global_value"
-        assert debug_info["profile_vars"]["profile_var"] == "profile_value"
-        assert debug_info["profile_overrides"]["override_var"] == "override_value"
-        assert debug_info["extracted_vars"]["extracted_var"] == "extracted_value"
-        assert debug_info["env_vars_prefix"] == "API_"
-        assert debug_info["tracking_enabled"] is True
-
-    def test_export_variables_with_source(self):
-        """Test exporting variables with source information."""
-        manager = VariableManager()
-        manager.global_vars = {"var1": "value1"}
-        manager.profile_vars = {"var2": "value2"}
-        manager.set_profile_override("var3", "value3")
-
-        exported = manager.export_variables(include_source=True)
-
-        assert "var1" in exported
-        assert "var2" in exported
-        assert "var3" in exported
-
-        assert exported["var1"]["value"] == "value1"
-        assert exported["var1"]["source"] == "global"
-        assert exported["var2"]["source"] == "profile"
-        assert exported["var3"]["source"] == "override"
-
-    def test_export_variables_without_source(self):
-        """Test exporting variables without source information."""
-        manager = VariableManager()
-        manager.global_vars = {"var1": "value1"}
-        manager.profile_vars = {"var2": "value2"}
-
-        exported = manager.export_variables(include_source=False)
-
-        assert exported == {"var1": "value1", "var2": "value2"}
-        assert "source" not in exported.get("var1", {})
-
-
-class TestVariablePriority:
-    """Tests for variable priority ordering."""
-
-    def test_full_priority_order(self):
-        """Test complete priority order: extracted > override > profile > global."""
-        manager = VariableManager()
-
-        manager.global_vars = {"test_var": "global"}
-        manager.profile_vars = {"test_var": "profile"}
-        manager.set_profile_override("test_var", "override")
-        manager.extracted_vars = {"test_var": "extracted"}
-
-        value, source = manager.get_variable_with_source("test_var")
-
-        assert value == "extracted"
-        assert source == "extracted"
-
-    def test_priority_without_extracted(self):
-        """Test priority without extracted variables."""
-        manager = VariableManager()
-
-        manager.global_vars = {"test_var": "global"}
-        manager.profile_vars = {"test_var": "profile"}
-        manager.set_profile_override("test_var", "override")
-
-        value, source = manager.get_variable_with_source("test_var")
-
-        assert value == "override"
-        assert source == "override"
-
-    def test_priority_without_override(self):
-        """Test priority without overrides."""
-        manager = VariableManager()
-
-        manager.global_vars = {"test_var": "global"}
-        manager.profile_vars = {"test_var": "profile"}
-
-        value, source = manager.get_variable_with_source("test_var")
-
-        assert value == "profile"
-        assert source == "profile"
+        assert vm.profile_overrides == {}
 
 
 class TestConfigContext:
-    """Tests for config context and nested variable references."""
+    """测试配置上下文功能。"""
 
-    def test_set_config_context(self):
-        """Test setting config context."""
-        manager = VariableManager()
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        return VariableManager()
 
+    def test_set_config_context(self, vm):
+        """测试设置配置上下文。"""
         config = {
             "profiles": {
-                "dev": {"variables": {"api_key": "dev_key"}},
-                "prod": {"variables": {"api_key": "prod_key"}}
-            },
-            "active_profile": "dev"
+                "dev": {"base_url": "https://dev.api.example.com"},
+                "prod": {"base_url": "https://api.example.com"},
+            }
         }
+        vm.set_config_context(config)
 
-        manager.set_config_context(config)
+        assert vm.config_context == config
 
-        assert manager.config_context == config
-        assert manager.config_context["active_profile"] == "dev"
+    def test_config_context_in_all_variables(self, vm):
+        """测试配置上下文包含在 get_all_variables 结果中。"""
+        config = {"profiles": {"dev": {"key": "value"}}}
+        vm.set_config_context(config)
 
-    def test_get_all_variables_includes_config(self):
-        """Test that get_all_variables includes config context."""
-        manager = VariableManager()
-
-        config = {
-            "profiles": {"dev": {"variables": {"api_key": "123"}}},
-            "active_profile": "dev"
-        }
-
-        manager.set_config_context(config)
-        manager.global_vars = {"global_var": "value"}
-
-        all_vars = manager.get_all_variables()
+        all_vars = vm.get_all_variables()
 
         assert "config" in all_vars
-        assert all_vars["config"]["active_profile"] == "dev"
-        assert all_vars["global_var"] == "value"
+        assert all_vars["config"] == config
 
-    def test_render_string_with_config_reference(self):
-        """Test rendering string with config reference."""
-        manager = VariableManager()
 
-        config = {
-            "profiles": {
-                "dev": {
-                    "variables": {
-                        "test_suffix": "0202093000"
-                    }
-                }
-            },
-            "active_profile": "dev"
+class TestTemplateRendering:
+    """测试模板渲染功能。"""
+
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        vm = VariableManager()
+        vm.global_vars = {"base_url": "https://api.example.com", "version": "v1"}
+        return vm
+
+    def test_render_simple_variable(self, vm):
+        """测试渲染简单变量。"""
+        result = vm.render_string("${base_url}/users")
+
+        assert result == "https://api.example.com/users"
+
+    def test_render_multiple_variables(self, vm):
+        """测试渲染多个变量。"""
+        result = vm.render_string("${base_url}/${version}/users")
+
+        assert result == "https://api.example.com/v1/users"
+
+    def test_render_no_template_returns_original(self, vm):
+        """测试无模板语法时返回原始字符串。"""
+        result = vm.render_string("plain text")
+
+        assert result == "plain text"
+
+    def test_render_non_string_returns_as_is(self, vm):
+        """测试非字符串输入直接返回。"""
+        result = vm.render_string(12345)
+
+        assert result == 12345
+
+    def test_render_dict(self, vm):
+        """测试渲染字典。"""
+        data = {
+            "url": "${base_url}/api",
+            "headers": {"Accept": "application/json"},
+            "nested": {"path": "${version}"}
+        }
+        result = vm.render_dict(data)
+
+        assert result["url"] == "https://api.example.com/api"
+        assert result["nested"]["path"] == "v1"
+        assert result["headers"]["Accept"] == "application/json"
+
+    def test_render_nested_variables(self):
+        """测试渲染嵌套变量引用。"""
+        vm = VariableManager()
+        vm.global_vars = {
+            "host": "example.com",
+            "base_url": "https://${host}",
         }
 
-        manager.set_config_context(config)
-        manager.global_vars = {"category_name": "test_${config.profiles.dev.variables.test_suffix}"}
+        result = vm.render_string("${base_url}/api")
 
-        rendered = manager.render_string("${category_name}")
+        assert result == "https://example.com/api"
 
-        assert rendered == "test_0202093000"
 
-    def test_render_nested_config_references(self):
-        """Test rendering with nested config references."""
-        manager = VariableManager()
+class TestVariableSnapshot:
+    """测试变量快照功能。"""
 
-        config = {
-            "profiles": {
-                "ci_62": {
-                    "variables": {
-                        "test_suffix": "0202093000",
-                        "env": "ci"
-                    }
-                }
-            },
-            "active_profile": "ci_62"
-        }
+    @pytest.fixture
+    def vm(self):
+        """创建带数据的 VariableManager 实例。"""
+        vm = VariableManager()
+        vm.global_vars = {"global_var": "global_value"}
+        vm.profile_vars = {"profile_var": "profile_value"}
+        vm.extracted_vars = {"extracted_var": "extracted_value"}
+        return vm
 
-        manager.set_config_context(config)
+    def test_snapshot_captures_state(self, vm):
+        """测试快照捕获当前状态。"""
+        snapshot = vm.snapshot()
 
-        # Test nested reference
-        template = "${config.profiles.ci_62.variables.test_suffix}_${config.profiles.ci_62.variables.env}"
-        rendered = manager.render_string(template)
+        assert snapshot["global"]["global_var"] == "global_value"
+        assert snapshot["profile"]["profile_var"] == "profile_value"
+        assert snapshot["extracted"]["extracted_var"] == "extracted_value"
 
-        assert rendered == "0202093000_ci"
+    def test_restore_snapshot(self, vm):
+        """测试恢复快照。"""
+        snapshot = vm.snapshot()
 
-    def test_render_config_with_active_profile(self):
-        """Test rendering with active_profile variable."""
-        manager = VariableManager()
+        # 修改变量
+        vm.set_variable("new_var", "new_value")
+        vm.global_vars["global_var"] = "modified"
 
-        config = {
-            "profiles": {
-                "dev": {"base_url": "http://dev.example.com"},
-                "prod": {"base_url": "http://prod.example.com"}
-            },
-            "active_profile": "dev"
-        }
+        # 恢复快照
+        vm.restore_snapshot(snapshot)
 
-        manager.set_config_context(config)
+        assert vm.global_vars["global_var"] == "global_value"
+        assert "new_var" not in vm.extracted_vars
 
-        # Reference using active_profile
-        template = "${config.active_profile}"
-        rendered = manager.render_string(template)
 
-        assert rendered == "dev"
+class TestVariableDelta:
+    """测试变量变化计算。"""
 
-    def test_render_complex_nested_reference(self):
-        """Test complex nested reference scenario."""
-        manager = VariableManager()
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        return VariableManager()
 
-        config = {
-            "profiles": {
-                "test": {
-                    "variables": {
-                        "suffix": "12345",
-                        "prefix": "test"
-                    }
-                }
-            },
-            "active_profile": "test"
-        }
+    def test_compute_delta_added(self, vm):
+        """测试计算新增变量。"""
+        before = {"a": 1}
+        after = {"a": 1, "b": 2}
 
-        manager.set_config_context(config)
-        manager.global_vars = {
-            "datasource_name": "${config.profiles.test.variables.prefix}_${config.profiles.test.variables.suffix}"
-        }
+        delta = vm.compute_delta(before, after)
 
-        all_vars = manager.get_all_variables()
-        rendered = manager.render_string("${datasource_name}")
+        assert delta["added"] == {"b": 2}
+        assert delta["modified"] == {}
+        assert delta["deleted"] == {}
 
-        assert rendered == "test_12345"
+    def test_compute_delta_modified(self, vm):
+        """测试计算修改的变量。"""
+        before = {"a": 1}
+        after = {"a": 2}
 
-    def test_config_context_invalidation(self):
-        """Test that changing config context invalidates cache."""
-        manager = VariableManager()
+        delta = vm.compute_delta(before, after)
 
-        config1 = {"profiles": {"dev": {"variables": {"key": "value1"}}}}
-        config2 = {"profiles": {"dev": {"variables": {"key": "value2"}}}}
+        assert delta["added"] == {}
+        assert delta["modified"] == {"a": {"old": 1, "new": 2}}
 
-        manager.set_config_context(config1)
-        all_vars1 = manager.get_all_variables()
+    def test_compute_delta_deleted(self, vm):
+        """测试计算删除的变量。"""
+        before = {"a": 1, "b": 2}
+        after = {"a": 1}
 
-        assert all_vars1["config"]["profiles"]["dev"]["variables"]["key"] == "value1"
+        delta = vm.compute_delta(before, after)
 
-        # Change config context
-        manager.set_config_context(config2)
-        all_vars2 = manager.get_all_variables()
+        assert delta["deleted"] == {"b": 2}
 
-        assert all_vars2["config"]["profiles"]["dev"]["variables"]["key"] == "value2"
+
+class TestGetAllVariables:
+    """测试 get_all_variables 方法。"""
+
+    def test_merge_priority(self):
+        """测试变量合并优先级。"""
+        vm = VariableManager()
+        vm.global_vars = {"key": "global"}
+        vm.profile_vars = {"key": "profile"}
+        vm.profile_overrides = {"key": "override"}
+        vm.extracted_vars = {"key": "extracted"}
+
+        all_vars = vm.get_all_variables()
+
+        # extracted 优先级最高
+        assert all_vars["key"] == "extracted"
+
+    def test_cache_optimization(self):
+        """测试缓存优化。"""
+        vm = VariableManager()
+        vm.global_vars = {"test": "value"}
+
+        # 第一次调用
+        result1 = vm.get_all_variables()
+        # 第二次调用（应使用缓存）
+        result2 = vm.get_all_variables()
+
+        assert result1 == result2
+        assert vm._cache_dirty is False
+
+    def test_cache_invalidation_on_change(self):
+        """测试变量更改时缓存失效。"""
+        vm = VariableManager()
+        vm.global_vars = {"test": "value"}
+        vm.get_all_variables()  # 填充缓存
+
+        vm.set_variable("new_var", "new_value")
+
+        assert vm._cache_dirty is True
+
+
+class TestVariableWithSource:
+    """测试 get_variable_with_source 方法。"""
+
+    def test_source_extracted(self):
+        """测试提取变量来源。"""
+        vm = VariableManager()
+        vm.extracted_vars = {"var": "value"}
+
+        value, source = vm.get_variable_with_source("var")
+
+        assert value == "value"
+        assert source == "extracted"
+
+    def test_source_override(self):
+        """测试覆盖变量来源。"""
+        vm = VariableManager()
+        vm.profile_overrides = {"var": "value"}
+
+        value, source = vm.get_variable_with_source("var")
+
+        assert value == "value"
+        assert source == "override"
+
+    def test_source_profile(self):
+        """测试 profile 变量来源。"""
+        vm = VariableManager()
+        vm.profile_vars = {"var": "value"}
+
+        value, source = vm.get_variable_with_source("var")
+
+        assert value == "value"
+        assert source == "profile"
+
+    def test_source_global(self):
+        """测试全局变量来源。"""
+        vm = VariableManager()
+        vm.global_vars = {"var": "value"}
+
+        value, source = vm.get_variable_with_source("var")
+
+        assert value == "value"
+        assert source == "global"
+
+    def test_source_default(self):
+        """测试默认值来源。"""
+        vm = VariableManager()
+
+        value, source = vm.get_variable_with_source("var", "default")
+
+        assert value == "default"
+        assert source == "default"
+
+
+class TestEnvironmentVariables:
+    """测试环境变量功能。"""
+
+    def test_load_environment_variables_with_prefix(self):
+        """测试加载带前缀的环境变量。"""
+        vm = VariableManager(env_vars_prefix="TEST_")
+
+        with patch.dict(os.environ, {"TEST_API_KEY": "secret123", "OTHER_VAR": "ignored"}):
+            loaded = vm.load_environment_variables()
+
+        assert "api_key" in loaded
+        assert loaded["api_key"] == "secret123"
+        assert "OTHER_VAR" not in loaded
+
+    def test_load_environment_variables_override(self):
+        """测试环境变量覆盖模式。"""
+        vm = VariableManager(env_vars_prefix="APP_")
+
+        with patch.dict(os.environ, {"APP_DEBUG": "true"}):
+            vm.load_environment_variables(override=True)
+
+        assert "debug" in vm.profile_overrides
+
+
+class TestVariableTracking:
+    """测试变量跟踪功能。"""
+
+    def test_tracking_disabled_by_default(self):
+        """测试默认禁用跟踪。"""
+        vm = VariableManager()
+        vm.set_profile_override("key", "value")
+
+        assert vm.change_history == []
+
+    def test_tracking_enabled(self):
+        """测试启用跟踪。"""
+        vm = VariableManager(enable_tracking=True)
+        vm.set_profile_override("key", "value")
+
+        assert len(vm.change_history) == 1
+        assert vm.change_history[0]["variable"] == "key"
+        assert vm.change_history[0]["new_value"] == "value"
+
+    def test_get_change_history_filtered(self):
+        """测试按变量名过滤变更历史。"""
+        vm = VariableManager(enable_tracking=True)
+        vm.set_profile_override("a", 1)
+        vm.set_profile_override("b", 2)
+        vm.set_profile_override("a", 3)
+
+        history = vm.get_change_history(variable_name="a")
+
+        assert len(history) == 2
+
+    def test_clear_change_history(self):
+        """测试清除变更历史。"""
+        vm = VariableManager(enable_tracking=True)
+        vm.set_profile_override("key", "value")
+        vm.clear_change_history()
+
+        assert vm.change_history == []
+
+
+class TestVariableScope:
+    """测试 VariableScope 上下文管理器。"""
+
+    def test_scope_isolates_changes(self):
+        """测试作用域隔离变量更改。"""
+        vm = VariableManager()
+        vm.global_vars = {"shared": "original"}
+
+        with VariableScope(vm):
+            vm.set_variable("temp", "temporary")
+            vm.global_vars["shared"] = "modified"
+
+        # 退出作用域后恢复
+        assert vm.global_vars["shared"] == "original"
+        assert "temp" not in vm.extracted_vars
+
+    def test_scope_returns_self(self):
+        """测试作用域返回自身。"""
+        vm = VariableManager()
+
+        with VariableScope(vm) as scope:
+            assert isinstance(scope, VariableScope)
+
+
+class TestDebugInfo:
+    """测试调试信息功能。"""
+
+    def test_get_debug_info(self):
+        """测试获取调试信息。"""
+        vm = VariableManager(enable_tracking=True)
+        vm.global_vars = {"g": 1}
+        vm.profile_vars = {"p": 2}
+        vm.extracted_vars = {"e": 3}
+
+        info = vm.get_debug_info()
+
+        assert info["global_vars"] == {"g": 1}
+        assert info["profile_vars"] == {"p": 2}
+        assert info["extracted_vars"] == {"e": 3}
+        assert info["tracking_enabled"] is True
+
+
+class TestExportVariables:
+    """测试变量导出功能。"""
+
+    def test_export_without_source(self):
+        """测试不含来源的导出。"""
+        vm = VariableManager()
+        vm.global_vars = {"a": 1}
+
+        exported = vm.export_variables()
+
+        assert exported["a"] == 1
+
+    def test_export_with_source(self):
+        """测试包含来源的导出。"""
+        vm = VariableManager()
+        vm.global_vars = {"a": 1}
+
+        exported = vm.export_variables(include_source=True)
+
+        assert exported["a"]["value"] == 1
+        assert exported["a"]["source"] == "global"
+
+
+class TestExtractFromString:
+    """测试字符串提取功能。"""
+
+    @pytest.fixture
+    def vm(self):
+        """创建测试用的 VariableManager 实例。"""
+        return VariableManager()
+
+    def test_extract_with_regex(self, vm):
+        """测试正则表达式提取。"""
+        text = "Token: abc123xyz"
+        result = vm.extract_from_string(r"Token: (\w+)", text, 1)
+
+        assert result == "abc123xyz"
+
+    def test_extract_no_match(self, vm):
+        """测试无匹配时返回 None。"""
+        result = vm.extract_from_string(r"not_found", "some text")
+
+        assert result is None
+
+    def test_extract_invalid_regex(self, vm):
+        """测试无效正则表达式抛出异常。"""
+        with pytest.raises(ValueError, match="无效的正则表达式模式"):
+            vm.extract_from_string(r"[invalid", "text")

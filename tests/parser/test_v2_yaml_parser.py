@@ -100,7 +100,7 @@ steps:
 
         try:
             parser = V2YamlParser()
-            with pytest.raises(YamlParseError, match="Empty YAML file"):
+            with pytest.raises(YamlParseError, match="YAML 文件内容为空"):
                 parser.parse(temp_path)
         finally:
             os.unlink(temp_path)
@@ -120,7 +120,7 @@ steps: [
     def test_parse_empty_string(self):
         """Test parsing empty string."""
         parser = V2YamlParser()
-        with pytest.raises(YamlParseError, match="Empty YAML content"):
+        with pytest.raises(YamlParseError, match="YAML 内容为空"):
             parser.parse_string("")
 
 
@@ -942,7 +942,7 @@ steps:
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("Missing required field: name" in e for e in errors)
+            assert any("缺少必填字段: name" in e for e in errors)
         finally:
             os.unlink(temp_path)
 
@@ -961,7 +961,7 @@ name: "Test"
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("Missing required field: steps" in e for e in errors)
+            assert any("缺少必填字段: steps" in e for e in errors)
         finally:
             os.unlink(temp_path)
 
@@ -981,7 +981,7 @@ steps: []
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("cannot be empty" in e for e in errors)
+            assert any("不能为空" in e for e in errors)
         finally:
             os.unlink(temp_path)
 
@@ -1001,7 +1001,7 @@ steps: "invalid"
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("must be a list" in e for e in errors)
+            assert any("必须是列表" in e for e in errors)
         finally:
             os.unlink(temp_path)
 
@@ -1009,7 +1009,7 @@ steps: "invalid"
         """Test validating non-existent file."""
         parser = V2YamlParser()
         errors = parser.validate_yaml("/nonexistent/file.yaml")
-        assert any("not found" in e for e in errors)
+        assert any("文件不存在" in e for e in errors)
 
 
 class TestConvenienceFunctions:
