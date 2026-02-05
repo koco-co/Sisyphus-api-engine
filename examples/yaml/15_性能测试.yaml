@@ -1,0 +1,109 @@
+# ==============================================================================
+# Sisyphus API Engine - 性能测试示例
+# ==============================================================================
+# 配套文档：docs/15_性能测试.md
+# 功能说明：演示性能指标收集和分析
+# ==============================================================================
+
+name: "性能测试示例"
+description: "演示API性能测试和指标收集"
+
+config:
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+  timeout: 30
+  
+  # 性能测试配置
+  # performance:
+  #   collect_metrics: true
+  #   percentiles: [50, 90, 95, 99]
+
+steps:
+  # 多次请求收集性能数据
+  - name: "性能测试1 - 快速响应"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "性能测试2 - 延迟响应"
+    method: GET
+    url: "${config.profiles.prod.base_url}/delay/1"
+    timeout: 10
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "性能测试3 - POST请求"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data: "performance_test"
+      size: 1024
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "性能测试4 - 大数据量"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      items:
+        - id: 1
+        - id: 2
+        - id: 3
+        - id: 4
+        - id: 5
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "性能测试5 - 并发验证"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      concurrent: "true"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+tags:
+  - "性能"
+  - "压测"
+enabled: true
+
+# 性能报告示例输出：
+#
+# {
+#   "test_name": "性能测试示例",
+#   "total_requests": 5,
+#   "total_time": 3.245,
+#   "success_rate": 100,
+#   "metrics": {
+#     "avg_response_time": 649,
+#     "min_response_time": 125,
+#     "max_response_time": 1523,
+#     "p50": 432,
+#     "p90": 1200,
+#     "p95": 1400,
+#     "p99": 1520
+#   },
+#   "throughput": {
+#     "requests_per_second": 1.54
+#   }
+# }
+#
+# 使用命令：
+# sisyphus --cases examples/yaml/15_性能测试.yaml --performance

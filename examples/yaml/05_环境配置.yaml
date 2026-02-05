@@ -1,0 +1,93 @@
+# ==============================================================================
+# Sisyphus API Engine - 环境配置示例
+# ==============================================================================
+# 配套文档：docs/05_环境配置.md
+# 功能说明：演示多环境配置和切换
+# ==============================================================================
+
+name: "环境配置示例"
+description: "演示开发/测试/生产多环境配置"
+
+config:
+  timeout: 30
+  retry_times: 2
+  
+  # 全局变量（所有环境共享）
+  variables:
+    api_version: "v2"
+    app_name: "Sisyphus"
+  
+  # 多环境配置
+  profiles:
+    # 开发环境
+    dev:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "dev_key_12345"
+        debug: true
+        log_level: "debug"
+    
+    # 测试环境
+    test:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "test_key_67890"
+        debug: true
+        log_level: "info"
+    
+    # 生产环境
+    prod:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "prod_key_abcde"
+        debug: false
+        log_level: "warn"
+  
+  # 当前激活环境（可通过命令行 --profile 覆盖）
+  active_profile: "dev"
+
+steps:
+  - name: "使用当前环境配置"
+    description: "自动使用active_profile指定的环境"
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    params:
+      version: "${api_version}"
+      app: "${app_name}"
+    headers:
+      X-API-Key: "${config.profiles.dev.variables.api_key}"
+      X-Debug: "${config.profiles.dev.variables.debug}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.args.version"
+        expect: "v2"
+
+  - name: "验证配置生效"
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      environment: "dev"
+      api_key: "${config.profiles.dev.variables.api_key}"
+      log_level: "${config.profiles.dev.variables.log_level}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.environment"
+        expect: "dev"
+
+tags:
+  - "环境"
+  - "配置"
+enabled: true
+
+# 使用说明：
+# 默认使用dev环境：sisyphus --cases examples/yaml/05_环境配置.yaml
+# 切换到测试环境：sisyphus --cases examples/yaml/05_环境配置.yaml --profile test
+# 切换到生产环境：sisyphus --cases examples/yaml/05_环境配置.yaml --profile prod

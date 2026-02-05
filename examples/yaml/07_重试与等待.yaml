@@ -1,0 +1,98 @@
+# ==============================================================================
+# Sisyphus API Engine - 重试与等待示例
+# ==============================================================================
+# 配套文档：docs/07_重试与等待.md
+# 功能说明：演示重试策略和等待机制
+# ==============================================================================
+
+name: "重试与等待示例"
+description: "演示重试策略、固定等待、条件等待"
+
+config:
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+
+steps:
+  # 示例1：简单重试
+  - name: "简单重试示例"
+    description: "请求失败时自动重试3次"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    timeout: 10
+    retry_times: 3
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 示例2：重试策略 - 固定间隔
+  - name: "固定间隔重试"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    retry_policy:
+      max_attempts: 3
+      strategy: fixed
+      base_delay: 2.0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 示例3：重试策略 - 指数退避
+  - name: "指数退避重试"
+    description: "每次重试间隔翻倍：1s, 2s, 4s, 8s..."
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    retry_policy:
+      max_attempts: 5
+      strategy: exponential
+      base_delay: 1.0
+      max_delay: 30.0
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 示例4：固定等待
+  - name: "固定等待2秒"
+    type: wait
+    seconds: 2
+
+  # 示例5：发起异步任务
+  - name: "发起异步任务"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    body:
+      task: "async_process"
+      data: "test_data"
+    extractors:
+      - name: task_status
+        type: jsonpath
+        path: "$.json.task"
+        default: "pending"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 示例6：等待处理完成后继续
+  - name: "等待1秒后验证"
+    type: wait
+    seconds: 1
+
+  - name: "验证任务完成"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      check: "task_status"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+tags:
+  - "重试"
+  - "等待"
+enabled: true

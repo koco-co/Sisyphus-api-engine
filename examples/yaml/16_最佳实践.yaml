@@ -1,0 +1,179 @@
+# ==============================================================================
+# Sisyphus API Engine - 最佳实践示例
+# ==============================================================================
+# 配套文档：docs/16_最佳实践.md
+# 功能说明：演示项目组织和测试用例编写的最佳实践
+# ==============================================================================
+
+name: "最佳实践综合示例"
+description: "演示生产级测试用例的编写规范"
+
+# 完整的配置结构
+config:
+  # 名称和描述
+  name: "生产级测试配置"
+  
+  # 全局超时和重试
+  timeout: 30
+  retry_times: 2
+  
+  # 全局变量
+  variables:
+    api_version: "v2"
+    test_prefix: "sisyphus_test"
+  
+  # 多环境配置
+  profiles:
+    dev:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "dev_key"
+        log_level: "debug"
+    test:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "test_key"
+        log_level: "info"
+    prod:
+      base_url: "https://httpbin.org"
+      variables:
+        api_key: "prod_key"
+        log_level: "warn"
+  
+  active_profile: "dev"
+
+# 测试用例级别的Setup
+setup:
+  - name: "全局初始化"
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    params:
+      init: "true"
+
+# 测试用例级别的Teardown
+teardown:
+  - name: "全局清理"
+    method: DELETE
+    url: "${config.profiles.dev.base_url}/delete"
+
+steps:
+  # 步骤1：带完整描述和验证
+  - name: "用户认证"
+    description: "获取访问令牌用于后续请求"
+    type: request
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+      X-API-Version: "${api_version}"
+    body:
+      username: "admin"
+      password: "secure_password"
+    extractors:
+      - name: access_token
+        type: jsonpath
+        path: "$.json.username"
+        default: "no_token"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证认证成功"
+    timeout: 10
+    retry_times: 3
+
+  # 步骤2：依赖前一步骤的结果
+  - name: "获取用户信息"
+    description: "使用Token获取当前用户信息"
+    depends_on: ["用户认证"]
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    headers:
+      Authorization: "Bearer ${access_token}"
+    params:
+      include: "profile,preferences"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 步骤3：条件执行
+  - name: "可选的额外验证"
+    only_if: "${access_token} != 'no_token'"
+    method: GET
+    url: "${config.profiles.dev.base_url}/get"
+    params:
+      verify: "extra"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 步骤4：带Setup/Teardown的独立步骤
+  - name: "创建测试数据"
+    setup:
+      - name: "准备测试环境"
+        method: POST
+        url: "${config.profiles.dev.base_url}/post"
+        body:
+          prepare: true
+    teardown:
+      - name: "清理测试数据"
+        method: DELETE
+        url: "${config.profiles.dev.base_url}/delete"
+    method: POST
+    url: "${config.profiles.dev.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      name: "${test_prefix}_data"
+      timestamp: "2026-02-04"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.json.name"
+        expect: "${test_prefix}"
+
+# 测试标签（用于筛选和分类）
+tags:
+  - "最佳实践"
+  - "生产级"
+  - "综合示例"
+
+# 是否启用
+enabled: true
+
+# ==============================================================================
+# 最佳实践总结：
+# 
+# 1. 命名规范
+#    - 文件名：序号_功能名.yaml（如 01_用户登录.yaml）
+#    - 步骤名：动词+名词（如"创建用户"、"验证订单"）
+#
+# 2. 配置管理
+#    - 使用profiles管理多环境
+#    - 敏感信息通过环境变量注入
+#    - 全局变量定义在config.variables
+#
+# 3. 步骤设计
+#    - 每个步骤单一职责
+#    - 使用depends_on明确依赖
+#    - 添加description说明用途
+#
+# 4. 验证策略
+#    - 始终验证status_code
+#    - 关键字段使用eq精确匹配
+#    - 添加description说明验证目的
+#
+# 5. 错误处理
+#    - 配置合理的timeout
+#    - 使用retry_times处理不稳定接口
+#    - 使用default提供提取失败时的默认值
+#
+# 6. 资源管理
+#    - 使用setup准备测试数据
+#    - 使用teardown清理测试数据
+#    - 避免测试间的数据污染
+# ==============================================================================

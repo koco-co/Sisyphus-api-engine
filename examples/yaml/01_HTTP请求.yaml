@@ -1,0 +1,112 @@
+# ==============================================================================
+# Sisyphus API Engine - HTTP请求方法示例
+# ==============================================================================
+# 配套文档：docs/01_HTTP请求.md
+# 功能说明：演示所有HTTP请求方法的使用
+# ==============================================================================
+
+name: "HTTP请求方法完整示例"
+description: "演示GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS方法"
+
+config:
+  timeout: 30
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+
+steps:
+  # GET请求 - 获取资源
+  - name: "GET请求示例"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      id: 123
+      status: "active"
+    headers:
+      Accept: "application/json"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.args.id"
+        expect: "123"
+
+  # POST请求 - 创建资源
+  - name: "POST请求示例"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      username: "testuser"
+      email: "test@example.com"
+      age: 25
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.json.username"
+        expect: "testuser"
+
+  # PUT请求 - 完整更新
+  - name: "PUT请求示例"
+    method: PUT
+    url: "${config.profiles.prod.base_url}/put"
+    headers:
+      Content-Type: "application/json"
+    body:
+      id: 1
+      username: "updated_user"
+      email: "updated@example.com"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # PATCH请求 - 部分更新
+  - name: "PATCH请求示例"
+    method: PATCH
+    url: "${config.profiles.prod.base_url}/patch"
+    headers:
+      Content-Type: "application/json"
+    body:
+      status: "inactive"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # DELETE请求 - 删除资源
+  - name: "DELETE请求示例"
+    method: DELETE
+    url: "${config.profiles.prod.base_url}/delete"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # HEAD请求 - 仅获取响应头
+  - name: "HEAD请求示例"
+    method: HEAD
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # OPTIONS请求 - 查询支持的方法
+  - name: "OPTIONS请求示例"
+    method: OPTIONS
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+tags:
+  - "HTTP"
+  - "请求方法"
+enabled: true

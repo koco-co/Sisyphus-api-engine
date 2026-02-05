@@ -1,0 +1,50 @@
+# ==============================================================================
+# Sisyphus API Engine - 快速入门示例
+# ==============================================================================
+# 配套文档：docs/00_快速入门.md
+# 功能说明：最简单的测试用例，帮助快速上手
+# ==============================================================================
+
+name: "快速入门示例"
+description: "第一个Sisyphus测试用例，演示基本结构"
+
+# 全局配置
+config:
+  timeout: 30
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+
+# 测试步骤
+steps:
+  # 示例1：最简单的GET请求
+  - name: "Hello World"
+    description: "发送一个简单的GET请求"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+        description: "验证请求成功"
+
+  # 示例2：带参数的请求
+  - name: "带查询参数"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      name: "Sisyphus"
+      version: "2.0"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: contains
+        path: "$.args.name"
+        expect: "Sisyphus"
+
+tags:
+  - "入门"
+  - "基础"
+enabled: true

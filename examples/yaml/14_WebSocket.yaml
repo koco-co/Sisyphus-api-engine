@@ -1,0 +1,108 @@
+# ==============================================================================
+# Sisyphus API Engine - WebSocket示例
+# ==============================================================================
+# 配套文档：docs/14_WebSocket.md
+# 功能说明：演示WebSocket实时推送配置
+# ==============================================================================
+
+name: "WebSocket实时推送示例"
+description: "演示如何配置WebSocket接收测试进度"
+
+config:
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+  
+  # WebSocket配置
+  # websocket:
+  #   enabled: true
+  #   port: 9000
+
+steps:
+  # 常规测试步骤（进度会通过WebSocket推送）
+  - name: "步骤1 - 初始化"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      step: "1"
+      action: "init"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "步骤2 - 处理数据"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    body:
+      step: "2"
+      action: "process"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "步骤3 - 等待"
+    type: wait
+    seconds: 1
+
+  - name: "步骤4 - 验证结果"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      step: "4"
+      action: "verify"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  - name: "步骤5 - 完成"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      step: "5"
+      action: "complete"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+tags:
+  - "WebSocket"
+  - "实时"
+enabled: true
+
+# WebSocket客户端连接示例（JavaScript）：
+#
+# const ws = new WebSocket('ws://localhost:9000');
+#
+# ws.onopen = () => {
+#   console.log('已连接到Sisyphus WebSocket');
+# };
+#
+# ws.onmessage = (event) => {
+#   const data = JSON.parse(event.data);
+#   
+#   // 消息类型
+#   switch(data.type) {
+#     case 'progress':
+#       console.log(`进度: ${data.current}/${data.total}`);
+#       console.log(`当前步骤: ${data.step_name}`);
+#       break;
+#     case 'step_start':
+#       console.log(`开始执行: ${data.step_name}`);
+#       break;
+#     case 'step_complete':
+#       console.log(`完成: ${data.step_name}, 状态: ${data.status}`);
+#       break;
+#     case 'test_complete':
+#       console.log(`测试完成: ${data.passed}/${data.total} 通过`);
+#       break;
+#   }
+# };
+#
+# ws.onerror = (error) => {
+#   console.error('WebSocket错误:', error);
+# };

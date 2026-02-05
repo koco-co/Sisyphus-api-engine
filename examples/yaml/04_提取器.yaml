@@ -1,0 +1,105 @@
+# ==============================================================================
+# Sisyphus API Engine - 提取器示例
+# ==============================================================================
+# 配套文档：docs/04_提取器.md
+# 功能说明：演示JSONPath、正则、Header、Cookie提取
+# ==============================================================================
+
+name: "提取器完整示例"
+description: "演示各种数据提取方式"
+
+config:
+  profiles:
+    prod:
+      base_url: "https://httpbin.org"
+  active_profile: "prod"
+
+steps:
+  # JSONPath提取
+  - name: "JSONPath提取示例"
+    method: POST
+    url: "${config.profiles.prod.base_url}/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      data:
+        user:
+          id: 12345
+          name: "测试用户"
+          roles: ["admin", "editor"]
+        token: "abc123xyz789"
+    extractors:
+      # 提取单个字段
+      - name: user_id
+        type: jsonpath
+        path: "$.json.data.user.id"
+      # 提取嵌套字段
+      - name: user_name
+        type: jsonpath
+        path: "$.json.data.user.name"
+      # 提取数组第一个元素
+      - name: first_role
+        type: jsonpath
+        path: "$.json.data.user.roles[0]"
+      # 提取带默认值
+      - name: optional_field
+        type: jsonpath
+        path: "$.json.data.nonexistent"
+        default: "默认值"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # 使用提取的变量
+  - name: "使用提取的变量"
+    method: GET
+    url: "${config.profiles.prod.base_url}/get"
+    params:
+      user_id: "${user_id}"
+      name: "${user_name}"
+      role: "${first_role}"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+      - type: eq
+        path: "$.args.user_id"
+        expect: "12345"
+
+  # 响应头提取
+  - name: "Header提取示例"
+    method: GET
+    url: "${config.profiles.prod.base_url}/response-headers"
+    params:
+      X-Custom-Header: "custom_value_123"
+    extractors:
+      - name: content_type
+        type: header
+        path: "Content-Type"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "200"
+
+  # Cookie提取
+  - name: "Cookie提取示例"
+    method: GET
+    url: "${config.profiles.prod.base_url}/cookies/set"
+    params:
+      session_id: "sess_abc123"
+      user_token: "token_xyz789"
+    extractors:
+      - name: session_cookie
+        type: cookie
+        path: "session_id"
+        default: "no_session"
+    validations:
+      - type: status_code
+        path: "$.status_code"
+        expect: "302"
+
+tags:
+  - "提取器"
+  - "变量"
+enabled: true
