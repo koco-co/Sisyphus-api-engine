@@ -4,9 +4,9 @@ This module implements variable extraction using regular expressions.
 Following Google Python Style Guide.
 """
 
-import re
 import json
-from typing import Any, Optional
+import re
+from typing import Any
 
 
 class RegexExtractor:
@@ -18,7 +18,9 @@ class RegexExtractor:
     - Multiple match modes
     """
 
-    def extract(self, pattern: str, data: Any, index: int = 0, default: Any = None) -> Optional[str]:
+    def extract(
+        self, pattern: str, data: Any, index: int = 0, default: Any = None
+    ) -> str | None:
         """Extract value from data using regex.
 
         Args:
@@ -60,5 +62,5 @@ class RegexExtractor:
         except re.error as e:
             raise ValueError(
                 f"无效的正则表达式 '{pattern}': {e}。\n"
-                f"请检查正则表达式语法，建议使用在线工具验证。"
+                f'请检查正则表达式语法，建议使用在线工具验证。'
             )

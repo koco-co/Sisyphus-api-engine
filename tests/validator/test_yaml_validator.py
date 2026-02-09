@@ -7,15 +7,14 @@ Following Google Python Style Guide.
 """
 
 import os
-import tempfile
-import shutil
 from pathlib import Path
-import pytest
+import shutil
+import tempfile
 
 from apirun.validator.yaml_validator import (
-    YamlValidator,
-    ValidationResult,
     TerminalFormatter,
+    ValidationResult,
+    YamlValidator,
     validate_yaml_files,
 )
 
@@ -30,7 +29,7 @@ class TestYamlValidator:
 
     def teardown_method(self):
         """Cleanup test fixtures."""
-        if os.path.exists(self.temp_dir):
+        if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
     def _create_yaml_file(self, filename, content):
@@ -44,8 +43,8 @@ class TestYamlValidator:
             Full path to created file
         """
         filepath = os.path.join(self.temp_dir, filename)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
+        Path(os.path.dirname(filepath)).mkdir(exist_ok=True, parents=True)
+        with Path(filepath).open('w', encoding='utf-8') as f:
             f.write(content)
         return filepath
 
@@ -68,7 +67,7 @@ steps:
         path: "$.status_code"
         expect: "200"
 """
-        filepath = self._create_yaml_file("valid.yaml", content)
+        filepath = self._create_yaml_file('valid.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
@@ -87,11 +86,11 @@ steps:
   - name: "Step 1"
     type: request
 """
-        filepath = self._create_yaml_file("missing_name.yaml", content)
+        filepath = self._create_yaml_file('missing_name.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
-        assert any("name" in error for error in result.missing_fields)
+        assert any('name' in error for error in result.missing_fields)
 
     def test_empty_steps(self):
         """Test detection of empty steps list."""
@@ -99,11 +98,11 @@ steps:
 name: "Test Case"
 steps: []
 """
-        filepath = self._create_yaml_file("empty_steps.yaml", content)
+        filepath = self._create_yaml_file('empty_steps.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
-        assert any("steps" in error for error in result.syntax_errors)
+        assert any('steps' in error for error in result.syntax_errors)
 
     def test_unknown_keyword_at_test_case_level(self):
         """Test detection of unknown keywords at test case level."""
@@ -117,12 +116,12 @@ steps:
     method: GET
     url: "https://httpbin.org/get"
 """
-        filepath = self._create_yaml_file("unknown_keyword.yaml", content)
+        filepath = self._create_yaml_file('unknown_keyword.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
         assert len(result.unknown_keywords) > 0
-        assert result.unknown_keywords[0][0] == "invalid_field"
+        assert result.unknown_keywords[0][0] == 'invalid_field'
 
     def test_unknown_keyword_in_step(self):
         """Test detection of unknown keywords in step."""
@@ -136,11 +135,13 @@ steps:
     url: "https://httpbin.org/get"
     invalid_step_field: "This should not be here"
 """
-        filepath = self._create_yaml_file("unknown_step_keyword.yaml", content)
+        filepath = self._create_yaml_file('unknown_step_keyword.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
-        assert any(keyword == "invalid_step_field" for keyword, _ in result.unknown_keywords)
+        assert any(
+            keyword == 'invalid_step_field' for keyword, _ in result.unknown_keywords
+        )
 
     def test_unknown_keyword_in_validation(self):
         """Test detection of unknown keywords in validation rules."""
@@ -158,11 +159,14 @@ steps:
         expect: "200"
         invalid_validation_field: "This should not be here"
 """
-        filepath = self._create_yaml_file("unknown_validation_keyword.yaml", content)
+        filepath = self._create_yaml_file('unknown_validation_keyword.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
-        assert any("invalid_validation_field" in str(keyword) for keyword, _ in result.unknown_keywords)
+        assert any(
+            'invalid_validation_field' in str(keyword)
+            for keyword, _ in result.unknown_keywords
+        )
 
     def test_invalid_validation_type(self):
         """Test detection of invalid validation type."""
@@ -179,11 +183,11 @@ steps:
         path: "$.status_code"
         expect: "200"
 """
-        filepath = self._create_yaml_file("invalid_validation_type.yaml", content)
+        filepath = self._create_yaml_file('invalid_validation_type.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert not result.is_valid
-        assert any("invalid_type" in error for error in result.syntax_errors)
+        assert any('invalid_type' in error for error in result.syntax_errors)
 
     def test_shorthand_syntax_support(self):
         """Test support for shorthand step syntax (step name as key)."""
@@ -197,7 +201,7 @@ steps:
       method: GET
       url: "https://httpbin.org/get"
 """
-        filepath = self._create_yaml_file("shorthand_syntax.yaml", content)
+        filepath = self._create_yaml_file('shorthand_syntax.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
@@ -260,7 +264,7 @@ steps:
         type: wait
         duration: 0.1
 """
-        filepath = self._create_yaml_file("all_step_types.yaml", content)
+        filepath = self._create_yaml_file('all_step_types.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
@@ -283,7 +287,7 @@ steps:
     method: GET
     url: "${config.profiles.dev.base_url}"
 """
-        filepath = self._create_yaml_file("profile_custom_vars.yaml", content)
+        filepath = self._create_yaml_file('profile_custom_vars.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
@@ -291,13 +295,32 @@ steps:
     def test_all_validation_types(self):
         """Test all supported validation types."""
         validation_types = [
-            "status_code", "eq", "ne", "gt", "lt", "ge", "le",
-            "contains", "not_contains", "regex", "type",
-            "in", "not_in", "in_list", "not_in_list",
-            "length_eq", "length_gt", "length_lt",
-            "contains_key", "json_path",
-            "exists", "is_null", "is_empty",
-            "starts_with", "ends_with", "between"
+            'status_code',
+            'eq',
+            'ne',
+            'gt',
+            'lt',
+            'ge',
+            'le',
+            'contains',
+            'not_contains',
+            'regex',
+            'type',
+            'in',
+            'not_in',
+            'in_list',
+            'not_in_list',
+            'length_eq',
+            'length_gt',
+            'length_lt',
+            'contains_key',
+            'json_path',
+            'exists',
+            'is_null',
+            'is_empty',
+            'starts_with',
+            'ends_with',
+            'between',
         ]
 
         for v_type in validation_types:
@@ -314,7 +337,7 @@ steps:
         path: "$.status_code"
         expect: "200"
 """
-            filepath = self._create_yaml_file(f"validation_{v_type}.yaml", content)
+            filepath = self._create_yaml_file(f'validation_{v_type}.yaml', content)
             result = self.validator.validate_file(filepath)
 
             assert result.is_valid, f"Validation type '{v_type}' should be valid"
@@ -331,7 +354,7 @@ steps:
     method: GET
     url: "https://httpbin.org/get"
 """
-        filepath = self._create_yaml_file("with_enabled.yaml", content)
+        filepath = self._create_yaml_file('with_enabled.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
@@ -358,18 +381,18 @@ steps:
         multiple: false
         description: "Test extractor"
 """
-        filepath = self._create_yaml_file("extractors.yaml", content)
+        filepath = self._create_yaml_file('extractors.yaml', content)
         result = self.validator.validate_file(filepath)
 
         assert result.is_valid
 
     def test_file_not_found(self):
         """Test handling of non-existent file."""
-        result = self.validator.validate_file("/nonexistent/file.yaml")
+        result = self.validator.validate_file('/nonexistent/file.yaml')
 
         assert not result.is_valid
         assert len(result.syntax_errors) > 0
-        assert "不存在" in result.syntax_errors[0]
+        assert '不存在' in result.syntax_errors[0]
 
 
 class TestValidationResult:
@@ -377,12 +400,9 @@ class TestValidationResult:
 
     def test_validation_result_properties(self):
         """Test ValidationResult properties."""
-        result = ValidationResult(
-            file_path="test.yaml",
-            is_valid=True
-        )
+        result = ValidationResult(file_path='test.yaml', is_valid=True)
 
-        assert result.file_path == "test.yaml"
+        assert result.file_path == 'test.yaml'
         assert result.is_valid
         assert not result.has_errors
         assert result.error_count == 0
@@ -390,11 +410,11 @@ class TestValidationResult:
     def test_validation_result_with_errors(self):
         """Test ValidationResult with various errors."""
         result = ValidationResult(
-            file_path="test.yaml",
+            file_path='test.yaml',
             is_valid=False,
-            syntax_errors=["Error 1"],
-            missing_fields=["Error 2"],
-            unknown_keywords=[("key1", "location1")]
+            syntax_errors=['Error 1'],
+            missing_fields=['Error 2'],
+            unknown_keywords=[('key1', 'location1')],
         )
 
         assert result.is_valid is False
@@ -407,21 +427,21 @@ class TestTerminalFormatter:
 
     def test_success_formatting(self):
         """Test success message formatting."""
-        message = TerminalFormatter.success("Test passed")
-        assert "✓" in message
-        assert "Test passed" in message
+        message = TerminalFormatter.success('Test passed')
+        assert '✓' in message
+        assert 'Test passed' in message
 
     def test_error_formatting(self):
         """Test error message formatting."""
-        message = TerminalFormatter.error("Test failed")
-        assert "✗" in message
-        assert "Test failed" in message
+        message = TerminalFormatter.error('Test failed')
+        assert '✗' in message
+        assert 'Test failed' in message
 
     def test_warning_formatting(self):
         """Test warning message formatting."""
-        message = TerminalFormatter.warning("Warning message")
-        assert "⚠" in message
-        assert "Warning message" in message
+        message = TerminalFormatter.warning('Warning message')
+        assert '⚠' in message
+        assert 'Warning message' in message
 
 
 class TestValidateYamlFiles:
@@ -433,14 +453,14 @@ class TestValidateYamlFiles:
 
     def teardown_method(self):
         """Cleanup test fixtures."""
-        if os.path.exists(self.temp_dir):
+        if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
     def _create_yaml_file(self, filename, content):
         """Helper to create a YAML file for testing."""
         filepath = os.path.join(self.temp_dir, filename)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
+        Path(os.path.dirname(filepath)).mkdir(exist_ok=True, parents=True)
+        with Path(filepath).open('w', encoding='utf-8') as f:
             f.write(content)
         return filepath
 
@@ -455,7 +475,7 @@ steps:
     method: GET
     url: "https://httpbin.org/get"
 """
-        self._create_yaml_file("valid.yaml", valid_content)
+        self._create_yaml_file('valid.yaml', valid_content)
 
         # Create invalid file
         invalid_content = """
@@ -463,7 +483,7 @@ name: "Invalid Test"
 invalid_field: "value"
 steps: []
 """
-        self._create_yaml_file("invalid.yaml", invalid_content)
+        self._create_yaml_file('invalid.yaml', invalid_content)
 
         # Validate directory
         exit_code, results = validate_yaml_files([self.temp_dir], show_details=False)
@@ -473,7 +493,9 @@ steps: []
 
     def test_validate_nonexistent_path(self, capsys):
         """Test validation of non-existent path."""
-        exit_code, results = validate_yaml_files(["/nonexistent/path"], show_details=False)
+        exit_code, results = validate_yaml_files(
+            ['/nonexistent/path'], show_details=False
+        )
 
         assert exit_code == 1
         assert len(results) == 0
@@ -489,14 +511,14 @@ class TestIncludeTagSupport:
 
     def teardown_method(self):
         """Cleanup test fixtures."""
-        if os.path.exists(self.temp_dir):
+        if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
     def _create_yaml_file(self, filename, content):
         """Helper to create a YAML file."""
         filepath = os.path.join(self.temp_dir, filename)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
+        Path(os.path.dirname(filepath)).mkdir(exist_ok=True, parents=True)
+        with Path(filepath).open('w', encoding='utf-8') as f:
             f.write(content)
         return filepath
 
@@ -509,10 +531,12 @@ retry_times: 3
 variables:
   api_key: "test-key"
 """
-        config_file = self._create_yaml_file("config/global_config.yaml", config_content)
+        config_file = self._create_yaml_file(
+            'config/global_config.yaml', config_content
+        )
 
         # Create main file with !include
-        main_content = f"""
+        main_content = """
 name: "Test Include Tag"
 config: !include config/global_config.yaml
 
@@ -522,11 +546,11 @@ steps:
     method: GET
     url: "https://httpbin.org/get"
 """
-        main_file = self._create_yaml_file("main.yaml", main_content)
+        main_file = self._create_yaml_file('main.yaml', main_content)
 
         result = self.validator.validate_file(main_file)
 
         # Should not error on !include tag
         # Note: The actual inclusion might fail due to path resolution,
         # but we're testing that the tag is recognized
-        assert result.is_valid or "!include" not in str(result.syntax_errors)
+        assert result.is_valid or '!include' not in str(result.syntax_errors)

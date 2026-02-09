@@ -10,14 +10,12 @@ Tests the concurrent step executor functionality, including:
 Following Google Python Style Guide.
 """
 
-import pytest
-import time
-from unittest.mock import Mock, patch, MagicMock
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import Mock
 
-from apirun.executor.concurrent_executor import ConcurrentExecutor
-from apirun.core.models import TestStep, StepResult
+from apirun.core.models import TestStep
 from apirun.core.variable_manager import VariableManager
+from apirun.executor.concurrent_executor import ConcurrentExecutor
 
 
 class TestConcurrentExecutor:
@@ -26,25 +24,22 @@ class TestConcurrentExecutor:
     def setup_method(self):
         """Setup test fixtures."""
         self.variable_manager = VariableManager()
-        self.variable_manager.set_variable("base_url", "https://httpbin.org")
+        self.variable_manager.set_variable('base_url', 'https://httpbin.org')
 
     def test_initialization(self):
         """Test ConcurrentExecutor initialization."""
         step = TestStep(
-            name="Concurrent Test",
-            type="concurrent",
+            name='Concurrent Test',
+            type='concurrent',
             max_concurrency=2,
             concurrent_steps=[
-                TestStep(name="Sub-step 1", type="wait", seconds=0.1),
-                TestStep(name="Sub-step 2", type="wait", seconds=0.1),
-            ]
+                TestStep(name='Sub-step 1', type='wait', seconds=0.1),
+                TestStep(name='Sub-step 2', type='wait', seconds=0.1),
+            ],
         )
 
         executor = ConcurrentExecutor(
-            variable_manager=self.variable_manager,
-            step=step,
-            timeout=30,
-            retry_times=0
+            variable_manager=self.variable_manager, step=step, timeout=30, retry_times=0
         )
 
         assert executor.variable_manager == self.variable_manager
@@ -85,30 +80,22 @@ class TestConcurrentExecutor:
     def test_concurrent_steps_with_validations(self):
         """Test concurrent steps with validation rules."""
         step = TestStep(
-            name="Concurrent Test",
-            type="concurrent",
+            name='Concurrent Test',
+            type='concurrent',
             max_concurrency=2,
             concurrent_steps=[
                 TestStep(
-                    name="Sub-step 1",
-                    type="wait",
+                    name='Sub-step 1',
+                    type='wait',
                     seconds=0.1,
-                    validations=[
-                        Mock(type="eq", path="$.duration", expect=0.1)
-                    ]
+                    validations=[Mock(type='eq', path='$.duration', expect=0.1)],
                 ),
-                TestStep(
-                    name="Sub-step 2",
-                    type="wait",
-                    seconds=0.1
-                ),
-            ]
+                TestStep(name='Sub-step 2', type='wait', seconds=0.1),
+            ],
         )
 
         executor = ConcurrentExecutor(
-            variable_manager=self.variable_manager,
-            step=step,
-            timeout=30
+            variable_manager=self.variable_manager, step=step, timeout=30
         )
 
         # Verify step structure
@@ -119,20 +106,14 @@ class TestConcurrentExecutor:
     def test_invalid_concurrent_config(self):
         """Test handling of invalid concurrent configuration."""
         # Missing concurrent_steps
-        step = TestStep(
-            name="Invalid Concurrent",
-            type="concurrent",
-            max_concurrency=2
-        )
+        step = TestStep(name='Invalid Concurrent', type='concurrent', max_concurrency=2)
 
         executor = ConcurrentExecutor(
-            variable_manager=self.variable_manager,
-            step=step,
-            timeout=30
+            variable_manager=self.variable_manager, step=step, timeout=30
         )
 
         # Should handle gracefully
-        assert executor.step.type == "concurrent"
+        assert executor.step.type == 'concurrent'
         assert executor.step.max_concurrency == 2
 
     def test_max_concurrency_validation(self):
@@ -141,19 +122,17 @@ class TestConcurrentExecutor:
 
         for value in valid_concurrency_values:
             step = TestStep(
-                name=f"Concurrent Test {value}",
-                type="concurrent",
+                name=f'Concurrent Test {value}',
+                type='concurrent',
                 max_concurrency=value,
                 concurrent_steps=[
-                    TestStep(name=f"Sub-step {i}", type="wait", seconds=0.1)
+                    TestStep(name=f'Sub-step {i}', type='wait', seconds=0.1)
                     for i in range(value)
-                ]
+                ],
             )
 
             executor = ConcurrentExecutor(
-                variable_manager=self.variable_manager,
-                step=step,
-                timeout=30
+                variable_manager=self.variable_manager, step=step, timeout=30
             )
 
             assert executor.step.max_concurrency == value
@@ -162,19 +141,17 @@ class TestConcurrentExecutor:
     def test_thread_safety(self):
         """Test thread-safe operations."""
         step = TestStep(
-            name="Concurrent Test",
-            type="concurrent",
+            name='Concurrent Test',
+            type='concurrent',
             max_concurrency=2,
             concurrent_steps=[
-                TestStep(name=f"Sub-step {i}", type="wait", seconds=0.01)
+                TestStep(name=f'Sub-step {i}', type='wait', seconds=0.01)
                 for i in range(5)
-            ]
+            ],
         )
 
         executor = ConcurrentExecutor(
-            variable_manager=self.variable_manager,
-            step=step,
-            timeout=30
+            variable_manager=self.variable_manager, step=step, timeout=30
         )
 
         # Test lock usage

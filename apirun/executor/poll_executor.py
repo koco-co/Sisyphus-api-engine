@@ -5,14 +5,12 @@ Following Google Python Style Guide.
 """
 
 import time
-import json
-from typing import Any, Dict, Optional
-from datetime import datetime
+from typing import Any
 
-from apirun.executor.step_executor import StepExecutor
-from apirun.executor.api_executor import APIExecutor
 from apirun.core.models import TestStep
 from apirun.core.variable_manager import VariableManager
+from apirun.executor.api_executor import APIExecutor
+from apirun.executor.step_executor import StepExecutor
 from apirun.extractor.jsonpath_extractor import JSONPathExtractor
 
 
@@ -65,7 +63,7 @@ class PollStepExecutor(StepExecutor):
         """
         super().__init__(variable_manager, step, timeout, retry_times, previous_results)
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Any:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> Any:
         """Execute polling until condition is met or timeout.
 
         Args:
@@ -77,15 +75,15 @@ class PollStepExecutor(StepExecutor):
         Raises:
             TimeoutError: If polling times out
         """
-        poll_config = rendered_step.get("poll_config", {})
-        on_timeout = rendered_step.get("on_timeout", {})
+        poll_config = rendered_step.get('poll_config', {})
+        on_timeout = rendered_step.get('on_timeout', {})
 
         # Extract polling configuration
-        condition = poll_config.get("condition", {})
-        max_attempts = poll_config.get("max_attempts", 30)
-        interval_ms = poll_config.get("interval", 2000)
-        timeout_ms = poll_config.get("timeout", 60000)
-        backoff = poll_config.get("backoff", "fixed")
+        condition = poll_config.get('condition', {})
+        max_attempts = poll_config.get('max_attempts', 30)
+        interval_ms = poll_config.get('interval', 2000)
+        timeout_ms = poll_config.get('timeout', 60000)
+        backoff = poll_config.get('backoff', 'fixed')
 
         # Convert to seconds
         interval = interval_ms / 1000.0
@@ -101,17 +99,19 @@ class PollStepExecutor(StepExecutor):
             # Check timeout
             elapsed = time.time() - start_time
             if elapsed > timeout_seconds:
-                timeout_msg = on_timeout.get("message", f"Polling timeout after {timeout_seconds}s")
-                behavior = on_timeout.get("behavior", "fail")
+                timeout_msg = on_timeout.get(
+                    'message', f'Polling timeout after {timeout_seconds}s'
+                )
+                behavior = on_timeout.get('behavior', 'fail')
 
-                if behavior == "continue":
+                if behavior == 'continue':
                     return {
-                        "success": False,
-                        "timed_out": True,
-                        "message": timeout_msg,
-                        "attempts": attempt,
-                        "elapsed_seconds": elapsed,
-                        "last_response": last_response,
+                        'success': False,
+                        'timed_out': True,
+                        'message': timeout_msg,
+                        'attempts': attempt,
+                        'elapsed_seconds': elapsed,
+                        'last_response': last_response,
                     }
                 else:
                     raise TimeoutError(timeout_msg)
@@ -136,23 +136,23 @@ class PollStepExecutor(StepExecutor):
                 # Check if condition is met
                 if self._check_condition(result, condition):
                     return {
-                        "success": True,
-                        "condition_met": True,
-                        "attempts": attempt,
-                        "elapsed_seconds": time.time() - start_time,
-                        "response": result,
+                        'success': True,
+                        'condition_met': True,
+                        'attempts': attempt,
+                        'elapsed_seconds': time.time() - start_time,
+                        'response': result,
                     }
 
             except Exception as e:
                 # Continue polling on error, will timeout if needed
-                last_response = {"error": str(e)}
+                last_response = {'error': str(e)}
 
             # Wait before next attempt
             if attempt < max_attempts:
                 # Calculate backoff delay
-                if backoff == "exponential":
+                if backoff == 'exponential':
                     backoff_delay = interval * (2 ** (attempt - 1))
-                elif backoff == "linear":
+                elif backoff == 'linear':
                     backoff_delay = interval * attempt
                 else:  # fixed
                     backoff_delay = interval
@@ -163,22 +163,24 @@ class PollStepExecutor(StepExecutor):
                 time.sleep(backoff_delay)
 
         # Max attempts reached
-        timeout_msg = on_timeout.get("message", f"Polling reached max attempts ({max_attempts})")
-        behavior = on_timeout.get("behavior", "fail")
+        timeout_msg = on_timeout.get(
+            'message', f'Polling reached max attempts ({max_attempts})'
+        )
+        behavior = on_timeout.get('behavior', 'fail')
 
-        if behavior == "continue":
+        if behavior == 'continue':
             return {
-                "success": False,
-                "max_attempts_reached": True,
-                "message": timeout_msg,
-                "attempts": attempt,
-                "elapsed_seconds": time.time() - start_time,
-                "last_response": last_response,
+                'success': False,
+                'max_attempts_reached': True,
+                'message': timeout_msg,
+                'attempts': attempt,
+                'elapsed_seconds': time.time() - start_time,
+                'last_response': last_response,
             }
         else:
             raise TimeoutError(timeout_msg)
 
-    def _check_condition(self, response: Any, condition: Dict[str, Any]) -> bool:
+    def _check_condition(self, response: Any, condition: dict[str, Any]) -> bool:
         """Check if polling condition is met.
 
         Args:
@@ -188,19 +190,21 @@ class PollStepExecutor(StepExecutor):
         Returns:
             True if condition is met, False otherwise
         """
-        condition_type = condition.get("type", "jsonpath")
+        condition_type = condition.get('type', 'jsonpath')
 
-        if condition_type == "jsonpath":
+        if condition_type == 'jsonpath':
             return self._check_jsonpath_condition(response, condition)
-        elif condition_type == "status_code":
+        elif condition_type == 'status_code':
             return self._check_status_code_condition(response, condition)
-        elif condition_type == "script":
+        elif condition_type == 'script':
             # Future: support custom script conditions
             return False
         else:
-            raise ValueError(f"Unsupported condition type: {condition_type}")
+            raise ValueError(f'Unsupported condition type: {condition_type}')
 
-    def _check_jsonpath_condition(self, response: Any, condition: Dict[str, Any]) -> bool:
+    def _check_jsonpath_condition(
+        self, response: Any, condition: dict[str, Any]
+    ) -> bool:
         """Check JSONPath-based condition.
 
         Args:
@@ -210,9 +214,9 @@ class PollStepExecutor(StepExecutor):
         Returns:
             True if condition is met
         """
-        path = condition.get("path", "$")
-        operator = condition.get("operator", "eq")
-        expect = condition.get("expect")
+        path = condition.get('path', '$')
+        operator = condition.get('operator', 'eq')
+        expect = condition.get('expect')
 
         # Extract value using JSONPath
         try:
@@ -231,10 +235,12 @@ class PollStepExecutor(StepExecutor):
             return self._compare_values(actual, expect, operator)
 
         except Exception as e:
-            print(f"Warning: Failed to check JSONPath condition: {e}")
+            print(f'Warning: Failed to check JSONPath condition: {e}')
             return False
 
-    def _check_status_code_condition(self, response: Any, condition: Dict[str, Any]) -> bool:
+    def _check_status_code_condition(
+        self, response: Any, condition: dict[str, Any]
+    ) -> bool:
         """Check HTTP status code condition.
 
         Args:
@@ -244,14 +250,14 @@ class PollStepExecutor(StepExecutor):
         Returns:
             True if condition is met
         """
-        operator = condition.get("operator", "eq")
-        expect = condition.get("expect")
+        operator = condition.get('operator', 'eq')
+        expect = condition.get('expect')
 
         # Extract status code
-        if hasattr(response, "get"):
-            status_code = response.get("status_code")
-            if status_code is None and "response" in response:
-                status_code = response["response"].get("status_code")
+        if hasattr(response, 'get'):
+            status_code = response.get('status_code')
+            if status_code is None and 'response' in response:
+                status_code = response['response'].get('status_code')
         else:
             return False
 
@@ -268,35 +274,35 @@ class PollStepExecutor(StepExecutor):
         Returns:
             True if comparison succeeds
         """
-        if operator == "eq":
+        if operator == 'eq':
             return actual == expect
-        elif operator == "ne":
+        elif operator == 'ne':
             return actual != expect
-        elif operator == "gt":
+        elif operator == 'gt':
             try:
                 return float(actual) > float(expect)
             except (ValueError, TypeError):
                 return False
-        elif operator == "lt":
+        elif operator == 'lt':
             try:
                 return float(actual) < float(expect)
             except (ValueError, TypeError):
                 return False
-        elif operator == "ge":
+        elif operator == 'ge':
             try:
                 return float(actual) >= float(expect)
             except (ValueError, TypeError):
                 return False
-        elif operator == "le":
+        elif operator == 'le':
             try:
                 return float(actual) <= float(expect)
             except (ValueError, TypeError):
                 return False
-        elif operator == "contains":
+        elif operator == 'contains':
             if isinstance(actual, (list, tuple, str)):
                 return expect in actual
             return False
-        elif operator == "exists":
+        elif operator == 'exists':
             return actual is not None
         else:
-            raise ValueError(f"Unsupported operator: {operator}")
+            raise ValueError(f'Unsupported operator: {operator}')

@@ -15,12 +15,12 @@ Available functions:
 Following Google Python Style Guide.
 """
 
+from datetime import datetime
 import random
 import re
 import string
+from typing import Any
 import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
 
 
 def random_int(min_val: int = 0, max_val: int = 1000000) -> int:
@@ -40,7 +40,7 @@ def random_int(min_val: int = 0, max_val: int = 1000000) -> int:
     return random.randint(min_val, max_val)
 
 
-def random_str(length: int = 8, chars: Optional[str] = None) -> str:
+def random_str(length: int = 8, chars: str | None = None) -> str:
     """Generate a random string.
 
     Args:
@@ -57,7 +57,7 @@ def random_str(length: int = 8, chars: Optional[str] = None) -> str:
     """
     if chars is None:
         chars = string.ascii_letters + string.digits
-    return "".join(random.choice(chars) for _ in range(length))
+    return ''.join(random.choice(chars) for _ in range(length))
 
 
 def uuid_str() -> str:
@@ -132,7 +132,7 @@ def now_us() -> str:
     return datetime.now().strftime('%Y%m%d%H%M%S%f')
 
 
-def date(format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+def date(format_str: str = '%Y-%m-%d %H:%M:%S') -> str:
     """Generate formatted current date/time string.
 
     Args:
@@ -192,11 +192,11 @@ def randint(min_val: int = 0, max_val: int = 100) -> int:
 
 
 # Global database connection pool manager
-_db_connection_pool: Dict[str, Any] = None
+_db_connection_pool: dict[str, Any] = None
 _variable_manager_ref = None
 
 
-def register_db_connection_pool(pool: Dict[str, Any]) -> None:
+def register_db_connection_pool(pool: dict[str, Any]) -> None:
     """Register the global database connection pool.
 
     Args:
@@ -216,7 +216,7 @@ def register_variable_manager(vm: Any) -> None:
     _variable_manager_ref = vm
 
 
-def db_query(sql: str, *params, connection_alias: str = "default") -> Any:
+def db_query(sql: str, *params, connection_alias: str = 'default') -> Any:
     """Execute a database query and return results.
 
     This function allows querying databases directly from templates.
@@ -244,34 +244,34 @@ def db_query(sql: str, *params, connection_alias: str = "default") -> Any:
 
     # Security check: Only allow SELECT queries
     sql_stripped = sql.strip().upper()
-    if not sql_stripped.startswith("SELECT"):
+    if not sql_stripped.startswith('SELECT'):
         raise ValueError(
-            f"db_query() only allows SELECT queries for security. Got: {sql[:50]}"
+            f'db_query() only allows SELECT queries for security. Got: {sql[:50]}'
         )
 
     # Check for dangerous keywords
     dangerous_keywords = [
-        "DROP",
-        "DELETE",
-        "INSERT",
-        "UPDATE",
-        "ALTER",
-        "CREATE",
-        "TRUNCATE",
-        "EXEC",
-        "EXECUTE",
+        'DROP',
+        'DELETE',
+        'INSERT',
+        'UPDATE',
+        'ALTER',
+        'CREATE',
+        'TRUNCATE',
+        'EXEC',
+        'EXECUTE',
     ]
     for keyword in dangerous_keywords:
         if keyword in sql_stripped:
             raise ValueError(
-                f"db_query() does not allow {keyword} operations. Got: {sql[:50]}"
+                f'db_query() does not allow {keyword} operations. Got: {sql[:50]}'
             )
 
     # Get database config from variable manager
     if _variable_manager_ref is None:
         raise ValueError(
-            "Database connection not configured. "
-            "Please add database config to config.variables."
+            'Database connection not configured. '
+            'Please add database config to config.variables.'
         )
 
     # Try to get database config from variables
@@ -281,26 +281,24 @@ def db_query(sql: str, *params, connection_alias: str = "default") -> Any:
     all_vars = _variable_manager_ref.get_all_variables()
 
     # Look for database config with specific alias
-    if f"db_{connection_alias}" in all_vars:
-        db_config = all_vars[f"db_{connection_alias}"]
-    elif "database" in all_vars:
-        db_config = all_vars["database"]
+    if f'db_{connection_alias}' in all_vars:
+        db_config = all_vars[f'db_{connection_alias}']
+    elif 'database' in all_vars:
+        db_config = all_vars['database']
     else:
         raise ValueError(
             f"Database connection '{connection_alias}' not found in variables. "
-            f"Please configure it in config.variables."
+            f'Please configure it in config.variables.'
         )
 
     # Execute query
     try:
         return _execute_db_query(db_config, sql, params)
     except Exception as e:
-        raise ValueError(f"Database query failed: {e}")
+        raise ValueError(f'Database query failed: {e}')
 
 
-def _execute_db_query(
-    db_config: Dict[str, Any], sql: str, params: tuple
-) -> Any:
+def _execute_db_query(db_config: dict[str, Any], sql: str, params: tuple) -> Any:
     """Execute database query with given config.
 
     Args:
@@ -311,17 +309,17 @@ def _execute_db_query(
     Returns:
         Query results
     """
-    db_type = db_config.get("type", "sqlite")
-    connection = db_config.get("connection")
+    db_type = db_config.get('type', 'sqlite')
+    connection = db_config.get('connection')
 
-    if db_type == "sqlite":
+    if db_type == 'sqlite':
         return _execute_sqlite_query(connection, sql, params)
-    elif db_type == "mysql":
+    elif db_type == 'mysql':
         return _execute_mysql_query(connection, sql, params)
-    elif db_type == "postgresql":
+    elif db_type == 'postgresql':
         return _execute_postgresql_query(connection, sql, params)
     else:
-        raise ValueError(f"Unsupported database type: {db_type}")
+        raise ValueError(f'Unsupported database type: {db_type}')
 
 
 def _execute_sqlite_query(db_path: str, sql: str, params: tuple) -> Any:
@@ -387,10 +385,10 @@ def _execute_mysql_query(connection_string: str, sql: str, params: tuple) -> Any
 
         # Parse connection string: mysql://user:password@host:port/database
         match = re.match(
-            r"mysql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", connection_string
+            r'mysql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', connection_string
         )
         if not match:
-            raise ValueError(f"Invalid MySQL connection string: {connection_string}")
+            raise ValueError(f'Invalid MySQL connection string: {connection_string}')
 
         user, password, host, port, database = match.groups()
 
@@ -426,14 +424,12 @@ def _execute_mysql_query(connection_string: str, sql: str, params: tuple) -> Any
             conn.close()
     except ImportError:
         raise ValueError(
-            "pymysql is required for MySQL queries. "
-            "Install it with: pip install pymysql"
+            'pymysql is required for MySQL queries. '
+            'Install it with: pip install pymysql'
         )
 
 
-def _execute_postgresql_query(
-    connection_string: str, sql: str, params: tuple
-) -> Any:
+def _execute_postgresql_query(connection_string: str, sql: str, params: tuple) -> Any:
     """Execute PostgreSQL query.
 
     Args:
@@ -450,11 +446,11 @@ def _execute_postgresql_query(
 
         # Parse connection string: postgresql://user:password@host:port/database
         match = re.match(
-            r"postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", connection_string
+            r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', connection_string
         )
         if not match:
             raise ValueError(
-                f"Invalid PostgreSQL connection string: {connection_string}"
+                f'Invalid PostgreSQL connection string: {connection_string}'
             )
 
         user, password, host, port, database = match.groups()
@@ -493,26 +489,26 @@ def _execute_postgresql_query(
             conn.close()
     except ImportError:
         raise ValueError(
-            "psycopg2 is required for PostgreSQL queries. "
-            "Install it with: pip install psycopg2-binary"
+            'psycopg2 is required for PostgreSQL queries. '
+            'Install it with: pip install psycopg2-binary'
         )
 
 
 # Dictionary of all built-in functions
 TEMPLATE_FUNCTIONS = {
-    "random": random_int,
-    "randint": randint,
-    "random_str": random_str,
-    "uuid": uuid_str,
-    "uuid4": uuid4,
-    "timestamp": timestamp,
-    "timestamp_ms": timestamp_ms,
-    "timestamp_us": timestamp_us,
-    "date": date,
-    "now": now,
-    "now_us": now_us,
-    "choice": choice,
-    "db_query": db_query,
+    'random': random_int,
+    'randint': randint,
+    'random_str': random_str,
+    'uuid': uuid_str,
+    'uuid4': uuid4,
+    'timestamp': timestamp,
+    'timestamp_ms': timestamp_ms,
+    'timestamp_us': timestamp_us,
+    'date': date,
+    'now': now,
+    'now_us': now_us,
+    'choice': choice,
+    'db_query': db_query,
 }
 
 

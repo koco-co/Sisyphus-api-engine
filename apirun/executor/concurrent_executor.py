@@ -10,15 +10,15 @@ This module implements the concurrent step executor, supporting:
 Following Google Python Style Guide.
 """
 
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
 from datetime import datetime
 from queue import Queue
+import threading
+from typing import Any
 
-from apirun.executor.step_executor import StepExecutor
-from apirun.core.models import TestStep, StepResult, ErrorInfo, ErrorCategory
+from apirun.core.models import ErrorCategory, ErrorInfo, StepResult, TestStep
 from apirun.core.variable_manager import VariableManager
+from apirun.executor.step_executor import StepExecutor
 from apirun.utils.template import render_template
 
 
@@ -64,7 +64,7 @@ class ConcurrentExecutor(StepExecutor):
             previous_results: List of previous step results
         """
         super().__init__(variable_manager, step, timeout, retry_times, previous_results)
-        self.concurrent_results: List[StepResult] = []
+        self.concurrent_results: list[StepResult] = []
         self.lock = threading.Lock()
 
     @classmethod
@@ -90,7 +90,7 @@ class ConcurrentExecutor(StepExecutor):
                 cls._thread_pool.shutdown(wait=True)
                 cls._thread_pool = None
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> dict[str, Any]:
         """Execute the concurrent step.
 
         Args:
@@ -103,19 +103,23 @@ class ConcurrentExecutor(StepExecutor):
             ValueError: If concurrent configuration is invalid
         """
         start_time = datetime.now()
-        max_concurrency = rendered_step.get("max_concurrency", 3)
-        concurrent_steps = rendered_step.get("concurrent_steps", [])
+        max_concurrency = rendered_step.get('max_concurrency', 3)
+        concurrent_steps = rendered_step.get('concurrent_steps', [])
 
         if not concurrent_steps:
-            raise ValueError("Concurrent step must contain 'concurrent_steps' to execute")
+            raise ValueError(
+                "Concurrent step must contain 'concurrent_steps' to execute"
+            )
 
         try:
             max_concurrency = int(max_concurrency)
         except (ValueError, TypeError):
-            raise ValueError(f"Invalid max_concurrency value: {max_concurrency}")
+            raise ValueError(f'Invalid max_concurrency value: {max_concurrency}')
 
         if max_concurrency <= 0:
-            raise ValueError(f"Max concurrency must be positive, got: {max_concurrency}")
+            raise ValueError(
+                f'Max concurrency must be positive, got: {max_concurrency}'
+            )
 
         # Execute concurrent steps
         self.concurrent_results = self._execute_concurrent_steps(
@@ -126,27 +130,27 @@ class ConcurrentExecutor(StepExecutor):
         elapsed = (end_time - start_time).total_seconds()
 
         # Count results
-        success_count = sum(1 for r in self.concurrent_results if r.status == "success")
+        success_count = sum(1 for r in self.concurrent_results if r.status == 'success')
         failure_count = sum(
-            1 for r in self.concurrent_results if r.status in ("failure", "skipped")
+            1 for r in self.concurrent_results if r.status in ('failure', 'skipped')
         )
-        skipped_count = sum(1 for r in self.concurrent_results if r.status == "skipped")
+        skipped_count = sum(1 for r in self.concurrent_results if r.status == 'skipped')
 
         return {
-            "response": {
-                "max_concurrency": max_concurrency,
-                "total_steps": len(concurrent_steps),
-                "success_count": success_count,
-                "failure_count": failure_count,
-                "skipped_count": skipped_count,
+            'response': {
+                'max_concurrency': max_concurrency,
+                'total_steps': len(concurrent_steps),
+                'success_count': success_count,
+                'failure_count': failure_count,
+                'skipped_count': skipped_count,
             },
-            "performance": self._create_performance_metrics(total_time=elapsed * 1000),
-            "concurrent_results": self.concurrent_results,
+            'performance': self._create_performance_metrics(total_time=elapsed * 1000),
+            'concurrent_results': self.concurrent_results,
         }
 
     def _execute_concurrent_steps(
-        self, concurrent_steps: List[Dict[str, Any]], max_concurrency: int
-    ) -> List[StepResult]:
+        self, concurrent_steps: list[dict[str, Any]], max_concurrency: int
+    ) -> list[StepResult]:
         """Execute steps concurrently using thread pool.
 
         Performance optimizations:
@@ -165,7 +169,7 @@ class ConcurrentExecutor(StepExecutor):
         results_queue: Queue = Queue()
         extracted_vars_queue: Queue = Queue()
 
-        def execute_step(step_dict: Dict[str, Any], index: int) -> StepResult:
+        def execute_step(step_dict: dict[str, Any], index: int) -> StepResult:
             """Execute a single step in a thread.
 
             Args:
@@ -193,15 +197,15 @@ class ConcurrentExecutor(StepExecutor):
             except Exception as e:
                 # Create error result
                 return StepResult(
-                    name=step_dict.get("name", f"concurrent_step_{index}"),
-                    status="failure",
+                    name=step_dict.get('name', f'concurrent_step_{index}'),
+                    status='failure',
                     start_time=datetime.now(),
                     end_time=datetime.now(),
                     error_info=ErrorInfo(
                         type=type(e).__name__,
                         category=ErrorCategory.SYSTEM,
                         message=str(e),
-                        suggestion="检查并发步骤配置",
+                        suggestion='检查并发步骤配置',
                     ),
                 )
 
@@ -222,15 +226,15 @@ class ConcurrentExecutor(StepExecutor):
                 except Exception as e:
                     # Create error result for failed thread
                     error_result = StepResult(
-                        name=step_dict.get("name", f"concurrent_step_{idx}"),
-                        status="failure",
+                        name=step_dict.get('name', f'concurrent_step_{idx}'),
+                        status='failure',
                         start_time=datetime.now(),
                         end_time=datetime.now(),
                         error_info=ErrorInfo(
                             type=type(e).__name__,
                             category=ErrorCategory.SYSTEM,
                             message=str(e),
-                            suggestion="检查并发线程执行异常",
+                            suggestion='检查并发线程执行异常',
                         ),
                     )
                     results_queue.put(error_result)
@@ -277,7 +281,7 @@ class ConcurrentExecutor(StepExecutor):
 
     def _execute_nested_step(
         self,
-        step_dict: Dict[str, Any],
+        step_dict: dict[str, Any],
         variable_manager: VariableManager,
         index: int,
     ) -> StepResult:
@@ -298,25 +302,25 @@ class ConcurrentExecutor(StepExecutor):
         step = parser._parse_step(step_dict)
 
         # Determine executor type and execute
-        if step.type == "request":
+        if step.type == 'request':
             from apirun.executor.api_executor import APIExecutor
 
             executor = APIExecutor(
                 variable_manager, step, self.timeout, self.retry_times
             )
-        elif step.type == "database":
+        elif step.type == 'database':
             from apirun.executor.database_executor import DatabaseExecutor
 
             executor = DatabaseExecutor(
                 variable_manager, step, self.timeout, self.retry_times
             )
-        elif step.type == "wait":
+        elif step.type == 'wait':
             from apirun.executor.wait_executor import WaitExecutor
 
             executor = WaitExecutor(
                 variable_manager, step, self.timeout, self.retry_times
             )
-        elif step.type == "loop":
+        elif step.type == 'loop':
             from apirun.executor.loop_executor import LoopExecutor
 
             executor = LoopExecutor(
@@ -326,22 +330,22 @@ class ConcurrentExecutor(StepExecutor):
             # Unknown step type
             result = StepResult(
                 name=step.name,
-                status="failure",
+                status='failure',
                 start_time=datetime.now(),
                 end_time=datetime.now(),
             )
             result.error_info = ErrorInfo(
-                type="ValueError",
+                type='ValueError',
                 category=ErrorCategory.SYSTEM,
-                message=f"Unknown step type: {step.type}",
-                suggestion="检查步骤类型配置",
+                message=f'Unknown step type: {step.type}',
+                suggestion='检查步骤类型配置',
             )
             return result
 
         # Execute the step
         return executor.execute()
 
-    def _render_step(self) -> Dict[str, Any]:
+    def _render_step(self) -> dict[str, Any]:
         """Render variables in concurrent step definition.
 
         Returns:
@@ -350,17 +354,17 @@ class ConcurrentExecutor(StepExecutor):
         context = self.variable_manager.get_all_variables()
 
         rendered = {
-            "name": self.step.name,
-            "type": self.step.type,
+            'name': self.step.name,
+            'type': self.step.type,
         }
 
         # Render max_concurrency
         if self.step.max_concurrency is not None:
-            rendered["max_concurrency"] = render_template(
+            rendered['max_concurrency'] = render_template(
                 str(self.step.max_concurrency), context
             )
 
         # concurrent_steps don't need rendering here
-        rendered["concurrent_steps"] = self.step.concurrent_steps
+        rendered['concurrent_steps'] = self.step.concurrent_steps
 
         return rendered

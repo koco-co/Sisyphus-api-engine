@@ -4,33 +4,33 @@
 遵循 Google Python Style Guide。
 """
 
-from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class HttpMethod(Enum):
     """HTTP 方法枚举。"""
 
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    PATCH = "PATCH"
-    HEAD = "HEAD"
-    OPTIONS = "OPTIONS"
+    GET = 'GET'
+    POST = 'POST'
+    PUT = 'PUT'
+    DELETE = 'DELETE'
+    PATCH = 'PATCH'
+    HEAD = 'HEAD'
+    OPTIONS = 'OPTIONS'
 
 
 class ErrorCategory(Enum):
     """错误分类枚举。"""
 
-    ASSERTION = "assertion"
-    NETWORK = "network"
-    TIMEOUT = "timeout"
-    PARSING = "parsing"
-    BUSINESS = "business"
-    SYSTEM = "system"
+    ASSERTION = 'assertion'
+    NETWORK = 'network'
+    TIMEOUT = 'timeout'
+    PARSING = 'parsing'
+    BUSINESS = 'business'
+    SYSTEM = 'system'
 
 
 @dataclass
@@ -47,10 +47,10 @@ class ProfileConfig:
     """
 
     base_url: str
-    variables: Dict[str, Any] = field(default_factory=dict)
+    variables: dict[str, Any] = field(default_factory=dict)
     timeout: int = 30
     verify_ssl: bool = True
-    overrides: Dict[str, Any] = field(default_factory=dict)
+    overrides: dict[str, Any] = field(default_factory=dict)
     priority: int = 0
 
 
@@ -109,21 +109,21 @@ class GlobalConfig:
     """
 
     name: str
-    description: str = ""
-    profiles: Dict[str, ProfileConfig] = field(default_factory=dict)
-    active_profile: Optional[str] = None
-    variables: Dict[str, Any] = field(default_factory=dict)
+    description: str = ''
+    profiles: dict[str, ProfileConfig] = field(default_factory=dict)
+    active_profile: str | None = None
+    variables: dict[str, Any] = field(default_factory=dict)
     timeout: int = 30
     retry_times: int = 0
     concurrent: bool = False
     concurrent_threads: int = 3
-    data_source: Optional[Dict[str, Any]] = None
+    data_source: dict[str, Any] | None = None
     data_iterations: bool = False
-    variable_prefix: str = ""
-    websocket: Optional[Dict[str, Any]] = None
-    output: Optional[Dict[str, Any]] = None
-    debug: Optional[Dict[str, Any]] = None
-    env_vars: Optional[Dict[str, Any]] = None
+    variable_prefix: str = ''
+    websocket: dict[str, Any] | None = None
+    output: dict[str, Any] | None = None
+    debug: dict[str, Any] | None = None
+    env_vars: dict[str, Any] | None = None
     verbose: bool = False
 
 
@@ -143,12 +143,12 @@ class ValidationRule:
     """
 
     type: str
-    path: str = ""
+    path: str = ''
     expect: Any = None
-    description: str = ""
-    logical_operator: Optional[str] = None
-    sub_validations: List["ValidationRule"] = field(default_factory=list)
-    error_message: str = ""
+    description: str = ''
+    logical_operator: str | None = None
+    sub_validations: list['ValidationRule'] = field(default_factory=list)
+    error_message: str = ''
 
 
 @dataclass
@@ -173,9 +173,9 @@ class Extractor:
     index: int = 0
     extract_all: bool = False
     default: Any = None
-    description: str = ""
-    condition: Optional[str] = None
-    on_failure: Optional[Dict[str, Any]] = None
+    description: str = ''
+    condition: str | None = None
+    on_failure: dict[str, Any] | None = None
 
 
 @dataclass
@@ -245,50 +245,50 @@ class TestStep:
 
     name: str
     type: str
-    method: Optional[str] = None
-    url: Optional[str] = None
-    params: Optional[Dict[str, Any]] = None
-    headers: Optional[Dict[str, str]] = None
-    body: Optional[Any] = None
-    validations: List[ValidationRule] = field(default_factory=list)
-    extractors: List[Extractor] = field(default_factory=list)
-    skip_if: Optional[str] = None
-    only_if: Optional[str] = None
-    depends_on: List[str] = field(default_factory=list)
-    timeout: Optional[int] = None
-    retry_times: Optional[int] = None
-    setup: Optional[Dict[str, Any]] = None
-    teardown: Optional[Dict[str, Any]] = None
-    database: Optional[Dict[str, Any]] = None
-    operation: Optional[str] = None
-    sql: Optional[str] = None
+    method: str | None = None
+    url: str | None = None
+    params: dict[str, Any] | None = None
+    headers: dict[str, str] | None = None
+    body: Any | None = None
+    validations: list[ValidationRule] = field(default_factory=list)
+    extractors: list[Extractor] = field(default_factory=list)
+    skip_if: str | None = None
+    only_if: str | None = None
+    depends_on: list[str] = field(default_factory=list)
+    timeout: int | None = None
+    retry_times: int | None = None
+    setup: dict[str, Any] | None = None
+    teardown: dict[str, Any] | None = None
+    database: dict[str, Any] | None = None
+    operation: str | None = None
+    sql: str | None = None
     # Wait step fields
-    seconds: Optional[float] = None
-    condition: Optional[str] = None
-    interval: Optional[float] = None
-    max_wait: Optional[float] = None
-    wait_condition: Optional[Dict[str, Any]] = None
+    seconds: float | None = None
+    condition: str | None = None
+    interval: float | None = None
+    max_wait: float | None = None
+    wait_condition: dict[str, Any] | None = None
     # Loop step fields
-    loop_type: Optional[str] = None
-    loop_count: Optional[int] = None
-    loop_condition: Optional[str] = None
-    loop_variable: Optional[str] = None
-    loop_steps: Optional[List[Dict[str, Any]]] = None
+    loop_type: str | None = None
+    loop_count: int | None = None
+    loop_condition: str | None = None
+    loop_variable: str | None = None
+    loop_steps: list[dict[str, Any]] | None = None
     # Retry policy fields
-    retry_policy: Optional[Dict[str, Any]] = None
+    retry_policy: dict[str, Any] | None = None
     # Concurrent step fields
-    max_concurrency: Optional[int] = None
-    concurrent_steps: Optional[List[Dict[str, Any]]] = None
+    max_concurrency: int | None = None
+    concurrent_steps: list[dict[str, Any]] | None = None
     # Script step fields
-    script: Optional[str] = None
-    script_file: Optional[str] = None  # Path to external Python script file
-    script_type: Optional[str] = None
-    allow_imports: Optional[bool] = None
-    args: Optional[Dict[str, Any]] = None  # Arguments to pass to script
-    capture_output: Optional[bool] = None  # Whether to capture script output
+    script: str | None = None
+    script_file: str | None = None  # Path to external Python script file
+    script_type: str | None = None
+    allow_imports: bool | None = None
+    args: dict[str, Any] | None = None  # Arguments to pass to script
+    capture_output: bool | None = None  # Whether to capture script output
     # Poll step fields (for async operation polling)
-    poll_config: Optional[Dict[str, Any]] = None
-    on_timeout: Optional[Dict[str, Any]] = None
+    poll_config: dict[str, Any] | None = None
+    on_timeout: dict[str, Any] | None = None
 
 
 @dataclass
@@ -307,12 +307,12 @@ class TestCase:
     """
 
     name: str
-    description: str = ""
-    config: Optional[GlobalConfig] = None
-    steps: List[TestStep] = field(default_factory=list)
-    setup: Optional[Dict[str, Any]] = None
-    teardown: Optional[Dict[str, Any]] = None
-    tags: List[str] = field(default_factory=list)
+    description: str = ''
+    config: GlobalConfig | None = None
+    steps: list[TestStep] = field(default_factory=list)
+    setup: dict[str, Any] | None = None
+    teardown: dict[str, Any] | None = None
+    tags: list[str] = field(default_factory=list)
     enabled: bool = True
 
 
@@ -335,12 +335,12 @@ class ErrorInfo:
     type: str
     category: ErrorCategory
     message: str
-    suggestion: str = ""
-    stack_trace: str = ""
-    context: Dict[str, Any] = field(default_factory=dict)
-    timestamp: Optional[datetime] = None
-    severity: str = "medium"
-    error_code: str = ""
+    suggestion: str = ''
+    stack_trace: str = ''
+    context: dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime | None = None
+    severity: str = 'medium'
+    error_code: str = ''
 
 
 @dataclass
@@ -391,18 +391,18 @@ class StepResult:
 
     name: str
     status: str
-    response: Optional[Dict[str, Any]] = None
-    extracted_vars: Dict[str, Any] = field(default_factory=dict)
-    validation_results: List[Dict[str, Any]] = field(default_factory=list)
-    performance: Optional[PerformanceMetrics] = None
-    error_info: Optional[ErrorInfo] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    response: dict[str, Any] | None = None
+    extracted_vars: dict[str, Any] = field(default_factory=dict)
+    validation_results: list[dict[str, Any]] = field(default_factory=list)
+    performance: PerformanceMetrics | None = None
+    error_info: ErrorInfo | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     retry_count: int = 0
-    variables_snapshot: Dict[str, Any] = field(default_factory=dict)
-    retry_history: List[Dict[str, Any]] = field(default_factory=list)
-    variables_delta: Dict[str, Any] = field(default_factory=dict)
-    variables_after: Dict[str, Any] = field(default_factory=dict)
+    variables_snapshot: dict[str, Any] = field(default_factory=dict)
+    retry_history: list[dict[str, Any]] = field(default_factory=list)
+    variables_delta: dict[str, Any] = field(default_factory=dict)
+    variables_after: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -433,6 +433,6 @@ class TestCaseResult:
     passed_steps: int
     failed_steps: int
     skipped_steps: int
-    step_results: List[StepResult] = field(default_factory=list)
-    final_variables: Dict[str, Any] = field(default_factory=dict)
-    error_info: Optional[ErrorInfo] = None
+    step_results: list[StepResult] = field(default_factory=list)
+    final_variables: dict[str, Any] = field(default_factory=dict)
+    error_info: ErrorInfo | None = None

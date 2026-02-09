@@ -8,23 +8,20 @@ Tests the YAML parsing functionality including:
 - Error handling
 """
 
-import os
+import pathlib
 import tempfile
+
 import pytest
+
+from apirun.core.models import (
+    GlobalConfig,
+    TestCase,
+)
 from apirun.parser.v2_yaml_parser import (
     V2YamlParser,
     YamlParseError,
     parse_yaml_file,
     parse_yaml_string,
-)
-from apirun.core.models import (
-    TestCase,
-    TestStep,
-    GlobalConfig,
-    ProfileConfig,
-    ValidationRule,
-    Extractor,
-    HttpMethod,
 )
 
 
@@ -57,12 +54,12 @@ steps:
     def temp_yaml_file(self, simple_yaml_content):
         """Create temporary YAML file."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(simple_yaml_content)
             temp_path = f.name
         yield temp_path
-        os.unlink(temp_path)
+        pathlib.Path(temp_path).unlink()
 
     def test_parse_simple_test_case(self, temp_yaml_file):
         """Test parsing simple test case."""
@@ -70,10 +67,10 @@ steps:
         test_case = parser.parse(temp_yaml_file)
 
         assert isinstance(test_case, TestCase)
-        assert test_case.name == "Test Case"
-        assert test_case.description == "Test description"
+        assert test_case.name == 'Test Case'
+        assert test_case.description == 'Test description'
         assert len(test_case.steps) == 1
-        assert test_case.steps[0].name == "Step 1"
+        assert test_case.steps[0].name == 'Step 1'
 
     def test_parse_string(self, simple_yaml_content):
         """Test parsing YAML string."""
@@ -81,29 +78,29 @@ steps:
         test_case = parser.parse_string(simple_yaml_content)
 
         assert isinstance(test_case, TestCase)
-        assert test_case.name == "Test Case"
+        assert test_case.name == 'Test Case'
         assert len(test_case.steps) == 1
 
     def test_parse_file_not_found(self):
         """Test parsing non-existent file."""
         parser = V2YamlParser()
         with pytest.raises(FileNotFoundError):
-            parser.parse("/nonexistent/file.yaml")
+            parser.parse('/nonexistent/file.yaml')
 
     def test_parse_empty_file(self):
         """Test parsing empty YAML file."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
-            f.write("")
+            f.write('')
             temp_path = f.name
 
         try:
             parser = V2YamlParser()
-            with pytest.raises(YamlParseError, match="YAML 文件内容为空"):
+            with pytest.raises(YamlParseError, match='YAML 文件内容为空'):
                 parser.parse(temp_path)
         finally:
-            os.unlink(temp_path)
+            pathlib.Path(temp_path).unlink()
 
     def test_parse_invalid_yaml(self):
         """Test parsing invalid YAML syntax."""
@@ -120,8 +117,8 @@ steps: [
     def test_parse_empty_string(self):
         """Test parsing empty string."""
         parser = V2YamlParser()
-        with pytest.raises(YamlParseError, match="YAML 内容为空"):
-            parser.parse_string("")
+        with pytest.raises(YamlParseError, match='YAML 内容为空'):
+            parser.parse_string('')
 
 
 class TestParseConfig:
@@ -152,12 +149,12 @@ steps: []
 
         assert test_case.config is not None
         assert isinstance(test_case.config, GlobalConfig)
-        assert test_case.config.active_profile == "dev"
-        assert "dev" in test_case.config.profiles
-        assert "prod" in test_case.config.profiles
-        assert test_case.config.profiles["dev"].base_url == "http://dev.example.com"
-        assert test_case.config.profiles["dev"].variables["api_key"] == "dev_key"
-        assert test_case.config.variables["global_var"] == "value"
+        assert test_case.config.active_profile == 'dev'
+        assert 'dev' in test_case.config.profiles
+        assert 'prod' in test_case.config.profiles
+        assert test_case.config.profiles['dev'].base_url == 'http://dev.example.com'
+        assert test_case.config.profiles['dev'].variables['api_key'] == 'dev_key'
+        assert test_case.config.variables['global_var'] == 'value'
         assert test_case.config.timeout == 30
         assert test_case.config.retry_times == 3
 
@@ -176,7 +173,7 @@ steps: []
 
         assert test_case.config is not None
         assert test_case.config.profiles == {}
-        assert test_case.config.variables["var1"] == "value1"
+        assert test_case.config.variables['var1'] == 'value1'
         assert test_case.config.timeout == 20
 
     def test_parse_config_none(self):
@@ -221,9 +218,9 @@ steps: []
         test_case = parser.parse_string(yaml_content)
 
         assert test_case.config.data_source is not None
-        assert test_case.config.data_source["type"] == "csv"
+        assert test_case.config.data_source['type'] == 'csv'
         assert test_case.config.data_iterations is True
-        assert test_case.config.variable_prefix == "data_"
+        assert test_case.config.variable_prefix == 'data_'
 
 
 class TestParseSteps:
@@ -250,13 +247,13 @@ steps:
 
         assert len(test_case.steps) == 1
         step = test_case.steps[0]
-        assert step.name == "Get User"
-        assert step.type == "request"
-        assert step.method == "GET"  # Parser returns string, not enum
-        assert step.url == "/api/users"
-        assert step.params == {"id": 123}
-        assert step.headers == {"Authorization": "Bearer token"}
-        assert step.body == {"name": "test"}
+        assert step.name == 'Get User'
+        assert step.type == 'request'
+        assert step.method == 'GET'  # Parser returns string, not enum
+        assert step.url == '/api/users'
+        assert step.params == {'id': 123}
+        assert step.headers == {'Authorization': 'Bearer token'}
+        assert step.body == {'name': 'test'}
 
     def test_parse_database_step(self):
         """Test parsing database step."""
@@ -273,10 +270,10 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "database"
-        assert step.database == "test_db"
-        assert step.operation == "query"
-        assert step.sql == "SELECT * FROM users WHERE id = 1"
+        assert step.type == 'database'
+        assert step.database == 'test_db'
+        assert step.operation == 'query'
+        assert step.sql == 'SELECT * FROM users WHERE id = 1'
 
     def test_parse_wait_step(self):
         """Test parsing wait step."""
@@ -291,7 +288,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "wait"
+        assert step.type == 'wait'
         assert step.seconds == 5
 
     def test_parse_wait_step_with_condition(self):
@@ -309,7 +306,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "wait"
+        assert step.type == 'wait'
         assert step.condition == "${status} == 'ready'"
         assert step.interval == 2
         assert step.max_wait == 30
@@ -334,10 +331,10 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "loop"
-        assert step.loop_type == "for"
+        assert step.type == 'loop'
+        assert step.loop_type == 'for'
         assert step.loop_count == 5
-        assert step.loop_variable == "i"
+        assert step.loop_variable == 'i'
         assert step.loop_steps is not None
         assert len(step.loop_steps) == 1
 
@@ -360,8 +357,8 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.loop_type == "while"
-        assert step.loop_condition == "${count} < 10"
+        assert step.loop_type == 'while'
+        assert step.loop_condition == '${count} < 10'
 
     def test_parse_concurrent_step(self):
         """Test parsing concurrent step."""
@@ -385,7 +382,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "concurrent"
+        assert step.type == 'concurrent'
         assert step.max_concurrency == 10
         assert step.concurrent_steps is not None
         assert len(step.concurrent_steps) == 2
@@ -407,9 +404,9 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "script"
-        assert "result = sum([1, 2, 3])" in step.script
-        assert step.script_type == "python"
+        assert step.type == 'script'
+        assert 'result = sum([1, 2, 3])' in step.script
+        assert step.script_type == 'python'
         assert step.allow_imports is True
 
     def test_parse_step_default_type(self):
@@ -425,7 +422,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.type == "request"
+        assert step.type == 'request'
 
 
 class TestParseValidations:
@@ -456,15 +453,15 @@ steps:
         assert len(step.validations) == 2
 
         val1 = step.validations[0]
-        assert val1.type == "eq"
-        assert val1.path == "$.status"
+        assert val1.type == 'eq'
+        assert val1.path == '$.status'
         assert val1.expect == 200
-        assert val1.description == "Check status"
+        assert val1.description == 'Check status'
 
         val2 = step.validations[1]
-        assert val2.type == "contains"
-        assert val2.path == "$.data.name"
-        assert val2.expect == "test"
+        assert val2.type == 'contains'
+        assert val2.path == '$.data.name'
+        assert val2.expect == 'test'
 
     def test_parse_validation_default_values(self):
         """Test validation default values."""
@@ -485,9 +482,9 @@ steps:
         step = test_case.steps[0]
         assert len(step.validations) == 1
         val = step.validations[0]
-        assert val.type == "eq"  # default
-        assert val.path == "$.value"
-        assert val.description == ""  # default
+        assert val.type == 'eq'  # default
+        assert val.path == '$.value'
+        assert val.description == ''  # default
 
 
 class TestParseExtractors:
@@ -518,14 +515,14 @@ steps:
         assert len(step.extractors) == 2
 
         ext1 = step.extractors[0]
-        assert ext1.name == "token"
-        assert ext1.type == "jsonpath"
-        assert ext1.path == "$.data.token"
+        assert ext1.name == 'token'
+        assert ext1.type == 'jsonpath'
+        assert ext1.path == '$.data.token'
 
         ext2 = step.extractors[1]
-        assert ext2.name == "user_id"
-        assert ext2.type == "regex"
-        assert ext2.path == "id=(\\d+)"
+        assert ext2.name == 'user_id'
+        assert ext2.type == 'regex'
+        assert ext2.path == 'id=(\\d+)'
         assert ext2.index == 0
 
     def test_parse_extractor_defaults(self):
@@ -547,7 +544,7 @@ steps:
         step = test_case.steps[0]
         assert len(step.extractors) == 1
         ext = step.extractors[0]
-        assert ext.type == "jsonpath"  # default
+        assert ext.type == 'jsonpath'  # default
         assert ext.index == 0  # default
 
     def test_parse_regex_extractor_with_pattern_group(self):
@@ -572,8 +569,8 @@ steps:
         step = test_case.steps[0]
         assert len(step.extractors) == 1
         ext = step.extractors[0]
-        assert ext.name == "user_id"
-        assert ext.type == "regex"
+        assert ext.name == 'user_id'
+        assert ext.type == 'regex'
         assert ext.path == '"userId":\\s*(\\d+)'
         assert ext.index == 1
 
@@ -598,8 +595,8 @@ steps:
         step = test_case.steps[0]
         assert len(step.extractors) == 1
         ext = step.extractors[0]
-        assert ext.name == "user_id"
-        assert ext.type == "regex"
+        assert ext.name == 'user_id'
+        assert ext.type == 'regex'
         assert ext.path == '"userId":\\s*(\\d+)'
         assert ext.index == 1
 
@@ -662,20 +659,20 @@ steps:
 
         # Verify each extractor
         extractors_dict = {ext.name: ext for ext in step.extractors}
-        assert "order_id" in extractors_dict
-        assert "amount" in extractors_dict
-        assert "user_id" in extractors_dict
-        assert "auth_token" in extractors_dict
+        assert 'order_id' in extractors_dict
+        assert 'amount' in extractors_dict
+        assert 'user_id' in extractors_dict
+        assert 'auth_token' in extractors_dict
 
         # Verify types and paths
-        assert extractors_dict["order_id"].type == "jsonpath"
-        assert extractors_dict["order_id"].path == "$.data.orderId"
-        assert extractors_dict["amount"].type == "regex"
-        assert extractors_dict["amount"].path == '"amount":\\s*([\\d.]+)'
-        assert extractors_dict["amount"].index == 1
-        assert extractors_dict["user_id"].type == "jsonpath"
-        assert extractors_dict["user_id"].path == "$.data.userId"
-        assert extractors_dict["auth_token"].type == "header"
+        assert extractors_dict['order_id'].type == 'jsonpath'
+        assert extractors_dict['order_id'].path == '$.data.orderId'
+        assert extractors_dict['amount'].type == 'regex'
+        assert extractors_dict['amount'].path == '"amount":\\s*([\\d.]+)'
+        assert extractors_dict['amount'].index == 1
+        assert extractors_dict['user_id'].type == 'jsonpath'
+        assert extractors_dict['user_id'].path == '$.data.userId'
+        assert extractors_dict['auth_token'].type == 'header'
 
 
 class TestParseStepControl:
@@ -696,7 +693,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.skip_if == "${skip_this} == true"
+        assert step.skip_if == '${skip_this} == true'
 
     def test_parse_only_if(self):
         """Test parsing only_if condition."""
@@ -713,7 +710,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.only_if == "${run_this} == true"
+        assert step.only_if == '${run_this} == true'
 
     def test_parse_depends_on(self):
         """Test parsing depends_on."""
@@ -735,7 +732,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[1]
-        assert step.depends_on == ["Step 1"]
+        assert step.depends_on == ['Step 1']
 
     def test_parse_timeout_and_retry(self):
         """Test parsing timeout and retry."""
@@ -776,8 +773,8 @@ steps:
 
         step = test_case.steps[0]
         assert step.retry_policy is not None
-        assert step.retry_policy["max_attempts"] == 3
-        assert step.retry_policy["strategy"] == "exponential"
+        assert step.retry_policy['max_attempts'] == 3
+        assert step.retry_policy['strategy'] == 'exponential'
 
 
 class TestParseSetupTeardown:
@@ -857,7 +854,7 @@ steps: []
         parser = V2YamlParser()
         test_case = parser.parse_string(yaml_content)
 
-        assert test_case.tags == ["smoke", "api", "critical"]
+        assert test_case.tags == ['smoke', 'api', 'critical']
 
     def test_parse_enabled_true(self):
         """Test parsing enabled=true."""
@@ -910,12 +907,12 @@ steps:
     url: "/api/test"
 """
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(content)
             temp_path = f.name
         yield temp_path
-        os.unlink(temp_path)
+        pathlib.Path(temp_path).unlink()
 
     def test_validate_valid_file(self, valid_yaml_file):
         """Test validating valid YAML file."""
@@ -934,7 +931,7 @@ steps:
 """
         # Create temporary file
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(yaml_content)
             temp_path = f.name
@@ -942,9 +939,9 @@ steps:
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("缺少必填字段: name" in e for e in errors)
+            assert any('缺少必填字段: name' in e for e in errors)
         finally:
-            os.unlink(temp_path)
+            pathlib.Path(temp_path).unlink()
 
     def test_validate_missing_steps(self):
         """Test validating YAML with missing steps."""
@@ -953,7 +950,7 @@ name: "Test"
 """
         # Create temporary file
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(yaml_content)
             temp_path = f.name
@@ -961,9 +958,9 @@ name: "Test"
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("缺少必填字段: steps" in e for e in errors)
+            assert any('缺少必填字段: steps' in e for e in errors)
         finally:
-            os.unlink(temp_path)
+            pathlib.Path(temp_path).unlink()
 
     def test_validate_empty_steps(self):
         """Test validating YAML with empty steps."""
@@ -973,7 +970,7 @@ steps: []
 """
         # Create temporary file
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(yaml_content)
             temp_path = f.name
@@ -981,9 +978,9 @@ steps: []
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("不能为空" in e for e in errors)
+            assert any('不能为空' in e for e in errors)
         finally:
-            os.unlink(temp_path)
+            pathlib.Path(temp_path).unlink()
 
     def test_validate_invalid_steps_type(self):
         """Test validating YAML with invalid steps type."""
@@ -993,7 +990,7 @@ steps: "invalid"
 """
         # Create temporary file
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(yaml_content)
             temp_path = f.name
@@ -1001,15 +998,15 @@ steps: "invalid"
         try:
             parser = V2YamlParser()
             errors = parser.validate_yaml(temp_path)
-            assert any("必须是列表" in e for e in errors)
+            assert any('必须是列表' in e for e in errors)
         finally:
-            os.unlink(temp_path)
+            pathlib.Path(temp_path).unlink()
 
     def test_validate_file_not_found(self):
         """Test validating non-existent file."""
         parser = V2YamlParser()
-        errors = parser.validate_yaml("/nonexistent/file.yaml")
-        assert any("文件不存在" in e for e in errors)
+        errors = parser.validate_yaml('/nonexistent/file.yaml')
+        assert any('文件不存在' in e for e in errors)
 
 
 class TestConvenienceFunctions:
@@ -1027,18 +1024,18 @@ steps:
     url: "/api/test"
 """
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+            mode='w', suffix='.yaml', delete=False, encoding='utf-8'
         ) as f:
             f.write(content)
             temp_path = f.name
         yield temp_path
-        os.unlink(temp_path)
+        pathlib.Path(temp_path).unlink()
 
     def test_parse_yaml_file(self, temp_yaml_file):
         """Test parse_yaml_file convenience function."""
         test_case = parse_yaml_file(temp_yaml_file)
         assert isinstance(test_case, TestCase)
-        assert test_case.name == "Test Case"
+        assert test_case.name == 'Test Case'
 
     def test_parse_yaml_string(self):
         """Test parse_yaml_string convenience function."""
@@ -1052,7 +1049,7 @@ steps:
 """
         test_case = parse_yaml_string(yaml_content)
         assert isinstance(test_case, TestCase)
-        assert test_case.name == "Test Case"
+        assert test_case.name == 'Test Case'
 
 
 class TestStepNameSyntax:
@@ -1072,7 +1069,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.name == "Step Name"
+        assert step.name == 'Step Name'
 
     def test_parse_step_with_name_field(self):
         """Test parsing step using name field."""
@@ -1088,7 +1085,7 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.name == "Step Name"
+        assert step.name == 'Step Name'
 
 
 class TestEdgeCases:
@@ -1105,8 +1102,8 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         step = test_case.steps[0]
-        assert step.name == "Minimal Step"
-        assert step.type == "request"  # default
+        assert step.name == 'Minimal Step'
+        assert step.type == 'request'  # default
 
     def test_parse_with_null_values(self):
         """Test parsing with null values."""
@@ -1143,6 +1140,6 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         assert len(test_case.steps) == 3
-        assert test_case.steps[0].name == "Step 1"
-        assert test_case.steps[1].name == "Step 2"
-        assert test_case.steps[2].name == "Step 3"
+        assert test_case.steps[0].name == 'Step 1'
+        assert test_case.steps[1].name == 'Step 2'
+        assert test_case.steps[2].name == 'Step 3'

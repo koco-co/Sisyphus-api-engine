@@ -4,8 +4,9 @@ This module provides template rendering functions for the test engine.
 Following Google Python Style Guide.
 """
 
-from typing import Any, Dict, List, Union
-from jinja2 import Environment, BaseLoader, TemplateError, StrictUndefined
+from typing import Any
+
+from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError
 
 
 class TemplateRenderer:
@@ -31,12 +32,12 @@ class TemplateRenderer:
             undefined=StrictUndefined if strict else None,
             trim_blocks=True,
             lstrip_blocks=True,
-            variable_start_string="${",
-            variable_end_string="}",
+            variable_start_string='${',
+            variable_end_string='}',
         )
         self._register_custom_filters()
 
-    def render(self, template_str: str, context: Dict[str, Any]) -> str:
+    def render(self, template_str: str, context: dict[str, Any]) -> str:
         """Render a template string with provided context.
 
         Args:
@@ -53,17 +54,17 @@ class TemplateRenderer:
             return template_str
 
         # Quick return if no template syntax
-        if "${" not in template_str and "{%" not in template_str:
+        if '${' not in template_str and '{%' not in template_str:
             return template_str
 
         try:
             template = self.env.from_string(template_str)
             return template.render(**context)
         except TemplateError as e:
-            raise TemplateError(f"Template rendering failed: {e}")
+            raise TemplateError(f'Template rendering failed: {e}')
 
     def render_safe(
-        self, template_str: str, context: Dict[str, Any], default: str = ""
+        self, template_str: str, context: dict[str, Any], default: str = ''
     ) -> str:
         """Render template with fallback on error.
 
@@ -102,10 +103,10 @@ class TemplateRenderer:
             if isinstance(value, bool):
                 return value
             if isinstance(value, str):
-                return value.lower() in ("true", "1", "yes", "on")
+                return value.lower() in ('true', '1', 'yes', 'on')
             return bool(value)
 
-        def default(value: Any, default_value: Any = "") -> Any:
+        def default(value: Any, default_value: Any = '') -> Any:
             """Return default value if input is falsy."""
             if not value:
                 return default_value
@@ -119,15 +120,15 @@ class TemplateRenderer:
                 return 0
 
         # Register filters
-        self.env.filters["int"] = to_int
-        self.env.filters["float"] = to_float
-        self.env.filters["bool"] = to_bool
-        self.env.filters["default"] = default
-        self.env.filters["length"] = length
+        self.env.filters['int'] = to_int
+        self.env.filters['float'] = to_float
+        self.env.filters['bool'] = to_bool
+        self.env.filters['default'] = default
+        self.env.filters['length'] = length
 
     def render_dict(
-        self, data: Dict[str, Any], context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, data: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Recursively render all string values in a dictionary.
 
         Args:
@@ -152,7 +153,7 @@ class TemplateRenderer:
                 rendered[key] = value
         return rendered
 
-    def _render_list(self, data: List[Any], context: Dict[str, Any]) -> List[Any]:
+    def _render_list(self, data: list[Any], context: dict[str, Any]) -> list[Any]:
         """Recursively render all string values in a list.
 
         Args:
@@ -179,7 +180,7 @@ class TemplateRenderer:
 _global_renderer = TemplateRenderer()
 
 
-def render_template(template_str: str, context: Dict[str, Any]) -> str:
+def render_template(template_str: str, context: dict[str, Any]) -> str:
     """Render template using global renderer.
 
     Args:
@@ -193,7 +194,7 @@ def render_template(template_str: str, context: Dict[str, Any]) -> str:
 
 
 def render_template_safe(
-    template_str: str, context: Dict[str, Any], default: str = ""
+    template_str: str, context: dict[str, Any], default: str = ''
 ) -> str:
     """Render template safely with fallback.
 

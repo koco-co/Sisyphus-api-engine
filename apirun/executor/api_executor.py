@@ -5,15 +5,15 @@ performance metrics collection.
 Following Google Python Style Guide.
 """
 
-import time
-from typing import Any, Dict, Optional
+from typing import Any
+
 import requests
 from requests.exceptions import RequestException
 
+from apirun.core.models import PerformanceMetrics, TestStep
 from apirun.executor.step_executor import StepExecutor
-from apirun.core.models import TestStep, PerformanceMetrics
-from apirun.validation.engine import ValidationEngine
 from apirun.utils.performance import PerformanceCollector, Timings
+from apirun.validation.engine import ValidationEngine
 
 
 class APIExecutor(StepExecutor):
@@ -59,10 +59,10 @@ class APIExecutor(StepExecutor):
 
         # Mount performance tracking adapter
         adapter = self.performance_collector.get_adapter()
-        self.session.mount("http://", adapter)
-        self.session.mount("https://", adapter)
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Any:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> Any:
         """Execute HTTP request.
 
         Args:
@@ -74,41 +74,44 @@ class APIExecutor(StepExecutor):
         Raises:
             RequestException: If request fails
         """
-        method = rendered_step.get("method", "GET")
-        url = rendered_step.get("url", "")
-        headers = rendered_step.get("headers", {})
-        params = rendered_step.get("params")
-        body = rendered_step.get("body")
-        validations = rendered_step.get("validations", [])
+        method = rendered_step.get('method', 'GET')
+        url = rendered_step.get('url', '')
+        headers = rendered_step.get('headers', {})
+        params = rendered_step.get('params')
+        body = rendered_step.get('body')
+        validations = rendered_step.get('validations', [])
 
         # Prepare request arguments
-        request_kwargs = {"method": method, "url": url, "timeout": self.timeout}
+        request_kwargs = {'method': method, 'url': url, 'timeout': self.timeout}
 
         if headers:
-            request_kwargs["headers"] = headers
+            request_kwargs['headers'] = headers
 
         if params:
-            request_kwargs["params"] = params
+            request_kwargs['params'] = params
 
         # Handle request body
         if body is not None:
             if isinstance(body, dict):
-                if "Content-Type" in headers and "multipart/form-data" in headers["Content-Type"]:
-                    request_kwargs["files"] = body
-                elif "application/json" in headers.get("Content-Type", ""):
-                    request_kwargs["json"] = body
+                if (
+                    'Content-Type' in headers
+                    and 'multipart/form-data' in headers['Content-Type']
+                ):
+                    request_kwargs['files'] = body
+                elif 'application/json' in headers.get('Content-Type', ''):
+                    request_kwargs['json'] = body
                 else:
-                    request_kwargs["data"] = body
+                    request_kwargs['data'] = body
             else:
-                request_kwargs["data"] = body
+                request_kwargs['data'] = body
 
         try:
             # Execute request with detailed performance tracking
             response = self.session.request(**request_kwargs)
 
             # Get detailed timings from performance collector
-            request_id = getattr(response, "request_id", None)
-            timings: Optional[Timings] = None
+            request_id = getattr(response, 'request_id', None)
+            timings: Timings | None = None
 
             if request_id is not None:
                 timings = self.performance_collector.get_timings(request_id)
@@ -127,7 +130,11 @@ class APIExecutor(StepExecutor):
                 )
             else:
                 # Fallback to basic timing if detailed collection failed
-                total_time = response.elapsed.total_seconds() * 1000 if hasattr(response, "elapsed") else 0
+                total_time = (
+                    response.elapsed.total_seconds() * 1000
+                    if hasattr(response, 'elapsed')
+                    else 0
+                )
 
                 performance = PerformanceMetrics(
                     total_time=total_time,
@@ -135,7 +142,7 @@ class APIExecutor(StepExecutor):
                 )
 
         except RequestException as e:
-            raise RequestException(f"HTTP request failed: {e}")
+            raise RequestException(f'HTTP request failed: {e}')
 
         # Parse response
         response_data = self._parse_response(response)
@@ -148,7 +155,7 @@ class APIExecutor(StepExecutor):
             body_validations = []
 
             for val in validations:
-                if val.get("type") == "status_code":
+                if val.get('type') == 'status_code':
                     status_code_validations.append(val)
                 else:
                     body_validations.append(val)
@@ -162,7 +169,7 @@ class APIExecutor(StepExecutor):
 
             # Run other validations against response body
             if body_validations:
-                validation_data = response_data.get("body", response_data)
+                validation_data = response_data.get('body', response_data)
                 body_results = self.validation_engine.validate(
                     body_validations, validation_data
                 )
@@ -170,10 +177,13 @@ class APIExecutor(StepExecutor):
 
         # Check if any validation failed
         for val_result in validation_results:
-            if not val_result["passed"]:
+            if not val_result['passed']:
                 # Create exception with response data attached for debugging
                 # Use custom error message if provided, otherwise use description
-                error_msg = val_result.get('error') or f"Validation failed: {val_result['description']}"
+                error_msg = (
+                    val_result.get('error')
+                    or f'Validation failed: {val_result["description"]}'
+                )
                 error = AssertionError(error_msg)
                 # Attach response data to exception for Allure reporting
                 error.response = response_data
@@ -181,16 +191,16 @@ class APIExecutor(StepExecutor):
                 raise error
 
         return type(
-            "Result",
+            'Result',
             (),
             {
-                "response": response_data,
-                "performance": performance,
-                "validation_results": validation_results,
+                'response': response_data,
+                'performance': performance,
+                'validation_results': validation_results,
             },
         )()
 
-    def _parse_response(self, response: requests.Response) -> Dict[str, Any]:
+    def _parse_response(self, response: requests.Response) -> dict[str, Any]:
         """Parse HTTP response into structured data.
 
         Args:
@@ -201,10 +211,10 @@ class APIExecutor(StepExecutor):
         """
         # Build response data with request information
         result = {
-            "status_code": response.status_code,
-            "headers": dict(response.headers),
-            "cookies": dict(response.cookies),
-            "url": response.url,
+            'status_code': response.status_code,
+            'headers': dict(response.headers),
+            'cookies': dict(response.cookies),
+            'url': response.url,
         }
 
         # Add request information for debugging
@@ -212,14 +222,18 @@ class APIExecutor(StepExecutor):
 
         # Try to get request information (handle Mock objects in tests)
         try:
-            request_headers = dict(request_obj.headers) if hasattr(request_obj.headers, '__iter__') else {}
+            request_headers = (
+                dict(request_obj.headers)
+                if hasattr(request_obj.headers, '__iter__')
+                else {}
+            )
         except (TypeError, AttributeError):
             request_headers = {}
 
-        result["request"] = {
-            "method": getattr(request_obj, 'method', 'UNKNOWN'),
-            "url": getattr(request_obj, 'url', ''),
-            "headers": request_headers,
+        result['request'] = {
+            'method': getattr(request_obj, 'method', 'UNKNOWN'),
+            'url': getattr(request_obj, 'url', ''),
+            'headers': request_headers,
         }
 
         # Add request body if present
@@ -227,38 +241,39 @@ class APIExecutor(StepExecutor):
             try:
                 # Try to parse as JSON
                 import json
-                result["request"]["body"] = json.loads(request_obj.body)
+
+                result['request']['body'] = json.loads(request_obj.body)
             except (json.JSONDecodeError, TypeError, ValueError):
                 # If not JSON, store as string
                 body_str = request_obj.body
                 if isinstance(body_str, bytes):
                     body_str = body_str.decode('utf-8', errors='replace')
-                result["request"]["body"] = body_str
+                result['request']['body'] = body_str
 
         # Add request params if available
         if hasattr(request_obj, 'params') and request_obj.params:
             try:
-                result["request"]["params"] = dict(request_obj.params)
+                result['request']['params'] = dict(request_obj.params)
             except (TypeError, AttributeError):
-                result["request"]["params"] = str(request_obj.params)
+                result['request']['params'] = str(request_obj.params)
 
         # Try to parse response body
-        content_type = response.headers.get("Content-Type", "")
+        content_type = response.headers.get('Content-Type', '')
 
-        if "application/json" in content_type:
+        if 'application/json' in content_type:
             try:
-                result["body"] = response.json()
+                result['body'] = response.json()
             except ValueError:
-                result["body"] = response.text
+                result['body'] = response.text
         else:
-            result["body"] = response.text
+            result['body'] = response.text
 
         # Add response time
-        if hasattr(response, "elapsed"):
-            result["response_time"] = response.elapsed.total_seconds() * 1000
+        if hasattr(response, 'elapsed'):
+            result['response_time'] = response.elapsed.total_seconds() * 1000
 
         # Add response size
-        if hasattr(response, "content"):
-            result["size"] = len(response.content)
+        if hasattr(response, 'content'):
+            result['size'] = len(response.content)
 
         return result

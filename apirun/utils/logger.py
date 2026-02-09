@@ -10,13 +10,13 @@ This module provides comprehensive logging capabilities:
 Following Google Python Style Guide.
 """
 
-import logging
-import sys
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Optional
-from dataclasses import dataclass, field
 import json
+import logging
+from pathlib import Path
+import sys
+from typing import Any
 
 
 @dataclass
@@ -33,13 +33,13 @@ class LogConfig:
         format_template: Custom log format template
     """
 
-    level: str = "INFO"
-    log_file: Optional[str] = None
+    level: str = 'INFO'
+    log_file: str | None = None
     console_output: bool = True
     include_timestamps: bool = True
     include_variable_changes: bool = True
     include_performance: bool = True
-    format_template: Optional[str] = None
+    format_template: str | None = None
 
 
 class SisyphusLogger:
@@ -60,15 +60,15 @@ class SisyphusLogger:
 
     # Color codes for terminal output
     COLORS = {
-        'DEBUG': '\033[36m',     # Cyan
-        'INFO': '\033[32m',      # Green
-        'WARNING': '\033[33m',   # Yellow
-        'ERROR': '\033[31m',     # Red
+        'DEBUG': '\033[36m',  # Cyan
+        'INFO': '\033[32m',  # Green
+        'WARNING': '\033[33m',  # Yellow
+        'ERROR': '\033[31m',  # Red
         'CRITICAL': '\033[35m',  # Magenta
-        'RESET': '\033[0m',      # Reset
+        'RESET': '\033[0m',  # Reset
     }
 
-    def __init__(self, name: str = "sisyphus", config: Optional[LogConfig] = None):
+    def __init__(self, name: str = 'sisyphus', config: LogConfig | None = None):
         """Initialize SisyphusLogger.
 
         Args:
@@ -83,7 +83,7 @@ class SisyphusLogger:
         self.logger.handlers.clear()
 
         # Variable change history
-        self.variable_history: Dict[str, list] = {}
+        self.variable_history: dict[str, list] = {}
 
         # Setup handlers
         if self.config.console_output:
@@ -116,13 +116,13 @@ class SisyphusLogger:
             def format(self, record):
                 levelname = record.levelname
                 if levelname in self.colors:
-                    record.levelname = f"{self.colors[levelname]}{levelname}{self.colors['RESET']}"
+                    record.levelname = (
+                        f'{self.colors[levelname]}{levelname}{self.colors["RESET"]}'
+                    )
                 return super().format(record)
 
         colored_formatter = ColoredFormatter(
-            formatter._fmt,
-            formatter.datefmt,
-            self.COLORS
+            formatter._fmt, formatter.datefmt, self.COLORS
         )
         handler.setFormatter(colored_formatter)
 
@@ -174,9 +174,9 @@ class SisyphusLogger:
             step_type: Step type (request, database, etc.)
             **details: Additional step details
         """
-        self.info(f"🚀 开始执行步骤: {step_name} ({step_type})")
-        if details and self.config.level == "DEBUG":
-            self.debug(f"   详情: {json.dumps(details, ensure_ascii=False, indent=2)}")
+        self.info(f'🚀 开始执行步骤: {step_name} ({step_type})')
+        if details and self.config.level == 'DEBUG':
+            self.debug(f'   详情: {json.dumps(details, ensure_ascii=False, indent=2)}')
 
     def log_step_end(self, step_name: str, status: str, duration: float, **details):
         """Log step execution end.
@@ -187,13 +187,15 @@ class SisyphusLogger:
             duration: Execution duration in seconds
             **details: Additional details
         """
-        emoji = "✅" if status == "passed" else ("❌" if status == "failed" else "⏭️")
-        self.info(f"{emoji} 步骤完成: {step_name} - 耗时: {duration:.3f}s")
+        emoji = '✅' if status == 'passed' else ('❌' if status == 'failed' else '⏭️')
+        self.info(f'{emoji} 步骤完成: {step_name} - 耗时: {duration:.3f}s')
 
-        if details and self.config.level == "DEBUG":
-            self.debug(f"   详情: {json.dumps(details, ensure_ascii=False, indent=2)}")
+        if details and self.config.level == 'DEBUG':
+            self.debug(f'   详情: {json.dumps(details, ensure_ascii=False, indent=2)}')
 
-    def log_variable_change(self, var_name: str, old_value: Any, new_value: Any, source: str = "unknown"):
+    def log_variable_change(
+        self, var_name: str, old_value: Any, new_value: Any, source: str = 'unknown'
+    ):
         """Log variable value change.
 
         Args:
@@ -210,17 +212,24 @@ class SisyphusLogger:
             self.variable_history[var_name] = []
 
         change_record = {
-            "timestamp": datetime.now().isoformat(),
-            "old_value": old_value,
-            "new_value": new_value,
-            "source": source
+            'timestamp': datetime.now().isoformat(),
+            'old_value': old_value,
+            'new_value': new_value,
+            'source': source,
         }
         self.variable_history[var_name].append(change_record)
 
         # Log the change
-        self.debug(f"📝 变量变更: {var_name} = {new_value} (来源: {source})")
+        self.debug(f'📝 变量变更: {var_name} = {new_value} (来源: {source})')
 
-    def log_validation_failure(self, validation_type: str, path: str, expected: Any, actual: Any, error_msg: str):
+    def log_validation_failure(
+        self,
+        validation_type: str,
+        path: str,
+        expected: Any,
+        actual: Any,
+        error_msg: str,
+    ):
         """Log validation failure with detailed comparison.
 
         Args:
@@ -230,11 +239,11 @@ class SisyphusLogger:
             actual: Actual value
             error_msg: Error message
         """
-        self.error(f"❌ 验证失败: {validation_type}")
-        self.error(f"   路径: {path}")
-        self.error(f"   期望值: {expected}")
-        self.error(f"   实际值: {actual}")
-        self.error(f"   错误信息: {error_msg}")
+        self.error(f'❌ 验证失败: {validation_type}')
+        self.error(f'   路径: {path}')
+        self.error(f'   期望值: {expected}')
+        self.error(f'   实际值: {actual}')
+        self.error(f'   错误信息: {error_msg}')
 
     def log_extraction_success(self, var_name: str, path: str, value: Any):
         """Log successful variable extraction.
@@ -244,7 +253,7 @@ class SisyphusLogger:
             path: Extraction path
             value: Extracted value
         """
-        self.debug(f"✨ 提取成功: {var_name} = {value} (路径: {path})")
+        self.debug(f'✨ 提取成功: {var_name} = {value} (路径: {path})')
 
     def log_extraction_failure(self, var_name: str, path: str, error: str):
         """Log extraction failure.
@@ -254,10 +263,12 @@ class SisyphusLogger:
             path: Extraction path
             error: Error message
         """
-        self.warning(f"⚠️  提取失败: {var_name} (路径: {path})")
-        self.warning(f"   错误: {error}")
+        self.warning(f'⚠️  提取失败: {var_name} (路径: {path})')
+        self.warning(f'   错误: {error}')
 
-    def log_retry_attempt(self, attempt: int, max_attempts: int, delay: float, error: str):
+    def log_retry_attempt(
+        self, attempt: int, max_attempts: int, delay: float, error: str
+    ):
         """Log retry attempt.
 
         Args:
@@ -266,10 +277,10 @@ class SisyphusLogger:
             delay: Delay before next attempt
             error: Error that triggered retry
         """
-        self.warning(f"🔄 重试 #{attempt}/{max_attempts} (延迟: {delay:.2f}s)")
-        self.warning(f"   错误: {error}")
+        self.warning(f'🔄 重试 #{attempt}/{max_attempts} (延迟: {delay:.2f}s)')
+        self.warning(f'   错误: {error}')
 
-    def log_performance_metrics(self, step_name: str, metrics: Dict[str, float]):
+    def log_performance_metrics(self, step_name: str, metrics: dict[str, float]):
         """Log performance metrics.
 
         Args:
@@ -279,13 +290,13 @@ class SisyphusLogger:
         if not self.config.include_performance:
             return
 
-        self.debug(f"⚡ 性能指标: {step_name}")
+        self.debug(f'⚡ 性能指标: {step_name}')
         for metric_name, value in metrics.items():
             # Convert milliseconds to seconds for readability
             value_sec = value / 1000.0
-            self.debug(f"   {metric_name}: {value_sec:.3f}s")
+            self.debug(f'   {metric_name}: {value_sec:.3f}s')
 
-    def get_variable_history(self, var_name: Optional[str] = None) -> Dict[str, list]:
+    def get_variable_history(self, var_name: str | None = None) -> dict[str, list]:
         """Get variable change history.
 
         Args:
@@ -304,16 +315,18 @@ class SisyphusLogger:
         Args:
             output_file: Output file path
         """
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with Path(output_file).open('w', encoding='utf-8') as f:
             json.dump(self.variable_history, f, ensure_ascii=False, indent=2)
-        self.info(f"📊 变量历史已导出到: {output_file}")
+        self.info(f'📊 变量历史已导出到: {output_file}')
 
 
 # Global logger instance
-_global_logger: Optional[SisyphusLogger] = None
+_global_logger: SisyphusLogger | None = None
 
 
-def get_logger(name: str = "sisyphus", config: Optional[LogConfig] = None) -> SisyphusLogger:
+def get_logger(
+    name: str = 'sisyphus', config: LogConfig | None = None
+) -> SisyphusLogger:
     """Get or create global logger instance.
 
     Args:
@@ -329,7 +342,9 @@ def get_logger(name: str = "sisyphus", config: Optional[LogConfig] = None) -> Si
     return _global_logger
 
 
-def setup_logger_from_args(log_level: str, log_file: Optional[str] = None) -> SisyphusLogger:
+def setup_logger_from_args(
+    log_level: str, log_file: str | None = None
+) -> SisyphusLogger:
     """Setup logger from command-line arguments.
 
     Args:
@@ -345,6 +360,6 @@ def setup_logger_from_args(log_level: str, log_file: Optional[str] = None) -> Si
         console_output=True,
         include_timestamps=True,
         include_variable_changes=True,
-        include_performance=True
+        include_performance=True,
     )
     return get_logger(config=config)

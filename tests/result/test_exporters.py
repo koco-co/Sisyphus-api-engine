@@ -3,20 +3,20 @@
 This module contains tests for the JUnit XML and HTML report exporters.
 """
 
-import unittest
-import tempfile
-import os
 from datetime import datetime
+import pathlib
+import tempfile
+import unittest
 
-from apirun.result.junit_exporter import JUnitExporter, MultiTestSuiteJUnitExporter
-from apirun.result.html_exporter import HTMLExporter
 from apirun.core.models import (
-    TestCaseResult,
-    StepResult,
-    PerformanceMetrics,
-    ErrorInfo,
     ErrorCategory,
+    ErrorInfo,
+    PerformanceMetrics,
+    StepResult,
+    TestCaseResult,
 )
+from apirun.result.html_exporter import HTMLExporter
+from apirun.result.junit_exporter import JUnitExporter, MultiTestSuiteJUnitExporter
 
 
 class TestJUnitExporter(unittest.TestCase):
@@ -30,16 +30,16 @@ class TestJUnitExporter(unittest.TestCase):
         """Test exporting a simple test result."""
         # Create a simple test result
         step1 = StepResult(
-            name="Test Step 1",
-            status="success",
+            name='Test Step 1',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
             performance=PerformanceMetrics(total_time=100.0),
         )
 
         result = TestCaseResult(
-            name="Test Case",
-            status="passed",
+            name='Test Case',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.5,
@@ -66,23 +66,23 @@ class TestJUnitExporter(unittest.TestCase):
     def test_export_with_failure(self):
         """Test exporting a test result with failures."""
         error_info = ErrorInfo(
-            type="AssertionError",
+            type='AssertionError',
             category=ErrorCategory.ASSERTION,
-            message="Expected 200 but got 404",
-            suggestion="Check the URL and parameters",
+            message='Expected 200 but got 404',
+            suggestion='Check the URL and parameters',
         )
 
         step1 = StepResult(
-            name="Failed Step",
-            status="failure",
+            name='Failed Step',
+            status='failure',
             start_time=datetime.now(),
             end_time=datetime.now(),
             error_info=error_info,
         )
 
         result = TestCaseResult(
-            name="Failed Test Case",
-            status="failed",
+            name='Failed Test Case',
+            status='failed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -105,15 +105,15 @@ class TestJUnitExporter(unittest.TestCase):
     def test_save_to_file(self):
         """Test saving JUnit XML to a file."""
         step1 = StepResult(
-            name="Step",
-            status="success",
+            name='Step',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
         )
 
         result = TestCaseResult(
-            name="Test",
-            status="passed",
+            name='Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -133,15 +133,15 @@ class TestJUnitExporter(unittest.TestCase):
             self.exporter.save_junit_xml(result, temp_path)
 
             # Verify file exists and has content
-            self.assertTrue(os.path.exists(temp_path))
-            with open(temp_path, 'r') as f:
+            self.assertTrue(pathlib.Path(temp_path).exists())
+            with pathlib.Path(temp_path).open() as f:
                 content = f.read()
                 self.assertIn('<?xml version=', content)
                 self.assertIn('<testsuites', content)
         finally:
             # Clean up
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            if pathlib.Path(temp_path).exists():
+                pathlib.Path(temp_path).unlink()
 
 
 class TestMultiTestSuiteJUnitExporter(unittest.TestCase):
@@ -153,15 +153,15 @@ class TestMultiTestSuiteJUnitExporter(unittest.TestCase):
 
         # Create two test results
         step1 = StepResult(
-            name="Step 1",
-            status="success",
+            name='Step 1',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
         )
 
         result1 = TestCaseResult(
-            name="Test Case 1",
-            status="passed",
+            name='Test Case 1',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -174,8 +174,8 @@ class TestMultiTestSuiteJUnitExporter(unittest.TestCase):
         )
 
         result2 = TestCaseResult(
-            name="Test Case 2",
-            status="passed",
+            name='Test Case 2',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.5,
@@ -210,16 +210,16 @@ class TestHTMLExporter(unittest.TestCase):
     def test_export_simple_result(self):
         """Test exporting a simple test result."""
         step1 = StepResult(
-            name="Test Step 1",
-            status="success",
+            name='Test Step 1',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
             performance=PerformanceMetrics(total_time=100.0),
         )
 
         result = TestCaseResult(
-            name="Test Case",
-            status="passed",
+            name='Test Case',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.5,
@@ -246,22 +246,22 @@ class TestHTMLExporter(unittest.TestCase):
     def test_export_with_failure(self):
         """Test exporting a test result with failures."""
         error_info = ErrorInfo(
-            type="AssertionError",
+            type='AssertionError',
             category=ErrorCategory.ASSERTION,
-            message="Expected 200 but got 404",
+            message='Expected 200 but got 404',
         )
 
         step1 = StepResult(
-            name="Failed Step",
-            status="failure",
+            name='Failed Step',
+            status='failure',
             start_time=datetime.now(),
             end_time=datetime.now(),
             error_info=error_info,
         )
 
         result = TestCaseResult(
-            name="Failed Test Case",
-            status="failed",
+            name='Failed Test Case',
+            status='failed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -285,15 +285,15 @@ class TestHTMLExporter(unittest.TestCase):
     def test_export_with_variables(self):
         """Test exporting with final variables."""
         step1 = StepResult(
-            name="Step",
-            status="success",
+            name='Step',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
         )
 
         result = TestCaseResult(
-            name="Test",
-            status="passed",
+            name='Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -303,9 +303,9 @@ class TestHTMLExporter(unittest.TestCase):
             skipped_steps=0,
             step_results=[step1],
             final_variables={
-                "username": "testuser",
-                "api_key": "abc123",
-                "token": "xyz789",
+                'username': 'testuser',
+                'api_key': 'abc123',
+                'token': 'xyz789',
             },
         )
 
@@ -320,15 +320,15 @@ class TestHTMLExporter(unittest.TestCase):
     def test_save_to_file(self):
         """Test saving HTML to a file."""
         step1 = StepResult(
-            name="Step",
-            status="success",
+            name='Step',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
         )
 
         result = TestCaseResult(
-            name="Test",
-            status="passed",
+            name='Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -348,31 +348,31 @@ class TestHTMLExporter(unittest.TestCase):
             self.exporter.save_html(result, temp_path)
 
             # Verify file exists and has content
-            self.assertTrue(os.path.exists(temp_path))
-            with open(temp_path, 'r') as f:
+            self.assertTrue(pathlib.Path(temp_path).exists())
+            with pathlib.Path(temp_path).open() as f:
                 content = f.read()
                 self.assertIn('<!DOCTYPE html>', content)
                 self.assertIn('<html', content)
         finally:
             # Clean up
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            if pathlib.Path(temp_path).exists():
+                pathlib.Path(temp_path).unlink()
 
     def test_html_theme_support(self):
         """Test HTML theme support (light/dark)."""
-        light_exporter = HTMLExporter(theme="light")
-        dark_exporter = HTMLExporter(theme="dark")
+        light_exporter = HTMLExporter(theme='light')
+        dark_exporter = HTMLExporter(theme='dark')
 
         step1 = StepResult(
-            name="Step",
-            status="success",
+            name='Step',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
         )
 
         result = TestCaseResult(
-            name="Test",
-            status="passed",
+            name='Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -396,29 +396,31 @@ class TestHTMLExporter(unittest.TestCase):
         """Test new visualization sections (timeline, variable flow, dependency, performance)."""
         # Create steps with performance metrics and variable data
         step1 = StepResult(
-            name="Step 1",
-            status="success",
+            name='Step 1',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
-            performance=PerformanceMetrics(total_time=150.0, dns_time=20.0, tcp_time=30.0),
-            extracted_vars={"user_id": "12345"},
+            performance=PerformanceMetrics(
+                total_time=150.0, dns_time=20.0, tcp_time=30.0
+            ),
+            extracted_vars={'user_id': '12345'},
             variables_snapshot={},
         )
 
         step2 = StepResult(
-            name="Step 2",
-            status="success",
+            name='Step 2',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
             performance=PerformanceMetrics(total_time=200.0, server_time=100.0),
-            extracted_vars={"token": "abc123"},
-            variables_snapshot={"user_id": "12345"},
-            variables_delta={"token": {"new_value": "abc123"}},
+            extracted_vars={'token': 'abc123'},
+            variables_snapshot={'user_id': '12345'},
+            variables_delta={'token': {'new_value': 'abc123'}},
         )
 
         result = TestCaseResult(
-            name="Visualization Test",
-            status="passed",
+            name='Visualization Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -427,7 +429,7 @@ class TestHTMLExporter(unittest.TestCase):
             failed_steps=0,
             skipped_steps=0,
             step_results=[step1, step2],
-            final_variables={"user_id": "12345", "token": "abc123"},
+            final_variables={'user_id': '12345', 'token': 'abc123'},
         )
 
         # Export to HTML
@@ -461,8 +463,8 @@ class TestHTMLExporter(unittest.TestCase):
         steps = []
         for i in range(5):
             step = StepResult(
-                name=f"Step {i+1}",
-                status="success" if i < 4 else "failure",
+                name=f'Step {i + 1}',
+                status='success' if i < 4 else 'failure',
                 start_time=datetime.now(),
                 end_time=datetime.now(),
                 performance=PerformanceMetrics(total_time=100.0 + i * 50),
@@ -470,8 +472,8 @@ class TestHTMLExporter(unittest.TestCase):
             steps.append(step)
 
         result = TestCaseResult(
-            name="Timeline Test",
-            status="failed",
+            name='Timeline Test',
+            status='failed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=5.0,
@@ -501,8 +503,8 @@ class TestHTMLExporter(unittest.TestCase):
 
         for i, time in enumerate(total_times):
             step = StepResult(
-                name=f"API Request {i+1}",
-                status="success",
+                name=f'API Request {i + 1}',
+                status='success',
                 start_time=datetime.now(),
                 end_time=datetime.now(),
                 performance=PerformanceMetrics(
@@ -515,8 +517,8 @@ class TestHTMLExporter(unittest.TestCase):
             steps.append(step)
 
         result = TestCaseResult(
-            name="Performance Test",
-            status="passed",
+            name='Performance Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=5.0,
@@ -544,25 +546,25 @@ class TestHTMLExporter(unittest.TestCase):
     def test_variable_flow_tracking(self):
         """Test variable flow diagram."""
         step1 = StepResult(
-            name="Login",
-            status="success",
+            name='Login',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
-            extracted_vars={"user_id": "123", "session_token": "xyz"},
+            extracted_vars={'user_id': '123', 'session_token': 'xyz'},
         )
 
         step2 = StepResult(
-            name="Get Profile",
-            status="success",
+            name='Get Profile',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
-            extracted_vars={"username": "john"},
-            variables_snapshot={"user_id": "123"},
+            extracted_vars={'username': 'john'},
+            variables_snapshot={'user_id': '123'},
         )
 
         result = TestCaseResult(
-            name="Variable Flow Test",
-            status="passed",
+            name='Variable Flow Test',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -571,7 +573,11 @@ class TestHTMLExporter(unittest.TestCase):
             failed_steps=0,
             skipped_steps=0,
             step_results=[step1, step2],
-            final_variables={"user_id": "123", "session_token": "xyz", "username": "john"},
+            final_variables={
+                'user_id': '123',
+                'session_token': 'xyz',
+                'username': 'john',
+            },
         )
 
         # Export to HTML
@@ -585,20 +591,20 @@ class TestHTMLExporter(unittest.TestCase):
 
     def test_chinese_language_support(self):
         """Test Chinese language support for new visualizations."""
-        zh_exporter = HTMLExporter(language="zh")
+        zh_exporter = HTMLExporter(language='zh')
 
         step1 = StepResult(
-            name="测试步骤",
-            status="success",
+            name='测试步骤',
+            status='success',
             start_time=datetime.now(),
             end_time=datetime.now(),
             performance=PerformanceMetrics(total_time=100.0),
-            extracted_vars={"user_id": "123"},
+            extracted_vars={'user_id': '123'},
         )
 
         result = TestCaseResult(
-            name="测试用例",
-            status="passed",
+            name='测试用例',
+            status='passed',
             start_time=datetime.now(),
             end_time=datetime.now(),
             duration=1.0,
@@ -607,7 +613,7 @@ class TestHTMLExporter(unittest.TestCase):
             failed_steps=0,
             skipped_steps=0,
             step_results=[step1],
-            final_variables={"user_id": "123"},
+            final_variables={'user_id': '123'},
         )
 
         # Export to HTML

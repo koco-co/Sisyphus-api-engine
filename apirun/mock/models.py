@@ -4,29 +4,29 @@ Following Google Python Style Guide.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Pattern
 from enum import Enum
 import re
+from typing import Any
 
 
 class MatchType(Enum):
     """Match type for request matching."""
 
-    EXACT = "exact"  # Exact match
-    REGEX = "regex"  # Regular expression match
-    CONTAINS = "contains"  # Contains substring
-    JSON_PATH = "json_path"  # JSONPath expression for body
+    EXACT = 'exact'  # Exact match
+    REGEX = 'regex'  # Regular expression match
+    CONTAINS = 'contains'  # Contains substring
+    JSON_PATH = 'json_path'  # JSONPath expression for body
 
 
 class FailureType(Enum):
     """Failure type for failure simulation."""
 
-    TIMEOUT = "timeout"  # Simulate timeout
-    CONNECTION_ERROR = "connection_error"  # Simulate connection error
-    HTTP_ERROR = "http_error"  # Simulate HTTP error
-    EMPTY_RESPONSE = "empty_response"  # Return empty response
-    MALFORMED_JSON = "malformed_json"  # Return malformed JSON
-    LARGE_DELAY = "large_delay"  # Simulate large delay
+    TIMEOUT = 'timeout'  # Simulate timeout
+    CONNECTION_ERROR = 'connection_error'  # Simulate connection error
+    HTTP_ERROR = 'http_error'  # Simulate HTTP error
+    EMPTY_RESPONSE = 'empty_response'  # Return empty response
+    MALFORMED_JSON = 'malformed_json'  # Return malformed JSON
+    LARGE_DELAY = 'large_delay'  # Simulate large delay
 
 
 @dataclass
@@ -42,7 +42,7 @@ class DelayConfig:
 
     min_delay: float = 0.0
     max_delay: float = 0.0
-    fixed_delay: Optional[float] = None
+    fixed_delay: float | None = None
     jitter: bool = False
 
     def get_delay(self) -> float:
@@ -78,7 +78,7 @@ class FailureConfig:
     failure_type: FailureType
     probability: float = 1.0
     status_code: int = 500
-    error_message: str = "Internal Server Error"
+    error_message: str = 'Internal Server Error'
 
     def should_fail(self) -> bool:
         """Check if failure should occur based on probability.
@@ -105,20 +105,20 @@ class MockResponse:
 
     status_code: int = 200
     body: Any = None
-    headers: Dict[str, str] = field(default_factory=dict)
-    delay: Optional[DelayConfig] = None
-    failure: Optional[FailureConfig] = None
+    headers: dict[str, str] = field(default_factory=dict)
+    delay: DelayConfig | None = None
+    failure: FailureConfig | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation.
 
         Returns:
             Dictionary representation
         """
         return {
-            "status_code": self.status_code,
-            "body": self.body,
-            "headers": self.headers,
+            'status_code': self.status_code,
+            'body': self.body,
+            'headers': self.headers,
         }
 
 
@@ -139,9 +139,9 @@ class RequestMatcher:
     method: str
     path: str
     match_type: MatchType = MatchType.EXACT
-    query_params: Optional[Dict[str, str]] = None
-    headers: Optional[Dict[str, str]] = None
-    body_pattern: Optional[str] = None
+    query_params: dict[str, str] | None = None
+    headers: dict[str, str] | None = None
+    body_pattern: str | None = None
     body_match_type: MatchType = MatchType.EXACT
 
     def __post_init__(self):
@@ -150,21 +150,21 @@ class RequestMatcher:
             try:
                 self._path_pattern = re.compile(self.path)
             except re.error as e:
-                raise ValueError(f"Invalid regex pattern for path: {e}")
+                raise ValueError(f'Invalid regex pattern for path: {e}')
 
         if self.body_pattern and self.body_match_type == MatchType.REGEX:
             try:
                 self._body_pattern = re.compile(self.body_pattern)
             except re.error as e:
-                raise ValueError(f"Invalid regex pattern for body: {e}")
+                raise ValueError(f'Invalid regex pattern for body: {e}')
 
     def matches(
         self,
         method: str,
         path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
+        query_params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
     ) -> bool:
         """Check if request matches this matcher.
 
@@ -252,17 +252,17 @@ class MockRule:
     response: MockResponse
     priority: int = 0
     enabled: bool = True
-    description: str = ""
-    condition: Optional[str] = None
-    else_response: Optional[MockResponse] = None
+    description: str = ''
+    condition: str | None = None
+    else_response: MockResponse | None = None
 
     def matches(
         self,
         method: str,
         path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
+        query_params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
     ) -> bool:
         """Check if request matches this rule.
 
@@ -285,9 +285,9 @@ class MockRule:
         self,
         method: str,
         path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
+        query_params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
     ) -> bool:
         """Evaluate the condition expression for this rule.
 
@@ -308,12 +308,12 @@ class MockRule:
 
         # Create context with request data
         context = {
-            "request": {
-                "method": method,
-                "path": path,
-                "query_params": query_params or {},
-                "headers": headers or {},
-                "body": body,
+            'request': {
+                'method': method,
+                'path': path,
+                'query_params': query_params or {},
+                'headers': headers or {},
+                'body': body,
             }
         }
 
@@ -322,7 +322,7 @@ class MockRule:
             # Check if rendered result is truthy
             if isinstance(rendered, bool):
                 return rendered
-            return str(rendered).lower() in ("true", "1", "yes", "y")
+            return str(rendered).lower() in ('true', '1', 'yes', 'y')
         except Exception:
             return False
 
@@ -330,9 +330,9 @@ class MockRule:
         self,
         method: str,
         path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
+        query_params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
     ) -> MockResponse:
         """Get the appropriate response based on condition evaluation.
 
@@ -347,7 +347,9 @@ class MockRule:
             MockResponse to use
         """
         if self.condition:
-            condition_met = self.evaluate_condition(method, path, query_params, headers, body)
+            condition_met = self.evaluate_condition(
+                method, path, query_params, headers, body
+            )
             if condition_met:
                 return self.response
             elif self.else_response:
@@ -368,10 +370,10 @@ class MockServerConfig:
         auto_start: Whether to auto-start server
     """
 
-    host: str = "localhost"
+    host: str = 'localhost'
     port: int = 8888
-    rules: List[MockRule] = field(default_factory=list)
-    default_response: Optional[MockResponse] = None
+    rules: list[MockRule] = field(default_factory=list)
+    default_response: MockResponse | None = None
     auto_start: bool = False
 
     def add_rule(self, rule: MockRule) -> None:
@@ -399,7 +401,7 @@ class MockServerConfig:
                 return True
         return False
 
-    def get_rule(self, rule_name: str) -> Optional[MockRule]:
+    def get_rule(self, rule_name: str) -> MockRule | None:
         """Get a mock rule by name.
 
         Args:
@@ -417,10 +419,10 @@ class MockServerConfig:
         self,
         method: str,
         path: str,
-        query_params: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        body: Optional[Any] = None,
-    ) -> Optional[MockRule]:
+        query_params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
+    ) -> MockRule | None:
         """Find the first matching rule for the request.
 
         Args:

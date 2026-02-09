@@ -4,7 +4,7 @@ This module implements extraction from HTTP response cookies.
 Following Google Python Style Guide.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 class CookieExtractor:
@@ -15,7 +15,9 @@ class CookieExtractor:
         value = extractor.extract("session_id", response_data)
     """
 
-    def extract(self, cookie_name: str, data: Any, index: int = 0, default: Any = None) -> Optional[str]:
+    def extract(
+        self, cookie_name: str, data: Any, index: int = 0, default: Any = None
+    ) -> str | None:
         """Extract cookie value from response data.
 
         Args:
@@ -30,7 +32,7 @@ class CookieExtractor:
         if not isinstance(data, dict):
             return default
 
-        cookies = data.get("cookies", {})
+        cookies = data.get('cookies', {})
 
         if not isinstance(cookies, dict):
             return default

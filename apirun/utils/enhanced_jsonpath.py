@@ -30,10 +30,10 @@ Response structure reference:
 """
 
 import re
-from typing import Any, List
+from typing import Any
+
 from jsonpath_ng import parse
 from jsonpath_ng.ext import parse as parse_ext
-
 
 # Sentinel value to indicate no matches found
 _NO_MATCH = object()
@@ -77,29 +77,47 @@ class EnhancedJSONPath:
     # Function definitions
     FUNCTIONS = {
         # Array/Object functions
-        "length": lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
-        "size": lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
-        "count": lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
-        "first": lambda data: data[0] if isinstance(data, list) and len(data) > 0 else data,
-        "last": lambda data: data[-1] if isinstance(data, list) and len(data) > 0 else data,
-        "keys": lambda data: list(data.keys()) if isinstance(data, dict) else [],
-        "values": lambda data: list(data.values()) if isinstance(data, dict) else [data] if not isinstance(data, list) else data,
-        "reverse": lambda data: data[::-1] if isinstance(data, list) else data,
-        "sort": lambda data: sorted(data) if isinstance(data, list) else data,
-        "unique": lambda data: list(set(data)) if isinstance(data, list) else data,
-        "flatten": lambda data: _flatten(data),
+        'length': lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
+        'size': lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
+        'count': lambda data: len(data) if isinstance(data, (list, str, dict)) else 1,
+        'first': lambda data: (
+            data[0] if isinstance(data, list) and len(data) > 0 else data
+        ),
+        'last': lambda data: (
+            data[-1] if isinstance(data, list) and len(data) > 0 else data
+        ),
+        'keys': lambda data: list(data.keys()) if isinstance(data, dict) else [],
+        'values': lambda data: (
+            list(data.values())
+            if isinstance(data, dict)
+            else [data]
+            if not isinstance(data, list)
+            else data
+        ),
+        'reverse': lambda data: data[::-1] if isinstance(data, list) else data,
+        'sort': lambda data: sorted(data) if isinstance(data, list) else data,
+        'unique': lambda data: list(set(data)) if isinstance(data, list) else data,
+        'flatten': lambda data: _flatten(data),
         # Numeric functions
-        "sum": lambda data: sum(data) if isinstance(data, list) else data,
-        "avg": lambda data: sum(data) / len(data) if isinstance(data, list) and len(data) > 0 else data,
-        "min": lambda data: min(data) if isinstance(data, list) and len(data) > 0 else data,
-        "max": lambda data: max(data) if isinstance(data, list) and len(data) > 0 else data,
+        'sum': lambda data: sum(data) if isinstance(data, list) else data,
+        'avg': lambda data: (
+            sum(data) / len(data) if isinstance(data, list) and len(data) > 0 else data
+        ),
+        'min': lambda data: (
+            min(data) if isinstance(data, list) and len(data) > 0 else data
+        ),
+        'max': lambda data: (
+            max(data) if isinstance(data, list) and len(data) > 0 else data
+        ),
         # String functions
-        "upper": lambda data: data.upper() if isinstance(data, str) else data,
-        "lower": lambda data: data.lower() if isinstance(data, str) else data,
-        "trim": lambda data: data.strip() if isinstance(data, str) else data,
+        'upper': lambda data: data.upper() if isinstance(data, str) else data,
+        'lower': lambda data: data.lower() if isinstance(data, str) else data,
+        'trim': lambda data: data.strip() if isinstance(data, str) else data,
         # Check functions
-        "is_empty": lambda data: len(data) == 0 if isinstance(data, (list, str, dict)) else False,
-        "is_null": lambda data: data is None,
+        'is_empty': lambda data: (
+            len(data) == 0 if isinstance(data, (list, str, dict)) else False
+        ),
+        'is_null': lambda data: data is None,
     }
 
     def __init__(self):
@@ -137,7 +155,7 @@ class EnhancedJSONPath:
 
             if func_match:
                 # Extract base path and function info
-                base_path = path[:func_match.start()]
+                base_path = path[: func_match.start()]
                 func_name = func_match.group(1)
                 args_str = func_match.group(2).strip()
 
@@ -147,11 +165,15 @@ class EnhancedJSONPath:
                 # Check if base_path also contains function calls (chain)
                 if self.function_pattern.search(base_path):
                     # First resolve the base path with its functions
-                    base_data = self.extract(base_path, data, index=-1)  # Get all matches
+                    base_data = self.extract(
+                        base_path, data, index=-1
+                    )  # Get all matches
                 else:
                     # Extract base value using standard JSONPath (supporting filters)
-                    extract_path = base_path if base_path else "$"
-                    base_data = self._extract_with_jsonpath_ng(extract_path, data, index=-1)
+                    extract_path = base_path if base_path else '$'
+                    base_data = self._extract_with_jsonpath_ng(
+                        extract_path, data, index=-1
+                    )
 
                     # If we got a single-element list, unwrap it for function operations
                     # This is needed because jsonpath-ng returns matches in a list
@@ -162,10 +184,10 @@ class EnhancedJSONPath:
                 extracted_data = self._apply_function(func_name, base_data, func_args)
 
                 # Check if there are more function calls to apply
-                remaining_path = path[func_match.end():]
+                remaining_path = path[func_match.end() :]
                 if remaining_path:
                     # Recursively apply remaining functions to the result
-                    return self.extract("$" + remaining_path, extracted_data, index=0)
+                    return self.extract('$' + remaining_path, extracted_data, index=0)
                 else:
                     # No more functions, return the result
                     return extracted_data
@@ -176,12 +198,12 @@ class EnhancedJSONPath:
 
                 # Check for sentinel value indicating no match
                 if result is _NO_MATCH:
-                    raise ValueError(f"No value found at path: {path}")
+                    raise ValueError(f'No value found at path: {path}')
 
                 return result
 
         except Exception as e:
-            raise ValueError(f"Enhanced JSONPath extraction failed: {e}")
+            raise ValueError(f'Enhanced JSONPath extraction failed: {e}')
 
     def _extract_with_jsonpath_ng(self, path: str, data: Any, index: int = 0) -> Any:
         """Extract value using jsonpath-ng library with full feature support.
@@ -214,6 +236,7 @@ class EnhancedJSONPath:
                 if index == -1:
                     # Try to extract base path (remove [*] wildcard if present)
                     import re as regex_module
+
                     base_match = regex_module.match(r'(\$[^[\]]+)', path)
                     if base_match:
                         base_path = base_match.group(1)
@@ -239,11 +262,11 @@ class EnhancedJSONPath:
                     # If the single match is a list/tuple and index is beyond its length, raise error
                     if isinstance(value, (list, tuple)) and index >= len(value):
                         raise ValueError(
-                            f"Index {index} out of range (array has {len(value)} elements)"
+                            f'Index {index} out of range (array has {len(value)} elements)'
                         )
                     return value
                 raise ValueError(
-                    f"Index {index} out of range (found {len(matches)} matches)"
+                    f'Index {index} out of range (found {len(matches)} matches)'
                 )
             else:
                 # Return specific match
@@ -253,10 +276,10 @@ class EnhancedJSONPath:
             # If parsing fails, provide helpful error message
             raise ValueError(
                 f"Invalid JSONPath expression '{path}': {e}. "
-                f"Make sure the path syntax is correct."
+                f'Make sure the path syntax is correct.'
             )
 
-    def _parse_arguments(self, args_str: str) -> List[str]:
+    def _parse_arguments(self, args_str: str) -> list[str]:
         """Parse function arguments from argument string.
 
         Args:
@@ -269,6 +292,7 @@ class EnhancedJSONPath:
             return []
 
         import re as regex_module
+
         # Match quoted strings or unquoted values
         # Pattern explanation:
         # (['\"]).*?\1  - Match quoted strings (single or double quotes)
@@ -284,7 +308,7 @@ class EnhancedJSONPath:
 
         return func_args
 
-    def _apply_function(self, func_name: str, data: Any, args: List[str] = None) -> Any:
+    def _apply_function(self, func_name: str, data: Any, args: list[str] = None) -> Any:
         """Apply function to extracted data.
 
         Args:
@@ -301,7 +325,14 @@ class EnhancedJSONPath:
         args = args or []
 
         # Handle special functions with arguments
-        if func_name in ["split", "join", "contains", "starts_with", "ends_with", "matches"]:
+        if func_name in [
+            'split',
+            'join',
+            'contains',
+            'starts_with',
+            'ends_with',
+            'matches',
+        ]:
             return self._apply_function_with_args(func_name, data, args)
 
         # Handle standard functions
@@ -311,9 +342,11 @@ class EnhancedJSONPath:
             except Exception as e:
                 raise ValueError(f"Function '{func_name}' execution failed: {e}")
 
-        raise ValueError(f"Unsupported function: {func_name}")
+        raise ValueError(f'Unsupported function: {func_name}')
 
-    def _apply_function_with_args(self, func_name: str, data: Any, args: List[str]) -> Any:
+    def _apply_function_with_args(
+        self, func_name: str, data: Any, args: list[str]
+    ) -> Any:
         """Apply function with arguments.
 
         Args:
@@ -324,46 +357,53 @@ class EnhancedJSONPath:
         Returns:
             Result of applying function
         """
-        if func_name == "split":
+        if func_name == 'split':
             if not isinstance(data, str):
-                raise ValueError(f"split() requires string, got {type(data).__name__}")
-            delimiter = args[0] if args and args[0] else ","
+                raise ValueError(f'split() requires string, got {type(data).__name__}')
+            delimiter = args[0] if args and args[0] else ','
             return data.split(delimiter)
 
-        elif func_name == "join":
+        elif func_name == 'join':
             if not isinstance(data, list):
-                raise ValueError(f"join() requires array, got {type(data).__name__}")
-            delimiter = args[0] if args else ","
+                raise ValueError(f'join() requires array, got {type(data).__name__}')
+            delimiter = args[0] if args else ','
             return delimiter.join(str(item) for item in data)
 
-        elif func_name == "contains":
+        elif func_name == 'contains':
             if isinstance(data, (list, str)):
                 return args[0] in data if args else False
             elif isinstance(data, dict):
                 return args[0] in data if args else False
             return False
 
-        elif func_name == "starts_with":
+        elif func_name == 'starts_with':
             if not isinstance(data, str):
-                raise ValueError(f"starts_with() requires string, got {type(data).__name__}")
+                raise ValueError(
+                    f'starts_with() requires string, got {type(data).__name__}'
+                )
             return data.startswith(args[0]) if args else False
 
-        elif func_name == "ends_with":
+        elif func_name == 'ends_with':
             if not isinstance(data, str):
-                raise ValueError(f"ends_with() requires string, got {type(data).__name__}")
+                raise ValueError(
+                    f'ends_with() requires string, got {type(data).__name__}'
+                )
             return data.endswith(args[0]) if args else False
 
-        elif func_name == "matches":
+        elif func_name == 'matches':
             import re as regex_module
+
             if not isinstance(data, str):
-                raise ValueError(f"matches() requires string, got {type(data).__name__}")
-            pattern = args[0] if args else ""
+                raise ValueError(
+                    f'matches() requires string, got {type(data).__name__}'
+                )
+            pattern = args[0] if args else ''
             return bool(regex_module.search(pattern, data))
 
-        raise ValueError(f"Unsupported function with args: {func_name}")
+        raise ValueError(f'Unsupported function with args: {func_name}')
 
 
-def _flatten(data: Any) -> List[Any]:
+def _flatten(data: Any) -> list[Any]:
     """Flatten nested arrays.
 
     Args:

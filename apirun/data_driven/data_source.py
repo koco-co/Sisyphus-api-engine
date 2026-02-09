@@ -4,11 +4,11 @@ This module implements data source readers for CSV, JSON, and database.
 Following Google Python Style Guide.
 """
 
+from abc import ABC, abstractmethod
 import csv
 import json
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any
 
 
 class DataSourceReader(ABC):
@@ -19,13 +19,13 @@ class DataSourceReader(ABC):
     """
 
     @abstractmethod
-    def read(self) -> List[Dict[str, Any]]:
+    def read(self) -> list[dict[str, Any]]:
         """Read data from the data source.
 
         Returns:
             List of data rows as dictionaries
         """
-        raise NotImplementedError("Subclasses must implement read()")
+        raise NotImplementedError('Subclasses must implement read()')
 
 
 class CsvDataSourceReader(DataSourceReader):
@@ -41,8 +41,8 @@ class CsvDataSourceReader(DataSourceReader):
     def __init__(
         self,
         file_path: str,
-        delimiter: str = ",",
-        encoding: str = "utf-8",
+        delimiter: str = ',',
+        encoding: str = 'utf-8',
         has_header: bool = True,
     ):
         """Initialize CSV data source reader.
@@ -58,7 +58,7 @@ class CsvDataSourceReader(DataSourceReader):
         self.encoding = encoding
         self.has_header = has_header
 
-    def read(self) -> List[Dict[str, Any]]:
+    def read(self) -> list[dict[str, Any]]:
         """Read data from CSV file.
 
         Returns:
@@ -69,28 +69,28 @@ class CsvDataSourceReader(DataSourceReader):
             ValueError: If CSV file is invalid
         """
         if not Path(self.file_path).exists():
-            raise FileNotFoundError(f"CSV file not found: {self.file_path}")
+            raise FileNotFoundError(f'CSV file not found: {self.file_path}')
 
         data = []
 
         try:
-            with open(self.file_path, "r", encoding=self.encoding) as f:
+            with Path(self.file_path).open(encoding=self.encoding) as f:
                 if self.has_header:
                     reader = csv.DictReader(f, delimiter=self.delimiter)
                     for row in reader:
                         # Convert empty strings to None
                         cleaned_row = {
-                            k: (v if v != "" else None) for k, v in row.items()
+                            k: (v if v != '' else None) for k, v in row.items()
                         }
                         data.append(cleaned_row)
                 else:
                     reader = csv.reader(f, delimiter=self.delimiter)
                     for i, row in enumerate(reader):
                         # Use column indices as keys
-                        data.append({f"col_{j}": val for j, val in enumerate(row)})
+                        data.append({f'col_{j}': val for j, val in enumerate(row)})
 
         except Exception as e:
-            raise ValueError(f"Failed to read CSV file: {e}")
+            raise ValueError(f'Failed to read CSV file: {e}')
 
         return data
 
@@ -104,7 +104,7 @@ class JsonDataSourceReader(DataSourceReader):
     - JSON object with data key
     """
 
-    def __init__(self, file_path: str, data_key: Optional[str] = None):
+    def __init__(self, file_path: str, data_key: str | None = None):
         """Initialize JSON data source reader.
 
         Args:
@@ -115,7 +115,7 @@ class JsonDataSourceReader(DataSourceReader):
         self.file_path = file_path
         self.data_key = data_key
 
-    def read(self) -> List[Dict[str, Any]]:
+    def read(self) -> list[dict[str, Any]]:
         """Read data from JSON file.
 
         Returns:
@@ -126,17 +126,17 @@ class JsonDataSourceReader(DataSourceReader):
             ValueError: If JSON file is invalid
         """
         if not Path(self.file_path).exists():
-            raise FileNotFoundError(f"JSON file not found: {self.file_path}")
+            raise FileNotFoundError(f'JSON file not found: {self.file_path}')
 
         try:
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            with Path(self.file_path).open(encoding='utf-8') as f:
                 json_data = json.load(f)
 
             # Extract data based on data_key
             if self.data_key:
                 if not isinstance(json_data, dict):
                     raise ValueError(
-                        f"Expected JSON object when data_key is provided, got {type(json_data)}"
+                        f'Expected JSON object when data_key is provided, got {type(json_data)}'
                     )
                 if self.data_key not in json_data:
                     raise ValueError(f"Key '{self.data_key}' not found in JSON")
@@ -146,14 +146,14 @@ class JsonDataSourceReader(DataSourceReader):
 
             # Ensure data is a list
             if not isinstance(data, list):
-                raise ValueError(f"Expected data to be a list, got {type(data)}")
+                raise ValueError(f'Expected data to be a list, got {type(data)}')
 
             return data
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON file: {e}")
+            raise ValueError(f'Invalid JSON file: {e}')
         except Exception as e:
-            raise ValueError(f"Failed to read JSON file: {e}")
+            raise ValueError(f'Failed to read JSON file: {e}')
 
 
 class DatabaseDataSourceReader(DataSourceReader):
@@ -168,9 +168,9 @@ class DatabaseDataSourceReader(DataSourceReader):
     def __init__(
         self,
         db_type: str,
-        connection_config: Dict[str, Any],
+        connection_config: dict[str, Any],
         sql: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ):
         """Initialize database data source reader.
 
@@ -185,7 +185,7 @@ class DatabaseDataSourceReader(DataSourceReader):
         self.sql = sql
         self.params = params
 
-    def read(self) -> List[Dict[str, Any]]:
+    def read(self) -> list[dict[str, Any]]:
         """Read data from database.
 
         Returns:
@@ -194,26 +194,26 @@ class DatabaseDataSourceReader(DataSourceReader):
         Raises:
             ValueError: If database connection or query fails
         """
-        from sqlmodel import Session, create_engine, select, text
+        from sqlmodel import Session, create_engine, text
 
         # Build connection string
-        if self.db_type == "mysql":
+        if self.db_type == 'mysql':
             config = self.connection_config
             conn_str = (
-                f"mysql+pymysql://{config['user']}:{config['password']}@"
-                f"{config['host']}:{config.get('port', 3306)}/{config['database']}"
-                f"?charset=utf8mb4"
+                f'mysql+pymysql://{config["user"]}:{config["password"]}@'
+                f'{config["host"]}:{config.get("port", 3306)}/{config["database"]}'
+                f'?charset=utf8mb4'
             )
-        elif self.db_type == "postgresql":
+        elif self.db_type == 'postgresql':
             config = self.connection_config
             conn_str = (
-                f"postgresql://{config['user']}:{config['password']}@"
-                f"{config['host']}:{config.get('port', 5432)}/{config['database']}"
+                f'postgresql://{config["user"]}:{config["password"]}@'
+                f'{config["host"]}:{config.get("port", 5432)}/{config["database"]}'
             )
-        elif self.db_type == "sqlite":
-            conn_str = f"sqlite:///{self.connection_config['path']}"
+        elif self.db_type == 'sqlite':
+            conn_str = f'sqlite:///{self.connection_config["path"]}'
         else:
-            raise ValueError(f"Unsupported database type: {self.db_type}")
+            raise ValueError(f'Unsupported database type: {self.db_type}')
 
         # Create engine and session
         engine = create_engine(conn_str)
@@ -234,7 +234,7 @@ class DatabaseDataSourceReader(DataSourceReader):
             return data
 
         except Exception as e:
-            raise ValueError(f"Failed to read from database: {e}")
+            raise ValueError(f'Failed to read from database: {e}')
         finally:
             session.close()
             engine.dispose()
@@ -249,9 +249,7 @@ class DataSourceFactory:
         data = reader.read()
     """
 
-    def create_reader(
-        self, source_type: str, **kwargs
-    ) -> DataSourceReader:
+    def create_reader(self, source_type: str, **kwargs) -> DataSourceReader:
         """Create a data source reader.
 
         Args:
@@ -266,26 +264,26 @@ class DataSourceFactory:
         """
         source_type = source_type.lower()
 
-        if source_type == "csv":
+        if source_type == 'csv':
             return CsvDataSourceReader(
-                file_path=kwargs["file_path"],
-                delimiter=kwargs.get("delimiter", ","),
-                encoding=kwargs.get("encoding", "utf-8"),
-                has_header=kwargs.get("has_header", True),
+                file_path=kwargs['file_path'],
+                delimiter=kwargs.get('delimiter', ','),
+                encoding=kwargs.get('encoding', 'utf-8'),
+                has_header=kwargs.get('has_header', True),
             )
-        elif source_type == "json":
+        elif source_type == 'json':
             return JsonDataSourceReader(
-                file_path=kwargs["file_path"], data_key=kwargs.get("data_key")
+                file_path=kwargs['file_path'], data_key=kwargs.get('data_key')
             )
-        elif source_type == "database":
+        elif source_type == 'database':
             return DatabaseDataSourceReader(
-                db_type=kwargs["db_type"],
-                connection_config=kwargs["connection_config"],
-                sql=kwargs["sql"],
-                params=kwargs.get("params"),
+                db_type=kwargs['db_type'],
+                connection_config=kwargs['connection_config'],
+                sql=kwargs['sql'],
+                params=kwargs.get('params'),
             )
         else:
             raise ValueError(
-                f"Unsupported data source type: {source_type}. "
-                f"Supported types: csv, json, database"
+                f'Unsupported data source type: {source_type}. '
+                f'Supported types: csv, json, database'
             )

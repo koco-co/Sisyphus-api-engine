@@ -4,7 +4,7 @@ This module implements extraction from HTTP response headers.
 Following Google Python Style Guide.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 class HeaderExtractor:
@@ -15,7 +15,9 @@ class HeaderExtractor:
         value = extractor.extract("Content-Type", response_data)
     """
 
-    def extract(self, header_name: str, data: Any, index: int = 0, default: Any = None) -> Optional[str]:
+    def extract(
+        self, header_name: str, data: Any, index: int = 0, default: Any = None
+    ) -> str | None:
         """Extract header value from response data.
 
         Args:
@@ -30,7 +32,7 @@ class HeaderExtractor:
         if not isinstance(data, dict):
             return default
 
-        headers = data.get("headers", {})
+        headers = data.get('headers', {})
 
         if not isinstance(headers, dict):
             return default

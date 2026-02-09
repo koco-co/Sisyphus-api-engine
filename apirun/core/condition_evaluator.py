@@ -10,7 +10,8 @@ Following Google Python Style Guide.
 """
 
 import re
-from typing import Any, Dict, List, Union
+from typing import Any
+
 from apirun.utils.template import render_template
 
 
@@ -28,22 +29,26 @@ class ConditionEvaluator:
 
     # Comparison operators
     COMPARISON_OPS = {
-        "==": lambda a, b: a == b,
-        "!=": lambda a, b: a != b,
-        ">": lambda a, b: a > b,
-        ">=": lambda a, b: a >= b,
-        "<": lambda a, b: a < b,
-        "<=": lambda a, b: a <= b,
-        "in": lambda a, b: a in b if isinstance(b, (list, tuple, str)) else False,
-        "not_in": lambda a, b: a not in b if isinstance(b, (list, tuple, str)) else True,
-        "contains": lambda a, b: b in a if isinstance(a, (list, tuple, str)) else False,
-        "not_contains": lambda a, b: b not in a if isinstance(a, (list, tuple, str)) else True,
+        '==': lambda a, b: a == b,
+        '!=': lambda a, b: a != b,
+        '>': lambda a, b: a > b,
+        '>=': lambda a, b: a >= b,
+        '<': lambda a, b: a < b,
+        '<=': lambda a, b: a <= b,
+        'in': lambda a, b: a in b if isinstance(b, (list, tuple, str)) else False,
+        'not_in': lambda a, b: (
+            a not in b if isinstance(b, (list, tuple, str)) else True
+        ),
+        'contains': lambda a, b: b in a if isinstance(a, (list, tuple, str)) else False,
+        'not_contains': lambda a, b: (
+            b not in a if isinstance(a, (list, tuple, str)) else True
+        ),
     }
 
     # Logical keywords for concise expressions
-    LOGICAL_KEYWORDS = ["and", "or", "not"]
+    LOGICAL_KEYWORDS = ['and', 'or', 'not']
 
-    def __init__(self, variables: Dict[str, Any]):
+    def __init__(self, variables: dict[str, Any]):
         """Initialize ConditionEvaluator.
 
         Args:
@@ -63,14 +68,16 @@ class ConditionEvaluator:
         Raises:
             ValueError: If condition format is invalid
         """
-        if condition is None or condition == "":
+        if condition is None or condition == '':
             return True
 
         # String condition - support both formats
         if isinstance(condition, str):
             # Check for structured format indicator (not quoted)
-            if condition.strip() in ["and", "or", "not"]:
-                raise ValueError(f"Invalid condition: logical operator '{condition}' must be used in structured format")
+            if condition.strip() in ['and', 'or', 'not']:
+                raise ValueError(
+                    f"Invalid condition: logical operator '{condition}' must be used in structured format"
+                )
 
             # Try concise expression first (contains 'and', 'or')
             if self._has_logical_operators(condition):
@@ -88,7 +95,7 @@ class ConditionEvaluator:
             return all(self.evaluate(cond) for cond in condition)
 
         else:
-            raise ValueError(f"Invalid condition type: {type(condition)}")
+            raise ValueError(f'Invalid condition type: {type(condition)}')
 
     def _has_logical_operators(self, expression: str) -> bool:
         """Check if expression contains logical operators.
@@ -121,9 +128,9 @@ class ConditionEvaluator:
             return False
 
         # Direct boolean check
-        if rendered.lower() in ("true", "1", "yes"):
+        if rendered.lower() in ('true', '1', 'yes'):
             return True
-        if rendered.lower() in ("false", "0", "no", "null", "none"):
+        if rendered.lower() in ('false', '0', 'no', 'null', 'none'):
             return False
 
         # Try to evaluate as comparison expression
@@ -158,7 +165,7 @@ class ConditionEvaluator:
                 return func(left_value, right_value)
 
         # No comparison operator found
-        raise ValueError(f"Invalid comparison expression: {expression}")
+        raise ValueError(f'Invalid comparison expression: {expression}')
 
     def _parse_value(self, value_str: str) -> Any:
         """Parse a string value to its Python type.
@@ -172,19 +179,19 @@ class ConditionEvaluator:
         value_str = value_str.strip()
 
         # Null values
-        if value_str.lower() in ("null", "none"):
+        if value_str.lower() in ('null', 'none'):
             return None
 
         # Boolean values
-        if value_str.lower() == "true":
+        if value_str.lower() == 'true':
             return True
-        if value_str.lower() == "false":
+        if value_str.lower() == 'false':
             return False
 
         # Numeric values
         try:
             # Try integer first
-            if "." not in value_str and "e" not in value_str.lower():
+            if '.' not in value_str and 'e' not in value_str.lower():
                 return int(value_str)
             else:
                 return float(value_str)
@@ -192,8 +199,9 @@ class ConditionEvaluator:
             pass
 
         # String values (remove quotes if present)
-        if (value_str.startswith('"') and value_str.endswith('"')) or \
-           (value_str.startswith("'") and value_str.endswith("'")):
+        if (value_str.startswith('"') and value_str.endswith('"')) or (
+            value_str.startswith("'") and value_str.endswith("'")
+        ):
             return value_str[1:-1]
 
         # Default: return as string
@@ -211,7 +219,7 @@ class ConditionEvaluator:
         if value is None:
             return False
         if isinstance(value, str):
-            return value.lower() not in ("", "false", "0", "no", "null", "none")
+            return value.lower() not in ('', 'false', '0', 'no', 'null', 'none')
         if isinstance(value, (int, float)):
             return value != 0
         if isinstance(value, (list, tuple, dict)):
@@ -275,28 +283,30 @@ class ConditionEvaluator:
             List of tokens (operands and operators)
         """
         tokens = []
-        current = ""
+        current = ''
         i = 0
 
         while i < len(expr):
             # Check for 'and', 'or', 'not' operators as whole words
-            if expr[i:i+3].lower() == "and" and self._is_word_boundary(expr, i, 3):
+            if expr[i : i + 3].lower() == 'and' and self._is_word_boundary(expr, i, 3):
                 if current.strip():
                     tokens.append(current.strip())
-                tokens.append("and")
-                current = ""
+                tokens.append('and')
+                current = ''
                 i += 3
-            elif expr[i:i+2].lower() == "or" and self._is_word_boundary(expr, i, 2):
+            elif expr[i : i + 2].lower() == 'or' and self._is_word_boundary(expr, i, 2):
                 if current.strip():
                     tokens.append(current.strip())
-                tokens.append("or")
-                current = ""
+                tokens.append('or')
+                current = ''
                 i += 2
-            elif expr[i:i+3].lower() == "not" and self._is_word_boundary(expr, i, 3):
+            elif expr[i : i + 3].lower() == 'not' and self._is_word_boundary(
+                expr, i, 3
+            ):
                 if current.strip():
                     tokens.append(current.strip())
-                tokens.append("not")
-                current = ""
+                tokens.append('not')
+                current = ''
                 i += 3
             else:
                 current += expr[i]
@@ -319,7 +329,7 @@ class ConditionEvaluator:
             True if substring is a whole word
         """
         # Check before
-        if start > 0 and expr[start-1].isalnum():
+        if start > 0 and expr[start - 1].isalnum():
             return False
         # Check after
         if start + length < len(expr) and expr[start + length].isalnum():
@@ -338,12 +348,12 @@ class ConditionEvaluator:
         result = []
         i = 0
         while i < len(tokens):
-            if tokens[i] == "not" and i + 1 < len(tokens):
+            if tokens[i] == 'not' and i + 1 < len(tokens):
                 # Evaluate NOT operand
                 operand_value = self._evaluate_simple_condition(tokens[i + 1])
-                result.append("false" if operand_value else "true")
+                result.append('false' if operand_value else 'true')
                 i += 2
-            elif tokens[i] == "not":
+            elif tokens[i] == 'not':
                 # NOT at end - invalid, treat as operand
                 result.append(tokens[i])
                 i += 1
@@ -364,7 +374,7 @@ class ConditionEvaluator:
         result = []
         i = 0
         while i < len(tokens):
-            if tokens[i] == "and":
+            if tokens[i] == 'and':
                 # Pop last operand from result
                 if result:
                     left = result.pop()
@@ -372,7 +382,9 @@ class ConditionEvaluator:
                         right = tokens[i + 1]
                         left_value = self._is_truthy(left)
                         right_value = self._is_truthy(right)
-                        result.append("true" if (left_value and right_value) else "false")
+                        result.append(
+                            'true' if (left_value and right_value) else 'false'
+                        )
                         i += 2
                         continue
                 # Invalid AND, skip
@@ -394,7 +406,7 @@ class ConditionEvaluator:
         result = []
         i = 0
         while i < len(tokens):
-            if tokens[i] == "or":
+            if tokens[i] == 'or':
                 # Pop last operand from result
                 if result:
                     left = result.pop()
@@ -402,7 +414,9 @@ class ConditionEvaluator:
                         right = tokens[i + 1]
                         left_value = self._is_truthy(left)
                         right_value = self._is_truthy(right)
-                        result.append("true" if (left_value or right_value) else "false")
+                        result.append(
+                            'true' if (left_value or right_value) else 'false'
+                        )
                         i += 2
                         continue
                 # Invalid OR, skip
@@ -432,7 +446,7 @@ class ConditionEvaluator:
         # Fall back to truthy check
         return self._is_truthy(self._parse_value(condition))
 
-    def _evaluate_structured_condition(self, condition: Dict[str, Any]) -> bool:
+    def _evaluate_structured_condition(self, condition: dict[str, Any]) -> bool:
         """Evaluate a structured condition with logical operators.
 
         Args:
@@ -445,23 +459,25 @@ class ConditionEvaluator:
             ValueError: If structure is invalid
         """
         if len(condition) != 1:
-            raise ValueError(f"Structured condition must have exactly one key, got: {list(condition.keys())}")
+            raise ValueError(
+                f'Structured condition must have exactly one key, got: {list(condition.keys())}'
+            )
 
         op = list(condition.keys())[0].lower()
         value = condition[op]
 
-        if op == "and":
+        if op == 'and':
             if not isinstance(value, list):
                 raise ValueError("'and' operator requires a list of conditions")
             return all(self.evaluate(cond) for cond in value)
 
-        elif op == "or":
+        elif op == 'or':
             if not isinstance(value, list):
                 raise ValueError("'or' operator requires a list of conditions")
             return any(self.evaluate(cond) for cond in value)
 
-        elif op == "not":
+        elif op == 'not':
             return not self.evaluate(value)
 
         else:
-            raise ValueError(f"Unknown logical operator: {op}")
+            raise ValueError(f'Unknown logical operator: {op}')

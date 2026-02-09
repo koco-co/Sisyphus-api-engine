@@ -12,12 +12,12 @@
 遵循 Google Python 代码风格规范。
 """
 
-import re
-import copy
-import os
-from typing import Any, Dict, Optional, List
 from datetime import datetime
-from jinja2 import Environment, BaseLoader, TemplateError
+import os
+import re
+from typing import Any
+
+from jinja2 import BaseLoader, Environment, TemplateError
 
 from apirun.core.template_functions import get_template_functions
 
@@ -49,8 +49,8 @@ class VariableManager:
 
     def __init__(
         self,
-        global_vars: Optional[Dict[str, Any]] = None,
-        env_vars_prefix: Optional[str] = None,
+        global_vars: dict[str, Any] | None = None,
+        env_vars_prefix: str | None = None,
         enable_tracking: bool = False,
     ):
         """初始化变量管理器。
@@ -61,28 +61,26 @@ class VariableManager:
             enable_tracking: 是否启用变量变更跟踪
         """
         self.global_vars = global_vars or {}
-        self.profile_vars: Dict[str, Any] = {}
-        self.extracted_vars: Dict[str, Any] = {}
-        self.profile_overrides: Dict[str, Any] = {}
+        self.profile_vars: dict[str, Any] = {}
+        self.extracted_vars: dict[str, Any] = {}
+        self.profile_overrides: dict[str, Any] = {}
         self.env_vars_prefix = env_vars_prefix
         self.enable_tracking = enable_tracking
 
         # 配置上下文，用于支持嵌套引用如 ${config.profiles.dev.variables.xxx}
-        self.config_context: Dict[str, Any] = {}
+        self.config_context: dict[str, Any] = {}
 
         # 变量变更跟踪
-        self.change_history: List[Dict[str, Any]] = []
+        self.change_history: list[dict[str, Any]] = []
 
         # 性能优化：合并变量缓存
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._cache_dirty: bool = True
         self._cache_version: int = 0
 
         # 初始化 Jinja2 环境，使用自定义分隔符 ${} 并注册内置函数
         self._jinja_env = Environment(
-            loader=BaseLoader(),
-            variable_start_string="${",
-            variable_end_string="}"
+            loader=BaseLoader(), variable_start_string='${', variable_end_string='}'
         )
 
         # 注册内置模板函数（传递 self 以支持 db_query）
@@ -94,7 +92,7 @@ class VariableManager:
         self._cache_dirty = True
         self._cache_version += 1
 
-    def set_config_context(self, config: Dict[str, Any]) -> None:
+    def set_config_context(self, config: dict[str, Any]) -> None:
         """设置配置上下文以支持嵌套引用。
 
         允许变量引用配置值，例如：
@@ -106,7 +104,7 @@ class VariableManager:
         self.config_context = config
         self._invalidate_cache()
 
-    def set_profile(self, profile_vars: Dict[str, Any]) -> None:
+    def set_profile(self, profile_vars: dict[str, Any]) -> None:
         """设置当前激活 profile 的变量。
 
         参数：
@@ -147,7 +145,7 @@ class VariableManager:
             return self.global_vars[name]
         return default
 
-    def get_all_variables(self) -> Dict[str, Any]:
+    def get_all_variables(self) -> dict[str, Any]:
         """获取所有合并后的变量。
 
         合并顺序（优先级从低到高）：
@@ -167,7 +165,7 @@ class VariableManager:
 
         # 首先添加配置上下文，用于支持嵌套引用
         if self.config_context:
-            merged["config"] = self.config_context
+            merged['config'] = self.config_context
 
         # 按优先级顺序合并（从低到高）
         merged.update(self.global_vars)
@@ -201,7 +199,7 @@ class VariableManager:
             return template_str
 
         # 快速检查是否包含模板语法
-        if "${" not in template_str and "{%" not in template_str:
+        if '${' not in template_str and '{%' not in template_str:
             return template_str
 
         try:
@@ -219,14 +217,14 @@ class VariableManager:
                 result = rendered
 
                 # 检查是否还有模板语法
-                if "${" not in result and "{%" not in result:
+                if '${' not in result and '{%' not in result:
                     break
 
             return result
         except TemplateError as e:
             raise TemplateError(f"模板渲染失败 '{template_str}': {e}")
 
-    def render_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def render_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """递归渲染字典中的所有字符串值。
 
         参数：
@@ -273,7 +271,7 @@ class VariableManager:
 
     def extract_from_string(
         self, pattern: str, text: str, index: int = 0
-    ) -> Optional[str]:
+    ) -> str | None:
         """使用正则表达式从字符串中提取值。
 
         参数：
@@ -296,7 +294,7 @@ class VariableManager:
         """清除所有提取变量。"""
         self.extracted_vars.clear()
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         """创建当前变量状态的快照。
 
         性能优化：使用优化的拷贝策略——大多数情况下使用浅拷贝。
@@ -305,31 +303,31 @@ class VariableManager:
             所有变量的拷贝
         """
         return {
-            "global": self.global_vars.copy(),
-            "profile": self.profile_vars.copy(),
-            "extracted": self.extracted_vars.copy(),
-            "cache_version": self._cache_version,
+            'global': self.global_vars.copy(),
+            'profile': self.profile_vars.copy(),
+            'extracted': self.extracted_vars.copy(),
+            'cache_version': self._cache_version,
         }
 
-    def restore_snapshot(self, snapshot: Dict[str, Any]) -> None:
+    def restore_snapshot(self, snapshot: dict[str, Any]) -> None:
         """从快照恢复变量状态。
 
         参数：
             snapshot: 来自 snapshot() 方法的快照
         """
-        if "global" in snapshot:
-            self.global_vars = snapshot["global"].copy()
-        if "profile" in snapshot:
-            self.profile_vars = snapshot["profile"].copy()
-        if "extracted" in snapshot:
-            self.extracted_vars = snapshot["extracted"].copy()
+        if 'global' in snapshot:
+            self.global_vars = snapshot['global'].copy()
+        if 'profile' in snapshot:
+            self.profile_vars = snapshot['profile'].copy()
+        if 'extracted' in snapshot:
+            self.extracted_vars = snapshot['extracted'].copy()
 
         # 变量已更改，使缓存失效
         self._invalidate_cache()
 
     def load_environment_variables(
-        self, prefix: Optional[str] = None, override: bool = False
-    ) -> Dict[str, Any]:
+        self, prefix: str | None = None, override: bool = False
+    ) -> dict[str, Any]:
         """从操作系统环境加载变量。
 
         参数：
@@ -346,7 +344,7 @@ class VariableManager:
         for key, value in os.environ.items():
             if env_prefix:
                 if key.startswith(env_prefix):
-                    var_name = key[len(env_prefix):].lower()
+                    var_name = key[len(env_prefix) :].lower()
                     loaded_vars[var_name] = value
             else:
                 # 如果没有前缀，加载所有环境变量
@@ -361,7 +359,7 @@ class VariableManager:
         return loaded_vars
 
     def set_profile_override(
-        self, key: str, value: Any, context: Optional[Dict[str, Any]] = None
+        self, key: str, value: Any, context: dict[str, Any] | None = None
     ) -> None:
         """设置 profile 覆盖变量。
 
@@ -376,9 +374,9 @@ class VariableManager:
         self.profile_overrides[key] = value
 
         if self.enable_tracking:
-            self._track_change("override", key, old_value, value, context)
+            self._track_change('override', key, old_value, value, context)
 
-    def set_profile_overrides(self, overrides: Dict[str, Any]) -> None:
+    def set_profile_overrides(self, overrides: dict[str, Any]) -> None:
         """设置多个 profile 覆盖变量。
 
         参数：
@@ -409,23 +407,29 @@ class VariableManager:
         """
         # 按优先级顺序检查
         if name in self.extracted_vars:
-            return self.extracted_vars[name], "extracted"
+            return self.extracted_vars[name], 'extracted'
         if name in self.profile_overrides:
-            return self.profile_overrides[name], "override"
+            return self.profile_overrides[name], 'override'
         if name in self.profile_vars:
-            return self.profile_vars[name], "profile"
+            return self.profile_vars[name], 'profile'
 
         # 检查环境变量（在 profile 之后）
-        env_key = f"{self.env_vars_prefix}{name.upper()}" if self.env_vars_prefix else name.upper()
+        env_key = (
+            f'{self.env_vars_prefix}{name.upper()}'
+            if self.env_vars_prefix
+            else name.upper()
+        )
         if env_key in os.environ:
-            return os.environ[env_key], "env"
+            return os.environ[env_key], 'env'
 
         if name in self.global_vars:
-            return self.global_vars[name], "global"
+            return self.global_vars[name], 'global'
 
-        return default, "default"
+        return default, 'default'
 
-    def compute_delta(self, before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+    def compute_delta(
+        self, before: dict[str, Any], after: dict[str, Any]
+    ) -> dict[str, Any]:
         """计算两个状态之间的变量变化。
 
         参数：
@@ -440,26 +444,19 @@ class VariableManager:
                 "deleted": {"var_name": old_value}
             }
         """
-        delta = {
-            "added": {},
-            "modified": {},
-            "deleted": {}
-        }
+        delta = {'added': {}, 'modified': {}, 'deleted': {}}
 
         # 查找新增和修改的变量
         for key, value in after.items():
             if key not in before:
-                delta["added"][key] = value
+                delta['added'][key] = value
             elif before[key] != value:
-                delta["modified"][key] = {
-                    "old": before[key],
-                    "new": value
-                }
+                delta['modified'][key] = {'old': before[key], 'new': value}
 
         # 查找删除的变量
         for key in before:
             if key not in after:
-                delta["deleted"][key] = before[key]
+                delta['deleted'][key] = before[key]
 
         return delta
 
@@ -469,7 +466,7 @@ class VariableManager:
         var_name: str,
         old_value: Any,
         new_value: Any,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """跟踪变量变更。
 
@@ -484,19 +481,19 @@ class VariableManager:
             return
 
         change_record = {
-            "timestamp": datetime.now().isoformat(),
-            "source": source,
-            "variable": var_name,
-            "old_value": old_value,
-            "new_value": new_value,
-            "context": context or {},
+            'timestamp': datetime.now().isoformat(),
+            'source': source,
+            'variable': var_name,
+            'old_value': old_value,
+            'new_value': new_value,
+            'context': context or {},
         }
 
         self.change_history.append(change_record)
 
     def get_change_history(
-        self, variable_name: Optional[str] = None, limit: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, variable_name: str | None = None, limit: int | None = None
+    ) -> list[dict[str, Any]]:
         """获取变量变更历史。
 
         参数：
@@ -509,7 +506,9 @@ class VariableManager:
         history = self.change_history
 
         if variable_name:
-            history = [record for record in history if record["variable"] == variable_name]
+            history = [
+                record for record in history if record['variable'] == variable_name
+            ]
 
         if limit:
             history = history[-limit:]
@@ -520,34 +519,34 @@ class VariableManager:
         """清除所有变更历史。"""
         self.change_history.clear()
 
-    def get_debug_info(self) -> Dict[str, Any]:
+    def get_debug_info(self) -> dict[str, Any]:
         """获取详细的调试信息。
 
         返回：
             包含变量来源和元数据的字典
         """
         debug_info = {
-            "global_vars": self.global_vars.copy(),
-            "profile_vars": self.profile_vars.copy(),
-            "profile_overrides": self.profile_overrides.copy(),
-            "extracted_vars": self.extracted_vars.copy(),
-            "env_vars_prefix": self.env_vars_prefix,
-            "tracking_enabled": self.enable_tracking,
-            "change_history_count": len(self.change_history),
+            'global_vars': self.global_vars.copy(),
+            'profile_vars': self.profile_vars.copy(),
+            'profile_overrides': self.profile_overrides.copy(),
+            'extracted_vars': self.extracted_vars.copy(),
+            'env_vars_prefix': self.env_vars_prefix,
+            'tracking_enabled': self.enable_tracking,
+            'change_history_count': len(self.change_history),
         }
 
         # 如果设置了前缀，添加匹配的环境变量
         if self.env_vars_prefix:
-            debug_info["environment_variables"] = {}
+            debug_info['environment_variables'] = {}
             for key, value in os.environ.items():
                 if key.startswith(self.env_vars_prefix):
-                    debug_info["environment_variables"][key] = value
+                    debug_info['environment_variables'][key] = value
 
         return debug_info
 
     def export_variables(
         self, include_source: bool = False, include_env: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """以结构化格式导出所有变量。
 
         参数：
@@ -562,10 +561,7 @@ class VariableManager:
             all_vars = self.get_all_variables()
             for var_name in all_vars:
                 value, source = self.get_variable_with_source(var_name)
-                exported[var_name] = {
-                    "value": value,
-                    "source": source
-                }
+                exported[var_name] = {'value': value, 'source': source}
             return exported
         else:
             return self.get_all_variables()
@@ -590,9 +586,9 @@ class VariableScope:
             manager: VariableManager 实例
         """
         self.manager = manager
-        self._snapshot: Optional[Dict[str, Any]] = None
+        self._snapshot: dict[str, Any] | None = None
 
-    def __enter__(self) -> "VariableScope":
+    def __enter__(self) -> 'VariableScope':
         """进入上下文并保存当前状态。"""
         self._snapshot = self.manager.snapshot()
         return self

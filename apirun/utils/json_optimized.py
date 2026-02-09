@@ -12,11 +12,11 @@ Performance improvements:
 Following Google Python Style Guide.
 """
 
-import json
-import functools
-from typing import Any, Dict, List, Optional
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
+import functools
+import json
+from typing import Any
 
 
 class OptimizedJSONEncoder(json.JSONEncoder):
@@ -56,7 +56,7 @@ class OptimizedJSONEncoder(json.JSONEncoder):
             result = float(obj)
         elif isinstance(obj, set):
             result = list(obj)
-        elif hasattr(obj, "__dict__"):
+        elif hasattr(obj, '__dict__'):
             result = obj.__dict__
         else:
             result = str(obj)
@@ -69,11 +69,13 @@ class OptimizedJSONEncoder(json.JSONEncoder):
 
 
 # Cache for JSON strings
-_json_cache: Dict[str, str] = {}
+_json_cache: dict[str, str] = {}
 _cache_max_size = 1000
 
 
-def json_dumps(obj: Any, indent: Optional[int] = None, cache_key: Optional[str] = None) -> str:
+def json_dumps(
+    obj: Any, indent: int | None = None, cache_key: str | None = None
+) -> str:
     """Optimized JSON serialization with caching.
 
     Args:
@@ -94,7 +96,7 @@ def json_dumps(obj: Any, indent: Optional[int] = None, cache_key: Optional[str] 
         indent=indent,
         cls=OptimizedJSONEncoder,
         ensure_ascii=False,  # Faster, allows UTF-8
-        separators=(",", ":") if indent is None else None,  # Compact format
+        separators=(',', ':') if indent is None else None,  # Compact format
     )
 
     # Cache result if key provided
@@ -132,7 +134,7 @@ class StreamingJSONEncoder:
     """
 
     @staticmethod
-    def encode_iterable(items: List[Any], chunk_size: int = 100) -> str:
+    def encode_iterable(items: list[Any], chunk_size: int = 100) -> str:
         """Encode a list in chunks.
 
         Args:
@@ -142,18 +144,18 @@ class StreamingJSONEncoder:
         Returns:
             JSON array string
         """
-        parts = ["["]
+        parts = ['[']
 
         for i, item in enumerate(items):
             if i > 0:
-                parts.append(",")
+                parts.append(',')
             if i % chunk_size == 0 and i > 0:
                 # Small pause to allow GC
                 pass
             parts.append(json_dumps(item))
 
-        parts.append("]")
-        return "".join(parts)
+        parts.append(']')
+        return ''.join(parts)
 
 
 def fast_deepcopy(obj: Any) -> Any:
@@ -172,10 +174,11 @@ def fast_deepcopy(obj: Any) -> Any:
     except (TypeError, ValueError):
         # Fallback to regular deepcopy for complex objects
         import copy
+
         return copy.deepcopy(obj)
 
 
-def merge_dicts(base: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+def merge_dicts(base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
     """Merge two dictionaries efficiently.
 
     Args:
@@ -199,7 +202,7 @@ def get_json_size(obj: Any) -> int:
     Returns:
         Size in bytes
     """
-    return len(json_dumps(obj).encode("utf-8"))
+    return len(json_dumps(obj).encode('utf-8'))
 
 
 def validate_json(json_str: str) -> bool:
@@ -229,8 +232,8 @@ def format_json_error(error: Exception) -> str:
     """
     if isinstance(error, json.JSONDecodeError):
         return (
-            f"JSON parsing error at line {error.lineno}, column {error.colno}: "
-            f"{error.msg}"
+            f'JSON parsing error at line {error.lineno}, column {error.colno}: '
+            f'{error.msg}'
         )
     return str(error)
 
@@ -245,9 +248,11 @@ def monitor_json_performance(func):
     Returns:
         Wrapped function with performance logging
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         import time
+
         start = time.perf_counter()
         result = func(*args, **kwargs)
         elapsed = time.perf_counter() - start
@@ -255,10 +260,9 @@ def monitor_json_performance(func):
         # Log slow operations
         if elapsed > 0.1:  # 100ms threshold
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Slow JSON operation: {func.__name__} took {elapsed:.3f}s"
-            )
+            logger.warning(f'Slow JSON operation: {func.__name__} took {elapsed:.3f}s')
 
         return result
 
@@ -280,6 +284,7 @@ def safe_json_loads(json_str: str, default: Any = None) -> Any:
         return json.loads(json_str)
     except (ValueError, json.JSONDecodeError) as e:
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.error(f"JSON parsing failed: {format_json_error(e)}")
+        logger.error(f'JSON parsing failed: {format_json_error(e)}')
         return default

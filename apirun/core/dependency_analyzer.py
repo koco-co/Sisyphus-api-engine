@@ -9,9 +9,9 @@ This module implements intelligent dependency analysis:
 Following Google Python Style Guide.
 """
 
-from typing import List, Dict, Set, Tuple, Any
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -26,7 +26,7 @@ class StepNode:
     """
 
     name: str
-    depends_on: List[str]
+    depends_on: list[str]
     can_parallel: bool = False
     level: int = 0
 
@@ -45,35 +45,37 @@ class DependencyAnalyzer:
         graph: Dependency graph (adjacency list)
     """
 
-    def __init__(self, steps: List[Dict[str, Any]]):
+    def __init__(self, steps: list[dict[str, Any]]):
         """Initialize DependencyAnalyzer.
 
         Args:
             steps: List of step definition dictionaries
         """
         self.steps = steps
-        self.graph: Dict[str, Set[str]] = defaultdict(set)
-        self.reverse_graph: Dict[str, Set[str]] = defaultdict(set)
+        self.graph: dict[str, set[str]] = defaultdict(set)
+        self.reverse_graph: dict[str, set[str]] = defaultdict(set)
         self._build_graph()
 
     def _build_graph(self) -> None:
         """Build dependency graph from step definitions."""
-        step_names = {step.get("name", f"step_{i}") for i, step in enumerate(self.steps)}
+        step_names = {
+            step.get('name', f'step_{i}') for i, step in enumerate(self.steps)
+        }
 
         for step in self.steps:
-            step_name = step.get("name", "")
+            step_name = step.get('name', '')
             if not step_name:
                 continue
 
             # Get dependencies
-            depends_on = step.get("depends_on", [])
+            depends_on = step.get('depends_on', [])
             if depends_on:
                 for dep in depends_on:
                     if dep in step_names:
                         self.graph[dep].add(step_name)
                         self.reverse_graph[step_name].add(dep)
 
-    def analyze_parallel_opportunities(self) -> List[List[str]]:
+    def analyze_parallel_opportunities(self) -> list[list[str]]:
         """Identify opportunities for parallel execution.
 
         Returns:
@@ -81,7 +83,7 @@ class DependencyAnalyzer:
             Steps are ordered by dependency (batches must execute in sequence).
         """
         # Calculate in-degree for each node
-        in_degree = {step.get("name", ""): 0 for step in self.steps}
+        in_degree = {step.get('name', ''): 0 for step in self.steps}
         for step_name in self.graph:
             for dependent in self.graph[step_name]:
                 if dependent in in_degree:
@@ -117,7 +119,7 @@ class DependencyAnalyzer:
 
         return levels
 
-    def get_parallel_groups(self) -> Dict[int, List[str]]:
+    def get_parallel_groups(self) -> dict[int, list[str]]:
         """Get groups of steps that can run in parallel.
 
         Returns:
@@ -125,7 +127,7 @@ class DependencyAnalyzer:
             Steps in the same level can run in parallel.
         """
         levels = self.analyze_parallel_opportunities()
-        return {i: steps for i, steps in enumerate(levels)}
+        return dict(enumerate(levels))
 
     def can_parallelize(self, step1_name: str, step2_name: str) -> bool:
         """Check if two steps can run in parallel.
@@ -155,7 +157,7 @@ class DependencyAnalyzer:
 
         return True
 
-    def _get_ancestors(self, step_name: str) -> Set[str]:
+    def _get_ancestors(self, step_name: str) -> set[str]:
         """Get all ancestors of a step (transitive dependencies).
 
         Args:
@@ -175,7 +177,7 @@ class DependencyAnalyzer:
 
         return ancestors
 
-    def suggest_execution_plan(self) -> Dict[str, Any]:
+    def suggest_execution_plan(self) -> dict[str, Any]:
         """Suggest an optimized execution plan.
 
         Returns:
@@ -197,14 +199,14 @@ class DependencyAnalyzer:
             speedup = 1.0
 
         return {
-            "parallel_levels": levels,
-            "sequential_count": len(levels),
-            "total_steps": total_steps,
-            "max_parallel": max_parallel,
-            "speedup_potential": round(speedup, 2),
+            'parallel_levels': levels,
+            'sequential_count': len(levels),
+            'total_steps': total_steps,
+            'max_parallel': max_parallel,
+            'speedup_potential': round(speedup, 2),
         }
 
-    def find_critical_path(self) -> List[str]:
+    def find_critical_path(self) -> list[str]:
         """Find the critical path (longest dependency chain).
 
         Returns:
@@ -254,7 +256,7 @@ class DependencyAnalyzer:
         return len(descendants)
 
 
-def analyze_test_case_parallelism(steps: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_test_case_parallelism(steps: list[dict[str, Any]]) -> dict[str, Any]:
     """Analyze parallelism opportunities in a test case.
 
     Args:
@@ -267,13 +269,13 @@ def analyze_test_case_parallelism(steps: List[Dict[str, Any]]) -> Dict[str, Any]
     execution_plan = analyzer.suggest_execution_plan()
 
     return {
-        "analysis": execution_plan,
-        "recommendations": _generate_recommendations(execution_plan),
-        "critical_path": analyzer.find_critical_path(),
+        'analysis': execution_plan,
+        'recommendations': _generate_recommendations(execution_plan),
+        'critical_path': analyzer.find_critical_path(),
     }
 
 
-def _generate_recommendations(execution_plan: Dict[str, Any]) -> List[str]:
+def _generate_recommendations(execution_plan: dict[str, Any]) -> list[str]:
     """Generate optimization recommendations.
 
     Args:
@@ -284,17 +286,23 @@ def _generate_recommendations(execution_plan: Dict[str, Any]) -> List[str]:
     """
     recommendations = []
 
-    if execution_plan["max_parallel"] <= 1:
-        recommendations.append("⚠️  当前测试用例没有并行执行机会")
-        recommendations.append("   建议: 检查步骤依赖关系，移除不必要的 depends_on")
+    if execution_plan['max_parallel'] <= 1:
+        recommendations.append('⚠️  当前测试用例没有并行执行机会')
+        recommendations.append('   建议: 检查步骤依赖关系，移除不必要的 depends_on')
     else:
-        recommendations.append(f"✅ 最多可以 {execution_plan['max_parallel']} 个步骤并行执行")
+        recommendations.append(
+            f'✅ 最多可以 {execution_plan["max_parallel"]} 个步骤并行执行'
+        )
 
-        if execution_plan["speedup_potential"] > 1.5:
-            recommendations.append(f"✅ 理论加速比: {execution_plan['speedup_potential']}x")
-            recommendations.append("   建议: 将独立步骤配置为 concurrent 类型")
+        if execution_plan['speedup_potential'] > 1.5:
+            recommendations.append(
+                f'✅ 理论加速比: {execution_plan["speedup_potential"]}x'
+            )
+            recommendations.append('   建议: 将独立步骤配置为 concurrent 类型')
 
-        if execution_plan["sequential_count"] < execution_plan["total_steps"]:
-            recommendations.append(f"ℹ️  可将 {execution_plan['total_steps']} 个步骤压缩为 {execution_plan['sequential_count']} 批次")
+        if execution_plan['sequential_count'] < execution_plan['total_steps']:
+            recommendations.append(
+                f'ℹ️  可将 {execution_plan["total_steps"]} 个步骤压缩为 {execution_plan["sequential_count"]} 批次'
+            )
 
     return recommendations

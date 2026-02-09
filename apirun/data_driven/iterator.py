@@ -4,10 +4,10 @@ This module implements test case generation from data sources.
 Following Google Python Style Guide.
 """
 
-from typing import Any, Dict, List, Optional
 from copy import deepcopy
+from typing import Any
 
-from apirun.core.models import TestCase, TestStep
+from apirun.core.models import TestCase
 from apirun.data_driven.data_source import DataSourceFactory, DataSourceReader
 
 
@@ -30,8 +30,8 @@ class DataDrivenIterator:
     def __init__(
         self,
         test_case: TestCase,
-        data_source_config: Dict[str, Any],
-        variable_prefix: str = "",
+        data_source_config: dict[str, Any],
+        variable_prefix: str = '',
     ):
         """Initialize DataDrivenIterator.
 
@@ -46,8 +46,8 @@ class DataDrivenIterator:
         self.base_test_case = test_case
         self.data_source_config = data_source_config
         self.variable_prefix = variable_prefix
-        self._data_reader: Optional[DataSourceReader] = None
-        self._data_rows: List[Dict[str, Any]] = []
+        self._data_reader: DataSourceReader | None = None
+        self._data_rows: list[dict[str, Any]] = []
 
         # Initialize data reader
         self._init_data_reader()
@@ -59,36 +59,36 @@ class DataDrivenIterator:
             ValueError: If data source configuration is invalid
         """
         factory = DataSourceFactory()
-        source_type = self.data_source_config.get("type")
+        source_type = self.data_source_config.get('type')
 
         if not source_type:
-            raise ValueError("Data source type is required")
+            raise ValueError('Data source type is required')
 
         # Create reader based on source type
-        if source_type == "csv":
+        if source_type == 'csv':
             self._data_reader = factory.create_reader(
-                "csv",
-                file_path=self.data_source_config["file_path"],
-                delimiter=self.data_source_config.get("delimiter", ","),
-                encoding=self.data_source_config.get("encoding", "utf-8"),
-                has_header=self.data_source_config.get("has_header", True),
+                'csv',
+                file_path=self.data_source_config['file_path'],
+                delimiter=self.data_source_config.get('delimiter', ','),
+                encoding=self.data_source_config.get('encoding', 'utf-8'),
+                has_header=self.data_source_config.get('has_header', True),
             )
-        elif source_type == "json":
+        elif source_type == 'json':
             self._data_reader = factory.create_reader(
-                "json",
-                file_path=self.data_source_config["file_path"],
-                data_key=self.data_source_config.get("data_key"),
+                'json',
+                file_path=self.data_source_config['file_path'],
+                data_key=self.data_source_config.get('data_key'),
             )
-        elif source_type == "database":
+        elif source_type == 'database':
             self._data_reader = factory.create_reader(
-                "database",
-                db_type=self.data_source_config["db_type"],
-                connection_config=self.data_source_config["connection_config"],
-                sql=self.data_source_config["sql"],
-                params=self.data_source_config.get("params"),
+                'database',
+                db_type=self.data_source_config['db_type'],
+                connection_config=self.data_source_config['connection_config'],
+                sql=self.data_source_config['sql'],
+                params=self.data_source_config.get('params'),
             )
         else:
-            raise ValueError(f"Unsupported data source type: {source_type}")
+            raise ValueError(f'Unsupported data source type: {source_type}')
 
         # Read data
         self._data_rows = self._data_reader.read()
@@ -114,7 +114,7 @@ class DataDrivenIterator:
         return len(self._data_rows)
 
     def _create_augmented_test_case(
-        self, data_row: Dict[str, Any], index: int
+        self, data_row: dict[str, Any], index: int
     ) -> TestCase:
         """Create augmented test case with data variables.
 
@@ -140,23 +140,23 @@ class DataDrivenIterator:
         # Prepare data variables with prefix
         data_vars = {}
         for key, value in data_row.items():
-            var_key = f"{self.variable_prefix}{key}" if self.variable_prefix else key
+            var_key = f'{self.variable_prefix}{key}' if self.variable_prefix else key
             data_vars[var_key] = value
 
         # Add special variables
-        data_vars["_data_index"] = index
-        data_vars["_data_total"] = len(self._data_rows)
+        data_vars['_data_index'] = index
+        data_vars['_data_total'] = len(self._data_rows)
 
         # Merge data variables with existing global variables
         existing_vars = augmented_test_case.config.variables or {}
         augmented_test_case.config.variables = {**existing_vars, **data_vars}
 
         # Update test case name with data index
-        augmented_test_case.name = f"{self.base_test_case.name} [Data #{index + 1}]"
+        augmented_test_case.name = f'{self.base_test_case.name} [Data #{index + 1}]'
 
         return augmented_test_case
 
-    def get_data_rows(self) -> List[Dict[str, Any]]:
+    def get_data_rows(self) -> list[dict[str, Any]]:
         """Get all data rows.
 
         Returns:
@@ -180,7 +180,7 @@ class DataDrivenIterator:
         """
         self._data_rows = self._data_rows[:count]
 
-    def batch_data(self, batch_size: int) -> List[List[Dict[str, Any]]]:
+    def batch_data(self, batch_size: int) -> list[list[dict[str, Any]]]:
         """Split data into batches.
 
         Args:

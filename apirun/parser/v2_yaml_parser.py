@@ -12,22 +12,21 @@
 """
 
 import os
-import copy
-from typing import Any, Dict, List, Optional
-from yaml import safe_load, YAMLError
+import pathlib
+from typing import Any
+
+from yaml import YAMLError, safe_load
 from yaml_include import Constructor
 
+from apirun.core.global_config_manager import GlobalConfigManager
 from apirun.core.models import (
-    TestCase,
-    TestStep,
+    Extractor,
     GlobalConfig,
     ProfileConfig,
+    TestCase,
+    TestStep,
     ValidationRule,
-    Extractor,
-    HttpMethod,
 )
-from apirun.core.global_config_manager import GlobalConfigManager
-from apirun.utils.template import render_template
 
 
 class YamlParseError(Exception):
@@ -62,7 +61,7 @@ class V2YamlParser:
         """初始化 V2 YAML 解析器。"""
         pass
 
-    def _load_yaml_with_include(self, yaml_file: str) -> Dict[str, Any]:
+    def _load_yaml_with_include(self, yaml_file: str) -> dict[str, Any]:
         """加载支持 !include 标签的 YAML 文件。
 
         使用 yaml_include 库实现 !include 标签支持，
@@ -79,7 +78,6 @@ class V2YamlParser:
             config: !include ../config/global_config.yaml
         """
         import yaml
-        from yaml_include import Constructor
 
         # 获取基础目录，用于解析相对路径
         base_dir = os.path.dirname(os.path.abspath(yaml_file))
@@ -88,10 +86,10 @@ class V2YamlParser:
         constructor = Constructor(base_dir=base_dir)
 
         # 将 !include 构造器注册到 yaml.FullLoader
-        yaml.add_constructor("!include", constructor, yaml.FullLoader)
+        yaml.add_constructor('!include', constructor, yaml.FullLoader)
 
         # 使用 FullLoader 加载 YAML 文件
-        with open(yaml_file, "r", encoding="utf-8") as f:
+        with pathlib.Path(yaml_file).open(encoding='utf-8') as f:
             return yaml.load(f, yaml.FullLoader)
 
     def parse(self, yaml_file: str) -> TestCase:
@@ -113,16 +111,16 @@ class V2YamlParser:
             YamlParseError: YAML 解析失败时抛出
             FileNotFoundError: 文件不存在时抛出
         """
-        if not os.path.exists(yaml_file):
-            raise FileNotFoundError(f"YAML 文件不存在: {yaml_file}")
+        if not pathlib.Path(yaml_file).exists():
+            raise FileNotFoundError(f'YAML 文件不存在: {yaml_file}')
 
         try:
             data = self._load_yaml_with_include(yaml_file)
         except YAMLError as e:
-            raise YamlParseError(f"YAML 文件解析失败: {e}")
+            raise YamlParseError(f'YAML 文件解析失败: {e}')
 
         if not data:
-            raise YamlParseError(f"YAML 文件内容为空: {yaml_file}")
+            raise YamlParseError(f'YAML 文件内容为空: {yaml_file}')
 
         self._current_file = yaml_file
 
@@ -130,9 +128,9 @@ class V2YamlParser:
         # 配置优先级：测试用例 config > 全局配置 > 默认值
         global_config_manager = GlobalConfigManager(yaml_file)
         if global_config_manager.global_config:
-            test_config = data.get("config", {})
+            test_config = data.get('config', {})
             merged_config = global_config_manager.get_merged_config(test_config)
-            data["config"] = merged_config
+            data['config'] = merged_config
 
         return self._parse_test_case(data)
 
@@ -154,14 +152,14 @@ class V2YamlParser:
         try:
             data = safe_load(yaml_content)
         except YAMLError as e:
-            raise YamlParseError(f"YAML 内容解析失败: {e}")
+            raise YamlParseError(f'YAML 内容解析失败: {e}')
 
         if not data:
-            raise YamlParseError("YAML 内容为空")
+            raise YamlParseError('YAML 内容为空')
 
         return self._parse_test_case(data)
 
-    def _parse_test_case(self, data: Dict[str, Any]) -> TestCase:
+    def _parse_test_case(self, data: dict[str, Any]) -> TestCase:
         """从 YAML 数据解析测试用例。
 
         解析顶层结构，包括：
@@ -179,24 +177,24 @@ class V2YamlParser:
         返回：
             TestCase 对象
         """
-        name = data.get("name", "未命名测试用例")
-        description = data.get("description", "")
+        name = data.get('name', '未命名测试用例')
+        description = data.get('description', '')
 
         # 解析 config 配置节
-        config = self._parse_config(data.get("config", {}))
+        config = self._parse_config(data.get('config', {}))
 
         # 解析测试级 setup/teardown
-        setup = data.get("setup")
-        teardown = data.get("teardown")
+        setup = data.get('setup')
+        teardown = data.get('teardown')
 
         # 解析标签
-        tags = data.get("tags", [])
+        tags = data.get('tags', [])
 
         # 解析启用标志
-        enabled = data.get("enabled", True)
+        enabled = data.get('enabled', True)
 
         # 解析测试步骤
-        steps_data = data.get("steps", [])
+        steps_data = data.get('steps', [])
         steps = []
         for step_data in steps_data:
             step = self._parse_step(step_data)
@@ -214,7 +212,7 @@ class V2YamlParser:
             enabled=enabled,
         )
 
-    def _parse_config(self, config_data: Dict[str, Any]) -> Optional[GlobalConfig]:
+    def _parse_config(self, config_data: dict[str, Any]) -> GlobalConfig | None:
         """解析全局配置节。
 
         处理 config 部分的所有配置项，包括：
@@ -235,34 +233,35 @@ class V2YamlParser:
         if not config_data:
             return None
 
-        name = config_data.get("name", "Test Suite")
-        description = config_data.get("description", "")
+        name = config_data.get('name', 'Test Suite')
+        description = config_data.get('description', '')
 
         # 解析 profiles 环境配置
         profiles = {}
-        profiles_data = config_data.get("profiles", {})
+        profiles_data = config_data.get('profiles', {})
 
         # 展平版本化 profiles（如 "v1.dev"、"v2.prod"）
         flattened_profiles = self._flatten_profiles(profiles_data)
 
         for profile_name, profile_config in flattened_profiles.items():
             profiles[profile_name] = ProfileConfig(
-                base_url=profile_config.get("base_url", ""),
-                variables=profile_config.get("variables", {}),
-                timeout=profile_config.get("timeout", 30),
-                verify_ssl=profile_config.get("verify_ssl", True),
-                overrides=profile_config.get("overrides", {}),
-                priority=profile_config.get("priority", 0),
+                base_url=profile_config.get('base_url', ''),
+                variables=profile_config.get('variables', {}),
+                timeout=profile_config.get('timeout', 30),
+                verify_ssl=profile_config.get('verify_ssl', True),
+                overrides=profile_config.get('overrides', {}),
+                priority=profile_config.get('priority', 0),
             )
 
-        active_profile = config_data.get("active_profile")
+        active_profile = config_data.get('active_profile')
 
         # 解析全局变量并渲染模板表达式
         # 支持嵌套引用如 ${config.profiles.dev.variables.xxx}
-        variables = config_data.get("variables", {})
+        variables = config_data.get('variables', {})
 
         if variables:
             from apirun.core.variable_manager import VariableManager
+
             vm = VariableManager()
 
             # 构建配置上下文，用于支持 config 嵌套引用
@@ -270,22 +269,25 @@ class V2YamlParser:
             nested_profiles = self._build_nested_profiles(profiles, flattened_profiles)
 
             config_context = {
-                "profiles": nested_profiles,
-                "active_profile": active_profile,
+                'profiles': nested_profiles,
+                'active_profile': active_profile,
             }
 
             # 添加展平的 profiles 以保持向后兼容
             # 允许同时使用 profiles.v1.dev 和 profiles.v1.dev 访问方式
             for profile_name, profile_config in profiles.items():
                 # 仅添加不与嵌套结构冲突的展平键
-                if "." not in profile_name or profile_name.split(".")[0] not in nested_profiles:
-                    config_context["profiles"][profile_name] = {
-                        "base_url": profile_config.base_url,
-                        "variables": profile_config.variables,
-                        "timeout": profile_config.timeout,
-                        "verify_ssl": profile_config.verify_ssl,
-                        "overrides": profile_config.overrides,
-                        "priority": profile_config.priority,
+                if (
+                    '.' not in profile_name
+                    or profile_name.split('.')[0] not in nested_profiles
+                ):
+                    config_context['profiles'][profile_name] = {
+                        'base_url': profile_config.base_url,
+                        'variables': profile_config.variables,
+                        'timeout': profile_config.timeout,
+                        'verify_ssl': profile_config.verify_ssl,
+                        'overrides': profile_config.overrides,
+                        'priority': profile_config.priority,
                     }
 
             # 设置配置上下文到变量管理器
@@ -302,6 +304,7 @@ class V2YamlParser:
                 else:
                     # 对于非字符串值，尝试将其作为 JSON 字符串渲染
                     import json
+
                     try:
                         json_str = json.dumps(value)
                         rendered_str = vm.render_string(json_str)
@@ -314,30 +317,30 @@ class V2YamlParser:
             variables = rendered_variables
 
         # 解析其他配置选项
-        timeout = config_data.get("timeout", 30)
-        retry_times = config_data.get("retry_times", 0)
-        concurrent = config_data.get("concurrent", False)
-        concurrent_threads = config_data.get("concurrent_threads", 3)
+        timeout = config_data.get('timeout', 30)
+        retry_times = config_data.get('retry_times', 0)
+        concurrent = config_data.get('concurrent', False)
+        concurrent_threads = config_data.get('concurrent_threads', 3)
 
         # 解析数据驱动配置
-        data_source = config_data.get("data_source")
-        data_iterations = config_data.get("data_iterations", False)
-        variable_prefix = config_data.get("variable_prefix", "")
+        data_source = config_data.get('data_source')
+        data_iterations = config_data.get('data_iterations', False)
+        variable_prefix = config_data.get('variable_prefix', '')
 
         # 解析 WebSocket 配置
-        websocket = config_data.get("websocket")
+        websocket = config_data.get('websocket')
 
         # 解析输出配置
-        output = config_data.get("output")
+        output = config_data.get('output')
 
         # 解析调试配置
-        debug = config_data.get("debug")
+        debug = config_data.get('debug')
 
         # 解析环境变量配置
-        env_vars = config_data.get("env_vars")
+        env_vars = config_data.get('env_vars')
 
         # 解析详细输出标志
-        verbose = config_data.get("verbose", False)
+        verbose = config_data.get('verbose', False)
 
         return GlobalConfig(
             name=name,
@@ -359,7 +362,7 @@ class V2YamlParser:
             verbose=verbose,
         )
 
-    def _parse_step(self, step_data: Dict[str, Any]) -> Optional[TestStep]:
+    def _parse_step(self, step_data: dict[str, Any]) -> TestStep | None:
         """解析单个测试步骤。
 
         支持两种步骤定义格式：
@@ -386,57 +389,57 @@ class V2YamlParser:
             step_details = step_data[name]
         else:
             # 标准格式：使用 name 字段
-            name = step_data.get("name", "未命名步骤")
+            name = step_data.get('name', '未命名步骤')
             step_details = step_data
 
         # 获取步骤类型，默认为 request
-        step_type = step_details.get("type", "request")
+        step_type = step_details.get('type', 'request')
 
         # 解析 HTTP 请求相关字段
-        method = step_details.get("method")
-        url = step_details.get("url")
-        params = step_details.get("params")
-        headers = step_details.get("headers")
-        body = step_details.get("body")
+        method = step_details.get('method')
+        url = step_details.get('url')
+        params = step_details.get('params')
+        headers = step_details.get('headers')
+        body = step_details.get('body')
 
         # 解析数据库操作相关字段
-        database = step_details.get("database")
-        operation = step_details.get("operation")
-        sql = step_details.get("sql")
+        database = step_details.get('database')
+        operation = step_details.get('operation')
+        sql = step_details.get('sql')
 
         # 解析等待步骤相关字段
-        seconds = step_details.get("seconds")
-        condition = step_details.get("condition")
-        interval = step_details.get("interval")
-        max_wait = step_details.get("max_wait")
-        wait_condition = step_details.get("wait_condition")
+        seconds = step_details.get('seconds')
+        condition = step_details.get('condition')
+        interval = step_details.get('interval')
+        max_wait = step_details.get('max_wait')
+        wait_condition = step_details.get('wait_condition')
 
         # 解析循环步骤相关字段
-        loop_type = step_details.get("loop_type")
-        loop_count = step_details.get("loop_count")
-        loop_condition = step_details.get("loop_condition")
-        loop_variable = step_details.get("loop_variable")
-        loop_steps = step_details.get("loop_steps")
+        loop_type = step_details.get('loop_type')
+        loop_count = step_details.get('loop_count')
+        loop_condition = step_details.get('loop_condition')
+        loop_variable = step_details.get('loop_variable')
+        loop_steps = step_details.get('loop_steps')
 
         # 解析并发步骤相关字段
-        max_concurrency = step_details.get("max_concurrency")
-        concurrent_steps = step_details.get("concurrent_steps")
+        max_concurrency = step_details.get('max_concurrency')
+        concurrent_steps = step_details.get('concurrent_steps')
 
         # 解析脚本执行相关字段
-        script = step_details.get("script")
-        script_file = step_details.get("script_file")
-        script_type = step_details.get("script_type", "python")
-        allow_imports = step_details.get("allow_imports", True)
-        args = step_details.get("args")
-        capture_output = step_details.get("capture_output")
+        script = step_details.get('script')
+        script_file = step_details.get('script_file')
+        script_type = step_details.get('script_type', 'python')
+        allow_imports = step_details.get('allow_imports', True)
+        args = step_details.get('args')
+        capture_output = step_details.get('capture_output')
 
         # 解析轮询步骤相关字段
-        poll_config = step_details.get("poll_config")
-        on_timeout = step_details.get("on_timeout")
+        poll_config = step_details.get('poll_config')
+        on_timeout = step_details.get('on_timeout')
 
         # 解析验证规则
         validations = []
-        validations_data = step_details.get("validations", [])
+        validations_data = step_details.get('validations', [])
         for val_data in validations_data:
             validation = self._parse_validation(val_data)
             if validation:
@@ -444,25 +447,25 @@ class V2YamlParser:
 
         # 解析提取器
         extractors = []
-        extractors_data = step_details.get("extractors", [])
+        extractors_data = step_details.get('extractors', [])
         for ext_data in extractors_data:
             extractor = self._parse_extractor(ext_data)
             if extractor:
                 extractors.append(extractor)
 
         # 解析步骤控制
-        skip_if = step_details.get("skip_if")
-        only_if = step_details.get("only_if")
-        depends_on = step_details.get("depends_on", [])
+        skip_if = step_details.get('skip_if')
+        only_if = step_details.get('only_if')
+        depends_on = step_details.get('depends_on', [])
 
         # 解析超时和重试配置
-        timeout = step_details.get("timeout")
-        retry_times = step_details.get("retry_times")
-        retry_policy = step_details.get("retry_policy")
+        timeout = step_details.get('timeout')
+        retry_times = step_details.get('retry_times')
+        retry_policy = step_details.get('retry_policy')
 
         # 解析步骤级 setup/teardown
-        setup = step_details.get("setup")
-        teardown = step_details.get("teardown")
+        setup = step_details.get('setup')
+        teardown = step_details.get('teardown')
 
         return TestStep(
             name=name,
@@ -507,7 +510,7 @@ class V2YamlParser:
             on_timeout=on_timeout,
         )
 
-    def _parse_validation(self, val_data: Dict[str, Any]) -> Optional[ValidationRule]:
+    def _parse_validation(self, val_data: dict[str, Any]) -> ValidationRule | None:
         """解析验证规则。
 
         支持的验证器类型：
@@ -523,15 +526,15 @@ class V2YamlParser:
         if not isinstance(val_data, dict):
             return None
 
-        val_type = val_data.get("type", "eq")
-        path = val_data.get("path", "$")
-        expect = val_data.get("expect")
-        description = val_data.get("description", "")
-        error_message = val_data.get("error_message", "")
+        val_type = val_data.get('type', 'eq')
+        path = val_data.get('path', '$')
+        expect = val_data.get('expect')
+        description = val_data.get('description', '')
+        error_message = val_data.get('error_message', '')
 
         # 解析逻辑运算符（and/or/not）
-        if val_type in ("and", "or", "not"):
-            sub_validations_data = val_data.get("sub_validations", [])
+        if val_type in ('and', 'or', 'not'):
+            sub_validations_data = val_data.get('sub_validations', [])
             sub_validations = []
 
             for sub_val_data in sub_validations_data:
@@ -541,7 +544,7 @@ class V2YamlParser:
 
             return ValidationRule(
                 type=val_type,
-                path="",
+                path='',
                 expect=None,
                 description=description,
                 logical_operator=val_type,
@@ -557,7 +560,7 @@ class V2YamlParser:
             error_message=error_message,
         )
 
-    def _parse_extractor(self, ext_data: Dict[str, Any]) -> Optional[Extractor]:
+    def _parse_extractor(self, ext_data: dict[str, Any]) -> Extractor | None:
         """解析变量提取器。
 
         支持的提取器类型：
@@ -575,23 +578,23 @@ class V2YamlParser:
         if not isinstance(ext_data, dict):
             return None
 
-        name = ext_data.get("name")
-        ext_type = ext_data.get("type", "jsonpath")
-        description = ext_data.get("description", "")
-        default = ext_data.get("default")
-        extract_all = ext_data.get("extract_all", False)
-        condition = ext_data.get("condition")
-        on_failure = ext_data.get("on_failure")
+        name = ext_data.get('name')
+        ext_type = ext_data.get('type', 'jsonpath')
+        description = ext_data.get('description', '')
+        default = ext_data.get('default')
+        extract_all = ext_data.get('extract_all', False)
+        condition = ext_data.get('condition')
+        on_failure = ext_data.get('on_failure')
 
         # 支持不同提取器类型的字段别名
         # regex 提取器：支持 'pattern' 和 'group' 作为 'path' 和 'index' 的别名
-        if ext_type == "regex":
-            path = ext_data.get("pattern") or ext_data.get("path", "")
+        if ext_type == 'regex':
+            path = ext_data.get('pattern') or ext_data.get('path', '')
             # 'group' 比 'index' 更语义化，但两者都支持
-            index = ext_data.get("group") or ext_data.get("index", 0)
+            index = ext_data.get('group') or ext_data.get('index', 0)
         else:
-            path = ext_data.get("path", "")
-            index = ext_data.get("index", 0)
+            path = ext_data.get('path', '')
+            index = ext_data.get('index', 0)
 
         if not name:
             return None
@@ -605,10 +608,12 @@ class V2YamlParser:
             default=default,
             description=description,
             condition=condition,
-            on_failure=on_failure
+            on_failure=on_failure,
         )
 
-    def _flatten_profiles(self, profiles_data: Dict[str, Any], prefix: str = "") -> Dict[str, Dict[str, Any]]:
+    def _flatten_profiles(
+        self, profiles_data: dict[str, Any], prefix: str = ''
+    ) -> dict[str, dict[str, Any]]:
         """展平版本化 profiles 结构。
 
         将嵌套的 profiles 配置：
@@ -635,12 +640,14 @@ class V2YamlParser:
         flattened = {}
 
         for key, value in profiles_data.items():
-            full_key = f"{prefix}.{key}" if prefix else key
+            full_key = f'{prefix}.{key}' if prefix else key
 
             # 检查 value 是否为 profile 配置（包含 profile 字段）
             if isinstance(value, dict):
                 # 如果包含 profile 特定字段，视为叶子节点 profile
-                if any(field in value for field in ["base_url", "timeout", "variables"]):
+                if any(
+                    field in value for field in ['base_url', 'timeout', 'variables']
+                ):
                     flattened[full_key] = value
                 # 否则，是嵌套的版本文件夹，递归处理
                 else:
@@ -651,7 +658,11 @@ class V2YamlParser:
 
         return flattened
 
-    def _build_nested_profiles(self, profiles: Dict[str, ProfileConfig], flattened_profiles: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_nested_profiles(
+        self,
+        profiles: dict[str, ProfileConfig],
+        flattened_profiles: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
         """构建嵌套 profiles 结构用于模板渲染。
 
         创建同时支持展平和嵌套访问的结构：
@@ -672,7 +683,7 @@ class V2YamlParser:
         # 从展平的键构建嵌套结构
         for profile_key, profile_config in profiles.items():
             # 创建嵌套字典路径
-            parts = profile_key.split(".")
+            parts = profile_key.split('.')
             current = nested
 
             for i, part in enumerate(parts[:-1]):
@@ -683,17 +694,17 @@ class V2YamlParser:
             # 设置叶子节点 profile
             leaf_key = parts[-1]
             current[leaf_key] = {
-                "base_url": profile_config.base_url,
-                "variables": profile_config.variables,
-                "timeout": profile_config.timeout,
-                "verify_ssl": profile_config.verify_ssl,
-                "overrides": profile_config.overrides,
-                "priority": profile_config.priority,
+                'base_url': profile_config.base_url,
+                'variables': profile_config.variables,
+                'timeout': profile_config.timeout,
+                'verify_ssl': profile_config.verify_ssl,
+                'overrides': profile_config.overrides,
+                'priority': profile_config.priority,
             }
 
         return nested
 
-    def validate_yaml(self, yaml_file: str) -> List[str]:
+    def validate_yaml(self, yaml_file: str) -> list[str]:
         """验证 YAML 文件语法（不执行解析）。
 
         快速检查 YAML 文件的基本结构是否正确，包括：
@@ -709,8 +720,8 @@ class V2YamlParser:
         """
         errors = []
 
-        if not os.path.exists(yaml_file):
-            errors.append(f"文件不存在: {yaml_file}")
+        if not pathlib.Path(yaml_file).exists():
+            errors.append(f'文件不存在: {yaml_file}')
             return errors
 
         try:
@@ -718,24 +729,24 @@ class V2YamlParser:
             data = self._load_yaml_with_include(yaml_file)
 
             if not data:
-                errors.append("YAML 文件内容为空")
+                errors.append('YAML 文件内容为空')
                 return errors
 
             # 检查必填字段
-            if "name" not in data:
-                errors.append("缺少必填字段: name")
+            if 'name' not in data:
+                errors.append('缺少必填字段: name')
 
-            if "steps" not in data:
-                errors.append("缺少必填字段: steps")
-            elif not isinstance(data["steps"], list):
+            if 'steps' not in data:
+                errors.append('缺少必填字段: steps')
+            elif not isinstance(data['steps'], list):
                 errors.append("字段 'steps' 必须是列表")
-            elif len(data["steps"]) == 0:
+            elif len(data['steps']) == 0:
                 errors.append("字段 'steps' 不能为空")
 
         except YAMLError as e:
-            errors.append(f"YAML 语法错误: {e}")
+            errors.append(f'YAML 语法错误: {e}')
         except Exception as e:
-            errors.append(f"验证错误: {e}")
+            errors.append(f'验证错误: {e}')
 
         return errors
 

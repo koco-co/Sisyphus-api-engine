@@ -9,20 +9,20 @@ This module implements enhanced retry mechanism with:
 Following Google Python Style Guide.
 """
 
-import time
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class RetryStrategy(Enum):
     """Retry strategy types."""
 
-    FIXED = "fixed"  # Fixed delay between retries
-    EXPONENTIAL = "exponential"  # Exponential backoff (2^attempt)
-    LINEAR = "linear"  # Linear increase (attempt * base_delay)
-    CUSTOM = "custom"  # Custom delay function
+    FIXED = 'fixed'  # Fixed delay between retries
+    EXPONENTIAL = 'exponential'  # Exponential backoff (2^attempt)
+    LINEAR = 'linear'  # Linear increase (attempt * base_delay)
+    CUSTOM = 'custom'  # Custom delay function
 
 
 @dataclass
@@ -42,8 +42,8 @@ class RetryAttempt:
     attempt_number: int
     timestamp: datetime
     success: bool
-    error_type: Optional[str] = None
-    error_message: Optional[str] = None
+    error_type: str | None = None
+    error_message: str | None = None
     delay_before: float = 0.0
     duration: float = 0.0
 
@@ -70,9 +70,9 @@ class RetryPolicy:
     max_delay: float = 60.0
     backoff_multiplier: float = 2.0
     jitter: bool = False
-    retry_on: List[str] = field(default_factory=list)
-    stop_on: List[str] = field(default_factory=list)
-    custom_delay_func: Optional[Callable[[int], float]] = None
+    retry_on: list[str] = field(default_factory=list)
+    stop_on: list[str] = field(default_factory=list)
+    custom_delay_func: Callable[[int], float] | None = None
 
 
 class RetryManager:
@@ -89,14 +89,14 @@ class RetryManager:
         attempts: List of retry attempts
     """
 
-    def __init__(self, policy: Optional[RetryPolicy] = None):
+    def __init__(self, policy: RetryPolicy | None = None):
         """Initialize RetryManager.
 
         Args:
             policy: Retry policy configuration
         """
         self.policy = policy or RetryPolicy()
-        self.attempts: List[RetryAttempt] = []
+        self.attempts: list[RetryAttempt] = []
 
     def should_retry(self, error: Exception, attempt: int) -> bool:
         """Determine if should retry based on error and attempt count.
@@ -139,9 +139,7 @@ class RetryManager:
             delay = self.policy.base_delay
 
         elif self.policy.strategy == RetryStrategy.EXPONENTIAL:
-            delay = self.policy.base_delay * (
-                self.policy.backoff_multiplier**attempt
-            )
+            delay = self.policy.base_delay * (self.policy.backoff_multiplier**attempt)
 
         elif self.policy.strategy == RetryStrategy.LINEAR:
             delay = self.policy.base_delay * (attempt + 1)
@@ -172,7 +170,7 @@ class RetryManager:
         self,
         attempt_number: int,
         success: bool,
-        error: Optional[Exception] = None,
+        error: Exception | None = None,
         delay_before: float = 0.0,
         duration: float = 0.0,
     ) -> None:
@@ -196,7 +194,7 @@ class RetryManager:
         )
         self.attempts.append(attempt)
 
-    def get_retry_summary(self) -> Dict[str, Any]:
+    def get_retry_summary(self) -> dict[str, Any]:
         """Get summary of retry attempts.
 
         Returns:
@@ -204,11 +202,11 @@ class RetryManager:
         """
         if not self.attempts:
             return {
-                "total_attempts": 0,
-                "successful_attempts": 0,
-                "failed_attempts": 0,
-                "total_delay": 0.0,
-                "total_duration": 0.0,
+                'total_attempts': 0,
+                'successful_attempts': 0,
+                'failed_attempts': 0,
+                'total_delay': 0.0,
+                'total_duration': 0.0,
             }
 
         successful = sum(1 for a in self.attempts if a.success)
@@ -217,15 +215,15 @@ class RetryManager:
         total_duration = sum(a.duration for a in self.attempts)
 
         return {
-            "total_attempts": len(self.attempts),
-            "successful_attempts": successful,
-            "failed_attempts": failed,
-            "total_delay": round(total_delay, 3),
-            "total_duration": round(total_duration, 3),
-            "last_attempt": self.attempts[-1].attempt_number,
+            'total_attempts': len(self.attempts),
+            'successful_attempts': successful,
+            'failed_attempts': failed,
+            'total_delay': round(total_delay, 3),
+            'total_duration': round(total_duration, 3),
+            'last_attempt': self.attempts[-1].attempt_number,
         }
 
-    def get_retry_history(self) -> List[Dict[str, Any]]:
+    def get_retry_history(self) -> list[dict[str, Any]]:
         """Get detailed retry history.
 
         Returns:
@@ -234,18 +232,18 @@ class RetryManager:
         history = []
         for attempt in self.attempts:
             history.append({
-                "attempt_number": attempt.attempt_number,
-                "timestamp": attempt.timestamp.isoformat(),
-                "success": attempt.success,
-                "error_type": attempt.error_type,
-                "error_message": attempt.error_message,
-                "delay_before": round(attempt.delay_before, 3),
-                "duration": round(attempt.duration, 3),
+                'attempt_number': attempt.attempt_number,
+                'timestamp': attempt.timestamp.isoformat(),
+                'success': attempt.success,
+                'error_type': attempt.error_type,
+                'error_message': attempt.error_message,
+                'delay_before': round(attempt.delay_before, 3),
+                'duration': round(attempt.duration, 3),
             })
         return history
 
 
-def create_retry_policy_from_config(config: Dict[str, Any]) -> RetryPolicy:
+def create_retry_policy_from_config(config: dict[str, Any]) -> RetryPolicy:
     """Create RetryPolicy from configuration dictionary.
 
     Args:
@@ -265,23 +263,23 @@ def create_retry_policy_from_config(config: Dict[str, Any]) -> RetryPolicy:
     Raises:
         ValueError: If configuration is invalid
     """
-    strategy_str = config.get("strategy", "exponential")
+    strategy_str = config.get('strategy', 'exponential')
 
     try:
         strategy = RetryStrategy(strategy_str)
     except ValueError:
         raise ValueError(
-            f"Invalid retry strategy: {strategy_str}. "
-            f"Must be one of: {[s.value for s in RetryStrategy]}"
+            f'Invalid retry strategy: {strategy_str}. '
+            f'Must be one of: {[s.value for s in RetryStrategy]}'
         )
 
     return RetryPolicy(
-        max_attempts=config.get("max_attempts", 3),
+        max_attempts=config.get('max_attempts', 3),
         strategy=strategy,
-        base_delay=config.get("base_delay", 1.0),
-        max_delay=config.get("max_delay", 60.0),
-        backoff_multiplier=config.get("backoff_multiplier", 2.0),
-        jitter=config.get("jitter", False),
-        retry_on=config.get("retry_on", []),
-        stop_on=config.get("stop_on", []),
+        base_delay=config.get('base_delay', 1.0),
+        max_delay=config.get('max_delay', 60.0),
+        backoff_multiplier=config.get('backoff_multiplier', 2.0),
+        jitter=config.get('jitter', False),
+        retry_on=config.get('retry_on', []),
+        stop_on=config.get('stop_on', []),
     )

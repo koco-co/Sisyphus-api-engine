@@ -7,12 +7,11 @@ and generates a comprehensive test report.
 Following Google Python Style Guide.
 """
 
-import os
-import subprocess
-import sys
-from typing import List, Dict, Any
 from datetime import datetime
 from pathlib import Path
+import subprocess
+import sys
+from typing import Any
 
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -35,7 +34,7 @@ class TestCaseRunner:
         """
         if examples_dir is None:
             # 默认使用项目根目录下的 examples 目录
-            self.examples_dir = PROJECT_ROOT / "examples"
+            self.examples_dir = PROJECT_ROOT / 'examples'
         else:
             # 如果是相对路径，基于项目根目录解析
             examples_path = Path(examples_dir)
@@ -44,21 +43,23 @@ class TestCaseRunner:
             else:
                 self.examples_dir = PROJECT_ROOT / examples_path
 
-        self.results: List[Dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
 
-    def get_test_cases(self) -> List[Path]:
+    def get_test_cases(self) -> list[Path]:
         """Get all YAML test case files.
 
         Returns:
             List of YAML file paths
         """
         if not self.examples_dir.exists():
-            raise FileNotFoundError(f"Examples directory not found: {self.examples_dir}")
+            raise FileNotFoundError(
+                f'Examples directory not found: {self.examples_dir}'
+            )
 
-        yaml_files = sorted(self.examples_dir.glob("*.yaml"))
+        yaml_files = sorted(self.examples_dir.glob('*.yaml'))
         return yaml_files
 
-    def run_test_case(self, yaml_file: Path) -> Dict[str, Any]:
+    def run_test_case(self, yaml_file: Path) -> dict[str, Any]:
         """Run a single YAML test case.
 
         Args:
@@ -67,87 +68,84 @@ class TestCaseRunner:
         Returns:
             Test result dictionary
         """
-        print(f"\n{'='*80}")
-        print(f"Running: {yaml_file.name}")
-        print(f"{'='*80}")
+        print(f'\n{"=" * 80}')
+        print(f'Running: {yaml_file.name}')
+        print(f'{"=" * 80}')
 
         result = {
-            "name": yaml_file.stem,
-            "file": str(yaml_file),
-            "status": "unknown",
-            "duration": 0,
-            "output": "",
-            "error": None,
+            'name': yaml_file.stem,
+            'file': str(yaml_file),
+            'status': 'unknown',
+            'duration': 0,
+            'output': '',
+            'error': None,
         }
 
         start_time = datetime.now()
 
         try:
             # Run sisyphus command
-            cmd = ["sisyphus", "--cases", str(yaml_file)]
+            cmd = ['sisyphus', '--cases', str(yaml_file)]
             process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
 
             output, _ = process.communicate(timeout=120)  # 2分钟超时
             end_time = datetime.now()
 
-            result["duration"] = (end_time - start_time).total_seconds()
-            result["output"] = output
+            result['duration'] = (end_time - start_time).total_seconds()
+            result['output'] = output
 
             # Check exit code
             if process.returncode == 0:
                 # Parse output to determine if tests passed
-                if "✓" in output or "PASS" in output or "passed" in output.lower():
+                if '✓' in output or 'PASS' in output or 'passed' in output.lower():
                     # Extract statistics
                     lines = output.split('\n')
                     for line in lines:
-                        if "Pass Rate:" in line:
-                            result["status"] = "passed"
+                        if 'Pass Rate:' in line:
+                            result['status'] = 'passed'
                             break
-                        if "Status:" in line and "PASSED" in line.upper():
-                            result["status"] = "passed"
+                        if 'Status:' in line and 'PASSED' in line.upper():
+                            result['status'] = 'passed'
                             break
 
-                    if result["status"] == "unknown":
-                        result["status"] = "passed"  # Assume passed if exit code is 0
+                    if result['status'] == 'unknown':
+                        result['status'] = 'passed'  # Assume passed if exit code is 0
                 else:
-                    result["status"] = "failed"
+                    result['status'] = 'failed'
             else:
-                result["status"] = "error"
+                result['status'] = 'error'
 
         except subprocess.TimeoutExpired:
-            result["status"] = "timeout"
-            result["error"] = "Test execution exceeded timeout (120s)"
-            result["duration"] = (datetime.now() - start_time).total_seconds()
+            result['status'] = 'timeout'
+            result['error'] = 'Test execution exceeded timeout (120s)'
+            result['duration'] = (datetime.now() - start_time).total_seconds()
 
         except Exception as e:
-            result["status"] = "exception"
-            result["error"] = str(e)
-            result["duration"] = (datetime.now() - start_time).total_seconds()
+            result['status'] = 'exception'
+            result['error'] = str(e)
+            result['duration'] = (datetime.now() - start_time).total_seconds()
 
         # Print summary
         status_emoji = {
-            "passed": "✅",
-            "failed": "❌",
-            "error": "⚠️",
-            "timeout": "⏰",
-            "exception": "💥",
-            "unknown": "❓"
-        }.get(result["status"], "❓")
+            'passed': '✅',
+            'failed': '❌',
+            'error': '⚠️',
+            'timeout': '⏰',
+            'exception': '💥',
+            'unknown': '❓',
+        }.get(result['status'], '❓')
 
-        print(f"\n{status_emoji} Status: {result['status'].upper()}")
-        print(f"⏱️  Duration: {result['duration']:.2f}s")
+        print(f'\n{status_emoji} Status: {result["status"].upper()}')
+        print(f'⏱️  Duration: {result["duration"]:.2f}s')
 
-        if result["error"]:
-            print(f"❌ Error: {result['error']}")
+        if result['error']:
+            print(f'❌ Error: {result["error"]}')
 
         return result
 
-    def run_all_tests(self) -> List[Dict[str, Any]]:
+    def run_all_tests(self) -> list[dict[str, Any]]:
         """Run all YAML test cases.
 
         Returns:
@@ -155,11 +153,11 @@ class TestCaseRunner:
         """
         yaml_files = self.get_test_cases()
 
-        print(f"\n{'='*80}")
-        print(f"SISYPHUS API ENGINE - YAML TEST CASES RUNNER")
-        print(f"{'='*80}")
-        print(f"Found {len(yaml_files)} test cases")
-        print(f"Starting execution...\n")
+        print(f'\n{"=" * 80}')
+        print('SISYPHUS API ENGINE - YAML TEST CASES RUNNER')
+        print(f'{"=" * 80}')
+        print(f'Found {len(yaml_files)} test cases')
+        print('Starting execution...\n')
 
         for yaml_file in yaml_files:
             result = self.run_test_case(yaml_file)
@@ -174,77 +172,81 @@ class TestCaseRunner:
             Formatted test report string
         """
         if not self.results:
-            return "No test results available."
+            return 'No test results available.'
 
         # Calculate statistics
         total = len(self.results)
-        passed = sum(1 for r in self.results if r["status"] == "passed")
-        failed = sum(1 for r in self.results if r["status"] in ("failed", "error", "timeout", "exception"))
+        passed = sum(1 for r in self.results if r['status'] == 'passed')
+        failed = sum(
+            1
+            for r in self.results
+            if r['status'] in ('failed', 'error', 'timeout', 'exception')
+        )
         pass_rate = (passed / total * 100) if total > 0 else 0
 
-        total_duration = sum(r["duration"] for r in self.results)
+        total_duration = sum(r['duration'] for r in self.results)
 
         # Build report
         report = []
-        report.append("\n" + "="*80)
-        report.append("TEST EXECUTION SUMMARY")
-        report.append("="*80)
-        report.append(f"\nTotal Test Cases: {total}")
-        report.append(f"Passed: {passed} ✅")
-        report.append(f"Failed: {failed} ❌")
-        report.append(f"Pass Rate: {pass_rate:.1f}%")
-        report.append(f"Total Duration: {total_duration:.2f}s")
-        report.append(f"Average Duration: {total_duration/total:.2f}s")
+        report.append('\n' + '=' * 80)
+        report.append('TEST EXECUTION SUMMARY')
+        report.append('=' * 80)
+        report.append(f'\nTotal Test Cases: {total}')
+        report.append(f'Passed: {passed} ✅')
+        report.append(f'Failed: {failed} ❌')
+        report.append(f'Pass Rate: {pass_rate:.1f}%')
+        report.append(f'Total Duration: {total_duration:.2f}s')
+        report.append(f'Average Duration: {total_duration / total:.2f}s')
 
         # Detailed results
-        report.append("\n" + "="*80)
-        report.append("DETAILED RESULTS")
-        report.append("="*80)
+        report.append('\n' + '=' * 80)
+        report.append('DETAILED RESULTS')
+        report.append('=' * 80)
 
-        for result in sorted(self.results, key=lambda x: x["name"]):
+        for result in sorted(self.results, key=lambda x: x['name']):
             status_emoji = {
-                "passed": "✅",
-                "failed": "❌",
-                "error": "⚠️",
-                "timeout": "⏰",
-                "exception": "💥",
-                "unknown": "❓"
-            }.get(result["status"], "❓")
+                'passed': '✅',
+                'failed': '❌',
+                'error': '⚠️',
+                'timeout': '⏰',
+                'exception': '💥',
+                'unknown': '❓',
+            }.get(result['status'], '❓')
 
-            report.append(f"\n{status_emoji} {result['name']}")
-            report.append(f"   File: {result['file']}")
-            report.append(f"   Status: {result['status'].upper()}")
-            report.append(f"   Duration: {result['duration']:.2f}s")
+            report.append(f'\n{status_emoji} {result["name"]}')
+            report.append(f'   File: {result["file"]}')
+            report.append(f'   Status: {result["status"].upper()}')
+            report.append(f'   Duration: {result["duration"]:.2f}s')
 
-            if result["error"]:
-                report.append(f"   Error: {result['error']}")
+            if result['error']:
+                report.append(f'   Error: {result["error"]}')
 
         # Failed tests details
-        failed_results = [r for r in self.results if r["status"] != "passed"]
+        failed_results = [r for r in self.results if r['status'] != 'passed']
         if failed_results:
-            report.append("\n" + "="*80)
-            report.append("FAILED TESTS DETAILS")
-            report.append("="*80)
+            report.append('\n' + '=' * 80)
+            report.append('FAILED TESTS DETAILS')
+            report.append('=' * 80)
 
             for result in failed_results:
-                report.append(f"\n❌ {result['name']}")
-                report.append(f"   Status: {result['status'].upper()}")
-                if result["error"]:
-                    report.append(f"   Error: {result['error']}")
+                report.append(f'\n❌ {result["name"]}')
+                report.append(f'   Status: {result["status"].upper()}')
+                if result['error']:
+                    report.append(f'   Error: {result["error"]}')
 
                 # Show last few lines of output
-                if result["output"]:
-                    output_lines = result["output"].split('\n')
-                    report.append("   Last output:")
+                if result['output']:
+                    output_lines = result['output'].split('\n')
+                    report.append('   Last output:')
                     for line in output_lines[-10:]:
                         if line.strip():
-                            report.append(f"     {line}")
+                            report.append(f'     {line}')
 
-        report.append("\n" + "="*80)
+        report.append('\n' + '=' * 80)
 
-        return "\n".join(report)
+        return '\n'.join(report)
 
-    def save_report(self, filename: str = "test_results.yaml.txt") -> None:
+    def save_report(self, filename: str = 'test_results.yaml.txt') -> None:
         """Save test report to file.
 
         Args:
@@ -252,10 +254,10 @@ class TestCaseRunner:
         """
         report = self.generate_report()
 
-        with open(filename, "w", encoding="utf-8") as f:
+        with Path(filename).open('w', encoding='utf-8') as f:
             f.write(report)
 
-        print(f"\n📄 Test report saved to: {filename}")
+        print(f'\n📄 Test report saved to: {filename}')
 
 
 def main():
@@ -273,21 +275,21 @@ def main():
         runner.save_report()
 
         # Exit with appropriate code
-        failed_count = sum(1 for r in runner.results if r["status"] != "passed")
+        failed_count = sum(1 for r in runner.results if r['status'] != 'passed')
         if failed_count > 0:
-            print(f"\n⚠️  {failed_count} test(s) failed")
+            print(f'\n⚠️  {failed_count} test(s) failed')
             sys.exit(1)
         else:
-            print(f"\n✅ All tests passed!")
+            print('\n✅ All tests passed!')
             sys.exit(0)
 
     except KeyboardInterrupt:
-        print("\n\n⚠️  Test execution interrupted by user")
+        print('\n\n⚠️  Test execution interrupted by user')
         sys.exit(130)
     except Exception as e:
-        print(f"\n❌ Fatal error: {e}")
+        print(f'\n❌ Fatal error: {e}')
         sys.exit(1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

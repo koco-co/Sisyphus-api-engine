@@ -9,13 +9,13 @@ This module implements the wait step executor, supporting:
 Following Google Python Style Guide.
 """
 
-import time
-from typing import Any, Dict
 from datetime import datetime
+import time
+from typing import Any
 
-from apirun.executor.step_executor import StepExecutor
 from apirun.core.models import TestStep
 from apirun.core.variable_manager import VariableManager
+from apirun.executor.step_executor import StepExecutor
 from apirun.utils.template import render_template
 
 
@@ -31,7 +31,7 @@ class APIConditionalWait:
         self.variable_manager = variable_manager
 
     def check_condition(
-        self, request_config: Dict[str, Any], check_expression: str
+        self, request_config: dict[str, Any], check_expression: str
     ) -> bool:
         """Execute API request and check if condition is met.
 
@@ -46,13 +46,13 @@ class APIConditionalWait:
 
         # Create a temporary TestStep for the API request
         temp_step = TestStep(
-            name="conditional_check_api",
-            type="request",
-            method=request_config.get("method", "GET"),
-            url=request_config.get("url"),
-            headers=request_config.get("headers"),
-            body=request_config.get("body"),
-            params=request_config.get("params"),
+            name='conditional_check_api',
+            type='request',
+            method=request_config.get('method', 'GET'),
+            url=request_config.get('url'),
+            headers=request_config.get('headers'),
+            body=request_config.get('body'),
+            params=request_config.get('params'),
         )
 
         # Create API executor and execute request
@@ -69,10 +69,10 @@ class APIConditionalWait:
 
             # Create a temporary variable context with response data
             temp_vars = {
-                "status_code": response_data.get("status_code"),
-                "body": response_data.get("body", {}),
-                "headers": response_data.get("headers", {}),
-                "response": response_data,
+                'status_code': response_data.get('status_code'),
+                'body': response_data.get('body', {}),
+                'headers': response_data.get('headers', {}),
+                'response': response_data,
             }
 
             # Merge with existing variables
@@ -101,7 +101,7 @@ class APIConditionalWait:
             return False
 
         condition_lower = rendered_condition.lower().strip()
-        true_values = ["true", "1", "yes", "y", "ok", "success"]
+        true_values = ['true', '1', 'yes', 'y', 'ok', 'success']
         return condition_lower in true_values
 
 
@@ -118,7 +118,7 @@ class DatabaseConditionalWait:
 
     def check_condition(
         self,
-        db_config: Dict[str, Any],
+        db_config: dict[str, Any],
         sql: str,
         params: list,
         check_expression: str,
@@ -142,9 +142,9 @@ class DatabaseConditionalWait:
 
             # Create a temporary variable context with query result
             temp_vars = {
-                "result": result,
-                "rows": result if isinstance(result, list) else [result],
-                "row": result if isinstance(result, dict) else {},
+                'result': result,
+                'rows': result if isinstance(result, list) else [result],
+                'row': result if isinstance(result, dict) else {},
             }
 
             # Merge with existing variables
@@ -173,7 +173,7 @@ class DatabaseConditionalWait:
             return False
 
         condition_lower = rendered_condition.lower().strip()
-        true_values = ["true", "1", "yes", "y", "ok", "success"]
+        true_values = ['true', '1', 'yes', 'y', 'ok', 'success']
         return condition_lower in true_values
 
 
@@ -211,7 +211,7 @@ class WaitExecutor(StepExecutor):
         super().__init__(variable_manager, step, timeout, retry_times, previous_results)
         self.timeout = step.timeout or timeout
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> dict[str, Any]:
         """Execute the wait step.
 
         Args:
@@ -227,19 +227,23 @@ class WaitExecutor(StepExecutor):
         start_time = datetime.now()
 
         # Check for wait_condition (API or Database conditional wait)
-        wait_condition = rendered_step.get("wait_condition")
+        wait_condition = rendered_step.get('wait_condition')
         if wait_condition:
             return self._conditional_wait_check(rendered_step, start_time)
 
         # Check if it's a conditional wait
-        if rendered_step.get("condition"):
+        if rendered_step.get('condition'):
             return self._conditional_wait(rendered_step, start_time)
-        elif rendered_step.get("seconds"):
+        elif rendered_step.get('seconds'):
             return self._fixed_wait(rendered_step, start_time)
         else:
-            raise ValueError("Wait step must have either 'seconds' or 'condition' or 'wait_condition'")
+            raise ValueError(
+                "Wait step must have either 'seconds' or 'condition' or 'wait_condition'"
+            )
 
-    def _fixed_wait(self, rendered_step: Dict[str, Any], start_time: datetime) -> Dict[str, Any]:
+    def _fixed_wait(
+        self, rendered_step: dict[str, Any], start_time: datetime
+    ) -> dict[str, Any]:
         """Execute fixed time wait.
 
         Args:
@@ -249,21 +253,21 @@ class WaitExecutor(StepExecutor):
         Returns:
             Execution result dictionary
         """
-        seconds = rendered_step["seconds"]
+        seconds = rendered_step['seconds']
 
         # Ensure seconds is a float
         try:
             wait_seconds = float(seconds)
         except (ValueError, TypeError):
-            raise ValueError(f"Invalid wait seconds value: {seconds}")
+            raise ValueError(f'Invalid wait seconds value: {seconds}')
 
         if wait_seconds < 0:
-            raise ValueError(f"Wait seconds must be non-negative, got: {wait_seconds}")
+            raise ValueError(f'Wait seconds must be non-negative, got: {wait_seconds}')
 
         # Check timeout
         if wait_seconds > self.timeout:
             raise ValueError(
-                f"Wait time ({wait_seconds}s) exceeds timeout ({self.timeout}s)"
+                f'Wait time ({wait_seconds}s) exceeds timeout ({self.timeout}s)'
             )
 
         # Perform wait
@@ -273,17 +277,17 @@ class WaitExecutor(StepExecutor):
         elapsed = (end_time - start_time).total_seconds()
 
         return {
-            "response": {
-                "wait_type": "fixed",
-                "wait_seconds": wait_seconds,
-                "actual_wait_seconds": elapsed,
+            'response': {
+                'wait_type': 'fixed',
+                'wait_seconds': wait_seconds,
+                'actual_wait_seconds': elapsed,
             },
-            "performance": self._create_performance_metrics(total_time=elapsed * 1000),
+            'performance': self._create_performance_metrics(total_time=elapsed * 1000),
         }
 
     def _conditional_wait(
-        self, rendered_step: Dict[str, Any], start_time: datetime
-    ) -> Dict[str, Any]:
+        self, rendered_step: dict[str, Any], start_time: datetime
+    ) -> dict[str, Any]:
         """Execute conditional wait with polling.
 
         Waits until the condition becomes true or max_wait is exceeded.
@@ -299,26 +303,26 @@ class WaitExecutor(StepExecutor):
             TimeoutError: If condition does not become true within max_wait time
             ValueError: If condition expression is invalid
         """
-        condition = rendered_step["condition"]
-        interval = rendered_step.get("interval", 1.0)
-        max_wait = rendered_step.get("max_wait", 60.0)
+        condition = rendered_step['condition']
+        interval = rendered_step.get('interval', 1.0)
+        max_wait = rendered_step.get('max_wait', 60.0)
 
         # Validate parameters
         try:
             interval = float(interval)
             max_wait = float(max_wait)
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid interval or max_wait value: {e}")
+            raise ValueError(f'Invalid interval or max_wait value: {e}')
 
         if interval <= 0:
-            raise ValueError(f"Polling interval must be positive, got: {interval}")
+            raise ValueError(f'Polling interval must be positive, got: {interval}')
 
         if max_wait <= 0:
-            raise ValueError(f"Maximum wait time must be positive, got: {max_wait}")
+            raise ValueError(f'Maximum wait time must be positive, got: {max_wait}')
 
         if max_wait > self.timeout:
             raise ValueError(
-                f"Max wait time ({max_wait}s) exceeds timeout ({self.timeout}s)"
+                f'Max wait time ({max_wait}s) exceeds timeout ({self.timeout}s)'
             )
 
         elapsed = 0.0
@@ -338,14 +342,14 @@ class WaitExecutor(StepExecutor):
                     elapsed = (end_time - start_time).total_seconds()
 
                     return {
-                        "response": {
-                            "wait_type": "conditional",
-                            "condition": condition,
-                            "result": True,
-                            "elapsed_seconds": elapsed,
-                            "poll_count": poll_count + 1,
+                        'response': {
+                            'wait_type': 'conditional',
+                            'condition': condition,
+                            'result': True,
+                            'elapsed_seconds': elapsed,
+                            'poll_count': poll_count + 1,
                         },
-                        "performance": self._create_performance_metrics(
+                        'performance': self._create_performance_metrics(
                             total_time=elapsed * 1000
                         ),
                     }
@@ -363,12 +367,12 @@ class WaitExecutor(StepExecutor):
 
         raise TimeoutError(
             f"Condition '{condition}' did not become true within {max_wait}s "
-            f"(elapsed: {elapsed:.2f}s, polls: {poll_count})"
+            f'(elapsed: {elapsed:.2f}s, polls: {poll_count})'
         )
 
     def _conditional_wait_check(
-        self, rendered_step: Dict[str, Any], start_time: datetime
-    ) -> Dict[str, Any]:
+        self, rendered_step: dict[str, Any], start_time: datetime
+    ) -> dict[str, Any]:
         """Execute API or Database conditional wait with polling.
 
         Waits until the API response or database query result meets the condition.
@@ -384,27 +388,27 @@ class WaitExecutor(StepExecutor):
             TimeoutError: If condition does not become true within max_wait time
             ValueError: If wait_condition configuration is invalid
         """
-        wait_condition = rendered_step["wait_condition"]
-        condition_type = wait_condition.get("type")
-        interval = wait_condition.get("interval", 2.0)
-        max_wait = wait_condition.get("timeout", 30.0)
+        wait_condition = rendered_step['wait_condition']
+        condition_type = wait_condition.get('type')
+        interval = wait_condition.get('interval', 2.0)
+        max_wait = wait_condition.get('timeout', 30.0)
 
         # Validate parameters
         try:
             interval = float(interval)
             max_wait = float(max_wait)
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid interval or timeout value: {e}")
+            raise ValueError(f'Invalid interval or timeout value: {e}')
 
         if interval <= 0:
-            raise ValueError(f"Polling interval must be positive, got: {interval}")
+            raise ValueError(f'Polling interval must be positive, got: {interval}')
 
         if max_wait <= 0:
-            raise ValueError(f"Maximum wait time must be positive, got: {max_wait}")
+            raise ValueError(f'Maximum wait time must be positive, got: {max_wait}')
 
         if max_wait > self.timeout:
             raise ValueError(
-                f"Max wait time ({max_wait}s) exceeds timeout ({self.timeout}s)"
+                f'Max wait time ({max_wait}s) exceeds timeout ({self.timeout}s)'
             )
 
         elapsed = 0.0
@@ -414,26 +418,32 @@ class WaitExecutor(StepExecutor):
         while elapsed < max_wait:
             # Check condition based on type
             try:
-                if condition_type == "api":
+                if condition_type == 'api':
                     # API conditional wait
-                    request_config = wait_condition.get("request", {})
-                    check_expression = wait_condition.get("check", "")
+                    request_config = wait_condition.get('request', {})
+                    check_expression = wait_condition.get('check', '')
 
                     api_wait = APIConditionalWait(self.variable_manager)
-                    condition_met = api_wait.check_condition(request_config, check_expression)
+                    condition_met = api_wait.check_condition(
+                        request_config, check_expression
+                    )
 
-                elif condition_type == "database":
+                elif condition_type == 'database':
                     # Database conditional wait
-                    db_config = wait_condition.get("database", {})
-                    sql = wait_condition.get("sql", "")
-                    params = wait_condition.get("params", [])
-                    check_expression = wait_condition.get("check", "")
+                    db_config = wait_condition.get('database', {})
+                    sql = wait_condition.get('sql', '')
+                    params = wait_condition.get('params', [])
+                    check_expression = wait_condition.get('check', '')
 
                     db_wait = DatabaseConditionalWait(self.variable_manager)
-                    condition_met = db_wait.check_condition(db_config, sql, params, check_expression)
+                    condition_met = db_wait.check_condition(
+                        db_config, sql, params, check_expression
+                    )
 
                 else:
-                    raise ValueError(f"Unsupported wait_condition type: {condition_type}")
+                    raise ValueError(
+                        f'Unsupported wait_condition type: {condition_type}'
+                    )
 
                 # Check if condition is met
                 if condition_met:
@@ -441,20 +451,20 @@ class WaitExecutor(StepExecutor):
                     elapsed = (end_time - start_time).total_seconds()
 
                     return {
-                        "response": {
-                            "wait_type": "conditional_check",
-                            "condition_type": condition_type,
-                            "result": True,
-                            "elapsed_seconds": elapsed,
-                            "poll_count": poll_count + 1,
+                        'response': {
+                            'wait_type': 'conditional_check',
+                            'condition_type': condition_type,
+                            'result': True,
+                            'elapsed_seconds': elapsed,
+                            'poll_count': poll_count + 1,
                         },
-                        "performance": self._create_performance_metrics(
+                        'performance': self._create_performance_metrics(
                             total_time=elapsed * 1000
                         ),
                     }
 
             except Exception as e:
-                raise ValueError(f"Failed to check {condition_type} condition: {e}")
+                raise ValueError(f'Failed to check {condition_type} condition: {e}')
 
             # Wait before next poll
             time.sleep(interval)
@@ -466,8 +476,8 @@ class WaitExecutor(StepExecutor):
         elapsed = (end_time - start_time).total_seconds()
 
         raise TimeoutError(
-            f"{condition_type.capitalize()} condition did not become true within {max_wait}s "
-            f"(elapsed: {elapsed:.2f}s, polls: {poll_count})"
+            f'{condition_type.capitalize()} condition did not become true within {max_wait}s '
+            f'(elapsed: {elapsed:.2f}s, polls: {poll_count})'
         )
 
     def _is_condition_true(self, rendered_condition: str) -> bool:
@@ -486,10 +496,10 @@ class WaitExecutor(StepExecutor):
         condition_lower = rendered_condition.lower().strip()
 
         # Check for boolean-like values
-        true_values = ["true", "1", "yes", "y", "ok", "success"]
+        true_values = ['true', '1', 'yes', 'y', 'ok', 'success']
         return condition_lower in true_values
 
-    def _render_step(self) -> Dict[str, Any]:
+    def _render_step(self) -> dict[str, Any]:
         """Render variables in wait step definition.
 
         Returns:
@@ -498,34 +508,28 @@ class WaitExecutor(StepExecutor):
         context = self.variable_manager.get_all_variables()
 
         rendered = {
-            "name": self.step.name,
-            "type": self.step.type,
+            'name': self.step.name,
+            'type': self.step.type,
         }
 
         # Render seconds
         if self.step.seconds is not None:
-            rendered["seconds"] = render_template(
-                str(self.step.seconds), context
-            )
+            rendered['seconds'] = render_template(str(self.step.seconds), context)
 
         # Render condition
         if self.step.condition:
-            rendered["condition"] = render_template(self.step.condition, context)
+            rendered['condition'] = render_template(self.step.condition, context)
 
         # Render interval
         if self.step.interval is not None:
-            rendered["interval"] = render_template(
-                str(self.step.interval), context
-            )
+            rendered['interval'] = render_template(str(self.step.interval), context)
 
         # Render max_wait
         if self.step.max_wait is not None:
-            rendered["max_wait"] = render_template(
-                str(self.step.max_wait), context
-            )
+            rendered['max_wait'] = render_template(str(self.step.max_wait), context)
 
         # Render wait_condition
         if self.step.wait_condition is not None:
-            rendered["wait_condition"] = self.step.wait_condition
+            rendered['wait_condition'] = self.step.wait_condition
 
         return rendered

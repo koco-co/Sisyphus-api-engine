@@ -5,21 +5,22 @@ Following Google Python Style Guide.
 """
 
 import csv
-import json
-from typing import Any, Dict, List
 from datetime import datetime
 from io import StringIO
+import json
+import pathlib
+from typing import Any
 
-from apirun.core.models import TestCase, TestCaseResult, StepResult
+from apirun.core.models import StepResult, TestCase, TestCaseResult
 
 # Default patterns for identifying sensitive data fields
 DEFAULT_SENSITIVE_PATTERNS = [
-    "password",
-    "pwd",
-    "token",
-    "secret",
-    "key",
-    "auth",
+    'password',
+    'pwd',
+    'token',
+    'secret',
+    'key',
+    'auth',
 ]
 
 
@@ -34,7 +35,9 @@ class JSONExporter:
     - Supports CSV export
     """
 
-    def __init__(self, mask_sensitive: bool = True, sensitive_patterns: List[str] = None):
+    def __init__(
+        self, mask_sensitive: bool = True, sensitive_patterns: list[str] = None
+    ):
         """Initialize JSONExporter.
 
         Args:
@@ -42,10 +45,12 @@ class JSONExporter:
             sensitive_patterns: List of patterns to identify sensitive fields
         """
         self.mask_sensitive = mask_sensitive
-        self.sensitive_patterns = sensitive_patterns or DEFAULT_SENSITIVE_PATTERNS.copy()
+        self.sensitive_patterns = (
+            sensitive_patterns or DEFAULT_SENSITIVE_PATTERNS.copy()
+        )
 
     def collect(
-        self, test_case: TestCase, step_results: List[StepResult], variable_manager=None
+        self, test_case: TestCase, step_results: list[StepResult], variable_manager=None
     ) -> TestCaseResult:
         """Collect and aggregate test case results.
 
@@ -75,17 +80,17 @@ class JSONExporter:
 
         # Calculate statistics
         total_steps = len(step_results)
-        passed_steps = sum(1 for sr in step_results if sr.status == "success")
-        failed_steps = sum(1 for sr in step_results if sr.status == "failure")
-        skipped_steps = sum(1 for sr in step_results if sr.status == "skipped")
+        passed_steps = sum(1 for sr in step_results if sr.status == 'success')
+        failed_steps = sum(1 for sr in step_results if sr.status == 'failure')
+        skipped_steps = sum(1 for sr in step_results if sr.status == 'skipped')
 
         # Determine overall status
         if failed_steps > 0:
-            status = "failed"
+            status = 'failed'
         elif skipped_steps == total_steps:
-            status = "skipped"
+            status = 'skipped'
         else:
-            status = "passed"
+            status = 'passed'
 
         # Collect final variables (including global, profile, and extracted variables)
         final_variables = {}
@@ -95,14 +100,18 @@ class JSONExporter:
             final_variables.update(test_case.config.variables)
 
         # Add active profile variables (including base_url)
-        if test_case.config and test_case.config.active_profile and test_case.config.profiles:
+        if (
+            test_case.config
+            and test_case.config.active_profile
+            and test_case.config.profiles
+        ):
             profile_name = test_case.config.active_profile
             profile = test_case.config.profiles.get(profile_name)
             if profile:
                 if profile.variables:
                     final_variables.update(profile.variables)
                 if profile.base_url:
-                    final_variables["base_url"] = profile.base_url
+                    final_variables['base_url'] = profile.base_url
 
         # Add extracted variables from steps
         for sr in step_results:
@@ -110,9 +119,9 @@ class JSONExporter:
 
         # Get error info if failed
         error_info = None
-        if status == "failed":
+        if status == 'failed':
             for sr in step_results:
-                if sr.status == "failure" and sr.error_info:
+                if sr.status == 'failure' and sr.error_info:
                     error_info = sr.error_info
                     break
 
@@ -131,7 +140,7 @@ class JSONExporter:
             error_info=error_info,
         )
 
-    def to_v2_json(self, result: TestCaseResult) -> Dict[str, Any]:
+    def to_v2_json(self, result: TestCaseResult) -> dict[str, Any]:
         """Convert result to v2.0 JSON format.
 
         Args:
@@ -141,40 +150,40 @@ class JSONExporter:
             v2.0 compliant JSON dictionary
         """
         json_data = {
-            "test_case": {
-                "name": result.name,
-                "status": result.status,
-                "start_time": result.start_time.isoformat(),
-                "end_time": result.end_time.isoformat(),
-                "duration": result.duration,
+            'test_case': {
+                'name': result.name,
+                'status': result.status,
+                'start_time': result.start_time.isoformat(),
+                'end_time': result.end_time.isoformat(),
+                'duration': result.duration,
             },
-            "statistics": {
-                "total_steps": result.total_steps,
-                "passed_steps": result.passed_steps,
-                "failed_steps": result.failed_steps,
-                "skipped_steps": result.skipped_steps,
-                "pass_rate": (
+            'statistics': {
+                'total_steps': result.total_steps,
+                'passed_steps': result.passed_steps,
+                'failed_steps': result.failed_steps,
+                'skipped_steps': result.skipped_steps,
+                'pass_rate': (
                     result.passed_steps / result.total_steps * 100
                     if result.total_steps > 0
                     else 0
                 ),
             },
-            "steps": [],
-            "final_variables": self._mask_variables(result.final_variables),
+            'steps': [],
+            'final_variables': self._mask_variables(result.final_variables),
         }
 
         # Add step results
         for step_result in result.step_results:
             step_data = self._format_step_result(step_result)
-            json_data["steps"].append(step_data)
+            json_data['steps'].append(step_data)
 
         # Add error info if present
         if result.error_info:
-            json_data["error_info"] = self._format_error_info(result.error_info)
+            json_data['error_info'] = self._format_error_info(result.error_info)
 
         return json_data
 
-    def _format_step_result(self, step_result: StepResult) -> Dict[str, Any]:
+    def _format_step_result(self, step_result: StepResult) -> dict[str, Any]:
         """Format step result for JSON output.
 
         Args:
@@ -184,54 +193,56 @@ class JSONExporter:
             Formatted step data
         """
         step_data = {
-            "name": step_result.name,
-            "status": step_result.status,
-            "start_time": step_result.start_time.isoformat()
+            'name': step_result.name,
+            'status': step_result.status,
+            'start_time': step_result.start_time.isoformat()
             if step_result.start_time
             else None,
-            "end_time": step_result.end_time.isoformat() if step_result.end_time else None,
-            "retry_count": step_result.retry_count,
+            'end_time': step_result.end_time.isoformat()
+            if step_result.end_time
+            else None,
+            'retry_count': step_result.retry_count,
         }
 
         # Add performance metrics if available
         if step_result.performance:
-            step_data["performance"] = {
-                "total_time": round(step_result.performance.total_time, 2),
-                "dns_time": round(step_result.performance.dns_time, 2),
-                "tcp_time": round(step_result.performance.tcp_time, 2),
-                "tls_time": round(step_result.performance.tls_time, 2),
-                "server_time": round(step_result.performance.server_time, 2),
-                "download_time": round(step_result.performance.download_time, 2),
-                "size": step_result.performance.size,
+            step_data['performance'] = {
+                'total_time': round(step_result.performance.total_time, 2),
+                'dns_time': round(step_result.performance.dns_time, 2),
+                'tcp_time': round(step_result.performance.tcp_time, 2),
+                'tls_time': round(step_result.performance.tls_time, 2),
+                'server_time': round(step_result.performance.server_time, 2),
+                'download_time': round(step_result.performance.download_time, 2),
+                'size': step_result.performance.size,
             }
 
         # Add response (masked)
         if step_result.response:
-            step_data["response"] = self._mask_sensitive_data(step_result.response)
+            step_data['response'] = self._mask_sensitive_data(step_result.response)
 
         # Add extracted variables
         if step_result.extracted_vars:
-            step_data["extracted_vars"] = self._mask_variables(
+            step_data['extracted_vars'] = self._mask_variables(
                 step_result.extracted_vars
             )
 
         # Add validation results
         if step_result.validation_results:
-            step_data["validations"] = step_result.validation_results
+            step_data['validations'] = step_result.validation_results
 
         # Add error info if present
         if step_result.error_info:
-            step_data["error_info"] = self._format_error_info(step_result.error_info)
+            step_data['error_info'] = self._format_error_info(step_result.error_info)
 
         # Add variables snapshot if in debug mode
         if step_result.variables_snapshot:
-            step_data["variables_snapshot"] = self._mask_variables(
-                step_result.variables_snapshot.get("extracted", {})
+            step_data['variables_snapshot'] = self._mask_variables(
+                step_result.variables_snapshot.get('extracted', {})
             )
 
         return step_data
 
-    def _format_error_info(self, error_info) -> Dict[str, Any]:
+    def _format_error_info(self, error_info) -> dict[str, Any]:
         """Format error info for JSON output.
 
         Args:
@@ -241,10 +252,12 @@ class JSONExporter:
             Formatted error data
         """
         return {
-            "type": error_info.type,
-            "category": error_info.category.value if hasattr(error_info.category, 'value') else str(error_info.category),
-            "message": error_info.message,
-            "suggestion": error_info.suggestion,
+            'type': error_info.type,
+            'category': error_info.category.value
+            if hasattr(error_info.category, 'value')
+            else str(error_info.category),
+            'message': error_info.message,
+            'suggestion': error_info.suggestion,
         }
 
     def _filter_non_serializable(self, obj: Any) -> Any:
@@ -260,7 +273,7 @@ class JSONExporter:
 
         # Check for non-serializable types
         if isinstance(obj, (types.ModuleType, types.FunctionType, type(lambda: None))):
-            return f"<{type(obj).__name__}: {getattr(obj, '__name__', 'N/A')}>"
+            return f'<{type(obj).__name__}: {getattr(obj, "__name__", "N/A")}>'
 
         if isinstance(obj, dict):
             return {k: self._filter_non_serializable(v) for k, v in obj.items()}
@@ -277,12 +290,13 @@ class JSONExporter:
         # For other types, try to serialize
         try:
             import json
+
             json.dumps(obj)
             return obj
         except (TypeError, ValueError):
-            return f"<{type(obj).__name__}>"
+            return f'<{type(obj).__name__}>'
 
-    def _mask_variables(self, variables: Dict[str, Any]) -> Dict[str, Any]:
+    def _mask_variables(self, variables: dict[str, Any]) -> dict[str, Any]:
         """Mask sensitive variables.
 
         Args:
@@ -300,7 +314,7 @@ class JSONExporter:
         masked = {}
         for key, value in filtered.items():
             if any(pattern in key.lower() for pattern in self.sensitive_patterns):
-                masked[key] = "***"
+                masked[key] = '***'
             else:
                 masked[key] = value
 
@@ -322,7 +336,7 @@ class JSONExporter:
             masked = {}
             for key, value in data.items():
                 if any(pattern in key.lower() for pattern in self.sensitive_patterns):
-                    masked[key] = "***"
+                    masked[key] = '***'
                 else:
                     masked[key] = self._mask_sensitive_data(value)
             return masked
@@ -342,10 +356,10 @@ class JSONExporter:
         """
         json_data = self.to_v2_json(result)
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with pathlib.Path(output_path).open('w', encoding='utf-8') as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
 
-    def to_compact_json(self, result: TestCaseResult) -> Dict[str, Any]:
+    def to_compact_json(self, result: TestCaseResult) -> dict[str, Any]:
         """Convert result to compact JSON format (API responses only).
 
         This format focuses on API responses and minimal test information.
@@ -358,19 +372,19 @@ class JSONExporter:
             Compact JSON dictionary with API responses
         """
         compact_data = {
-            "test_name": result.name,
-            "status": result.status,
-            "duration": round(result.duration, 2),
-            "timestamp": result.start_time.isoformat() if result.start_time else None,
-            "api_responses": [],
+            'test_name': result.name,
+            'status': result.status,
+            'duration': round(result.duration, 2),
+            'timestamp': result.start_time.isoformat() if result.start_time else None,
+            'api_responses': [],
         }
 
         # Add statistics
-        compact_data["statistics"] = {
-            "total": result.total_steps,
-            "passed": result.passed_steps,
-            "failed": result.failed_steps,
-            "skipped": result.skipped_steps,
+        compact_data['statistics'] = {
+            'total': result.total_steps,
+            'passed': result.passed_steps,
+            'failed': result.failed_steps,
+            'skipped': result.skipped_steps,
         }
 
         # Process each step
@@ -378,39 +392,41 @@ class JSONExporter:
             # Only include steps that have responses (API requests)
             if step_result.response:
                 response_data = {
-                    "step": step_result.name,
-                    "status": step_result.status,
-                    "step_index": len(compact_data["api_responses"]),
+                    'step': step_result.name,
+                    'status': step_result.status,
+                    'step_index': len(compact_data['api_responses']),
                 }
 
                 # Add response data (masked)
                 if step_result.response:
-                    response_data["response"] = self._mask_sensitive_data(
+                    response_data['response'] = self._mask_sensitive_data(
                         step_result.response
                     )
 
                 # Add status code if available
                 if isinstance(step_result.response, dict):
-                    if "status_code" in step_result.response:
-                        response_data["status_code"] = step_result.response[
-                            "status_code"
+                    if 'status_code' in step_result.response:
+                        response_data['status_code'] = step_result.response[
+                            'status_code'
                         ]
-                    if "body" in step_result.response:
-                        response_data["body"] = step_result.response["body"]
+                    if 'body' in step_result.response:
+                        response_data['body'] = step_result.response['body']
 
                 # Add duration if available
                 if step_result.start_time and step_result.end_time:
-                    duration = (step_result.end_time - step_result.start_time).total_seconds()
-                    response_data["duration"] = round(duration, 3)
+                    duration = (
+                        step_result.end_time - step_result.start_time
+                    ).total_seconds()
+                    response_data['duration'] = round(duration, 3)
 
                 # Add error info if failed
                 if step_result.error_info:
-                    response_data["error"] = {
-                        "type": step_result.error_info.type,
-                        "message": step_result.error_info.message,
+                    response_data['error'] = {
+                        'type': step_result.error_info.type,
+                        'message': step_result.error_info.message,
                     }
 
-                compact_data["api_responses"].append(response_data)
+                compact_data['api_responses'].append(response_data)
 
         return compact_data
 
@@ -435,30 +451,30 @@ class JSONExporter:
         if verbose:
             # Verbose mode: all performance metrics
             header = [
-                "Test Name",
-                "Step Name",
-                "Step Index",
-                "Status",
-                "Start Time",
-                "End Time",
-                "Duration (s)",
-                "HTTP Status Code",
-                "Response Size (bytes)",
-                "Total Time (ms)",
-                "DNS Time (ms)",
-                "TCP Time (ms)",
-                "TLS Time (ms)",
-                "Server Time (ms)",
-                "Download Time (ms)",
-                "Error Type",
-                "Error Message",
+                'Test Name',
+                'Step Name',
+                'Step Index',
+                'Status',
+                'Start Time',
+                'End Time',
+                'Duration (s)',
+                'HTTP Status Code',
+                'Response Size (bytes)',
+                'Total Time (ms)',
+                'DNS Time (ms)',
+                'TCP Time (ms)',
+                'TLS Time (ms)',
+                'Server Time (ms)',
+                'Download Time (ms)',
+                'Error Type',
+                'Error Message',
             ]
         else:
             # Ultra-compact mode: only step name and response info
             header = [
-                "Step",
-                "Status Code",
-                "Status",
+                'Step',
+                'Status Code',
+                'Status',
             ]
         writer.writerow(header)
 
@@ -473,22 +489,22 @@ class JSONExporter:
             # Verbose mode: all fields
             writer.writerow([
                 result.name,
-                "SUMMARY",
-                "",
+                'SUMMARY',
+                '',
                 result.status.upper(),
-                result.start_time.isoformat() if result.start_time else "",
-                result.end_time.isoformat() if result.end_time else "",
+                result.start_time.isoformat() if result.start_time else '',
+                result.end_time.isoformat() if result.end_time else '',
                 round(result.duration, 3),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                f"Passed: {result.passed_steps}/{result.total_steps} ({pass_rate:.1f}%)",
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                f'Passed: {result.passed_steps}/{result.total_steps} ({pass_rate:.1f}%)',
             ])
         else:
             # Ultra-compact mode: no summary row, only steps
@@ -498,39 +514,45 @@ class JSONExporter:
         for idx, step_result in enumerate(result.step_results, start=1):
             duration = 0.0
             if step_result.start_time and step_result.end_time:
-                duration = (step_result.end_time - step_result.start_time).total_seconds()
+                duration = (
+                    step_result.end_time - step_result.start_time
+                ).total_seconds()
 
             # Get HTTP status code from response
-            status_code = ""
+            status_code = ''
             if step_result.response and isinstance(step_result.response, dict):
-                status_code = step_result.response.get("status_code", "")
+                status_code = step_result.response.get('status_code', '')
 
             if verbose:
                 # Verbose mode: all fields including performance metrics
                 # Get response size
-                size = ""
+                size = ''
                 if step_result.performance:
-                    size = str(step_result.performance.size) if step_result.performance.size > 0 else ""
+                    size = (
+                        str(step_result.performance.size)
+                        if step_result.performance.size > 0
+                        else ''
+                    )
 
                 # Get performance metrics
-                total_time = ""
-                dns_time = ""
-                tcp_time = ""
-                tls_time = ""
-                server_time = ""
-                download_time = ""
+                total_time = ''
+                dns_time = ''
+                tcp_time = ''
+                tls_time = ''
+                server_time = ''
+                download_time = ''
 
                 if step_result.performance:
-                    total_time = f"{step_result.performance.total_time:.2f}"
-                    dns_time = f"{step_result.performance.dns_time:.2f}"
-                    tcp_time = f"{step_result.performance.tcp_time:.2f}"
-                    tls_time = f"{step_result.performance.tls_time:.2f}"
-                    server_time = f"{step_result.performance.server_time:.2f}"
-                    download_time = f"{step_result.performance.download_time:.2f}"
+                    total_time = f'{step_result.performance.total_time:.2f}'
+                    dns_time = f'{step_result.performance.dns_time:.2f}'
+                    tcp_time = f'{step_result.performance.tcp_time:.2f}'
+                    tls_time = f'{step_result.performance.tls_time:.2f}'
+                    server_time = f'{step_result.performance.server_time:.2f}'
+                    download_time = f'{step_result.performance.download_time:.2f}'
 
                 # Get error info
-                error_type = ""
-                error_message = ""
+                error_type = ''
+                error_message = ''
                 if step_result.error_info:
                     error_type = step_result.error_info.type
                     error_message = step_result.error_info.message
@@ -540,8 +562,10 @@ class JSONExporter:
                     step_result.name,
                     idx,
                     step_result.status.upper(),
-                    step_result.start_time.isoformat() if step_result.start_time else "",
-                    step_result.end_time.isoformat() if step_result.end_time else "",
+                    step_result.start_time.isoformat()
+                    if step_result.start_time
+                    else '',
+                    step_result.end_time.isoformat() if step_result.end_time else '',
                     round(duration, 3),
                     status_code,
                     size,
@@ -566,7 +590,9 @@ class JSONExporter:
 
         return output.getvalue()
 
-    def save_csv(self, result: TestCaseResult, output_path: str, verbose: bool = False) -> None:
+    def save_csv(
+        self, result: TestCaseResult, output_path: str, verbose: bool = False
+    ) -> None:
         """Save result as CSV file.
 
         Args:
@@ -577,5 +603,5 @@ class JSONExporter:
         """
         csv_data = self.to_csv(result, verbose=verbose)
 
-        with open(output_path, "w", encoding="utf-8", newline="") as f:
+        with pathlib.Path(output_path).open('w', encoding='utf-8', newline='') as f:
             f.write(csv_data)

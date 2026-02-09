@@ -5,14 +5,14 @@ Following Google Python Style Guide.
 """
 
 import time
-from typing import Any, Dict, List, Optional, Union
-from urllib.parse import urlparse
-from sqlmodel import SQLModel, Session, create_engine, select, text
-from sqlalchemy.pool import QueuePool
-from sqlalchemy.exc import SQLAlchemyError
+from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import QueuePool
+from sqlmodel import Session, create_engine, text
+
+from apirun.core.models import PerformanceMetrics, TestStep
 from apirun.executor.step_executor import StepExecutor
-from apirun.core.models import TestStep, PerformanceMetrics
 from apirun.validation.engine import ValidationEngine
 
 
@@ -38,9 +38,9 @@ class DatabaseExecutor(StepExecutor):
     """
 
     # Database type mapping
-    DB_TYPE_MYSQL = "mysql"
-    DB_TYPE_POSTGRESQL = "postgresql"
-    DB_TYPE_SQLITE = "sqlite"
+    DB_TYPE_MYSQL = 'mysql'
+    DB_TYPE_POSTGRESQL = 'postgresql'
+    DB_TYPE_SQLITE = 'sqlite'
 
     def __init__(
         self,
@@ -75,53 +75,53 @@ class DatabaseExecutor(StepExecutor):
         Raises:
             ValueError: If database configuration is invalid
         """
-        if hasattr(self.step, "database"):
+        if hasattr(self.step, 'database'):
             db_config = self.step.database
         else:
             # Try to get from step config
-            db_config = getattr(self.step, "connection", None)
+            db_config = getattr(self.step, 'connection', None)
 
         if not db_config:
-            raise ValueError("Database configuration is required for database steps")
+            raise ValueError('Database configuration is required for database steps')
 
         # Build connection string
-        self.db_type = db_config.get("type", "sqlite").lower()
+        self.db_type = db_config.get('type', 'sqlite').lower()
 
         if self.db_type == self.DB_TYPE_MYSQL:
             # MySQL connection string
             # Format: mysql+pymysql://user:password@host:port/database
-            host = db_config.get("host", "localhost")
-            port = db_config.get("port", 3306)
-            user = db_config.get("user", "root")
-            password = db_config.get("password", "")
-            database = db_config.get("database", "test")
+            host = db_config.get('host', 'localhost')
+            port = db_config.get('port', 3306)
+            user = db_config.get('user', 'root')
+            password = db_config.get('password', '')
+            database = db_config.get('database', 'test')
             self.connection_string = (
-                f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
-                f"?charset=utf8mb4"
+                f'mysql+pymysql://{user}:{password}@{host}:{port}/{database}'
+                f'?charset=utf8mb4'
             )
 
         elif self.db_type == self.DB_TYPE_POSTGRESQL:
             # PostgreSQL connection string
             # Format: postgresql://user:password@host:port/database
-            host = db_config.get("host", "localhost")
-            port = db_config.get("port", 5432)
-            user = db_config.get("user", "postgres")
-            password = db_config.get("password", "")
-            database = db_config.get("database", "test")
+            host = db_config.get('host', 'localhost')
+            port = db_config.get('port', 5432)
+            user = db_config.get('user', 'postgres')
+            password = db_config.get('password', '')
+            database = db_config.get('database', 'test')
             self.connection_string = (
-                f"postgresql://{user}:{password}@{host}:{port}/{database}"
+                f'postgresql://{user}:{password}@{host}:{port}/{database}'
             )
 
         elif self.db_type == self.DB_TYPE_SQLITE:
             # SQLite connection string
             # Format: sqlite:///path/to/database.db
-            database_path = db_config.get("path", ":memory:")
-            self.connection_string = f"sqlite:///{database_path}"
+            database_path = db_config.get('path', ':memory:')
+            self.connection_string = f'sqlite:///{database_path}'
 
         else:
             raise ValueError(
-                f"Unsupported database type: {self.db_type}. "
-                f"Supported types: mysql, postgresql, sqlite"
+                f'Unsupported database type: {self.db_type}. '
+                f'Supported types: mysql, postgresql, sqlite'
             )
 
     def _connect(self) -> None:
@@ -153,7 +153,7 @@ class DatabaseExecutor(StepExecutor):
             self.engine.dispose()
             self.engine = None
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Any:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> Any:
         """Execute database operation.
 
         Args:
@@ -171,14 +171,14 @@ class DatabaseExecutor(StepExecutor):
             SQLAlchemyError: If database operation fails
             ValueError: If SQL statement is invalid
         """
-        operation = rendered_step.get("operation", "query")
-        sql = rendered_step.get("sql", "")
-        params = rendered_step.get("params")
-        validations = rendered_step.get("validations", [])
-        use_transaction = rendered_step.get("transaction", True)
+        operation = rendered_step.get('operation', 'query')
+        sql = rendered_step.get('sql', '')
+        params = rendered_step.get('params')
+        validations = rendered_step.get('validations', [])
+        use_transaction = rendered_step.get('transaction', True)
 
         if not sql:
-            raise ValueError("SQL statement is required for database operations")
+            raise ValueError('SQL statement is required for database operations')
 
         # Connect to database
         self._connect()
@@ -188,16 +188,16 @@ class DatabaseExecutor(StepExecutor):
 
         try:
             # Execute based on operation type
-            if operation == "query":
+            if operation == 'query':
                 result_data = self._execute_query(sql, params)
-            elif operation == "exec":
+            elif operation == 'exec':
                 result_data = self._execute_update(sql, params, use_transaction)
-            elif operation == "executemany":
+            elif operation == 'executemany':
                 result_data = self._execute_batch(sql, params, use_transaction)
-            elif operation == "script":
+            elif operation == 'script':
                 result_data = self._execute_script(sql, use_transaction)
             else:
-                raise ValueError(f"Unsupported operation type: {operation}")
+                raise ValueError(f'Unsupported operation type: {operation}')
 
             end_time = time.time()
 
@@ -216,40 +216,40 @@ class DatabaseExecutor(StepExecutor):
 
         except SQLAlchemyError as e:
             self._disconnect()
-            raise SQLAlchemyError(f"Database operation failed: {e}")
+            raise SQLAlchemyError(f'Database operation failed: {e}')
 
         # Run validations
         validation_results = []
-        if validations and operation == "query":
+        if validations and operation == 'query':
             validation_results = self.validation_engine.validate(
-                validations, {"data": result_data, "sql": sql}
+                validations, {'data': result_data, 'sql': sql}
             )
 
             # Check if any validation failed
             for val_result in validation_results:
-                if not val_result["passed"]:
+                if not val_result['passed']:
                     raise AssertionError(
-                        f"Validation failed: {val_result['description']}"
+                        f'Validation failed: {val_result["description"]}'
                     )
 
         # Disconnect and return result
         self._disconnect()
 
         return type(
-            "Result",
+            'Result',
             (),
             {
-                "data": result_data,
-                "performance": performance,
-                "validation_results": validation_results,
-                "sql": sql,
-                "operation": operation,
+                'data': result_data,
+                'performance': performance,
+                'validation_results': validation_results,
+                'sql': sql,
+                'operation': operation,
             },
         )()
 
     def _execute_query(
-        self, sql: str, params: Optional[Union[Dict[str, Any], List[Any]]]
-    ) -> List[Dict[str, Any]]:
+        self, sql: str, params: dict[str, Any] | list[Any] | None
+    ) -> list[dict[str, Any]]:
         """Execute SELECT query.
 
         Args:
@@ -283,14 +283,14 @@ class DatabaseExecutor(StepExecutor):
             return [dict(zip(columns, row)) for row in rows]
 
         except SQLAlchemyError as e:
-            raise SQLAlchemyError(f"Query execution failed: {e}")
+            raise SQLAlchemyError(f'Query execution failed: {e}')
 
     def _execute_update(
         self,
         sql: str,
-        params: Optional[Union[Dict[str, Any], List[Any]]],
+        params: dict[str, Any] | list[Any] | None,
         use_transaction: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute INSERT/UPDATE/DELETE statement.
 
         Args:
@@ -322,21 +322,21 @@ class DatabaseExecutor(StepExecutor):
 
             # Return result info
             return {
-                "rowcount": result.rowcount,
-                "lastrowid": result.lastrowid if hasattr(result, "lastrowid") else None,
+                'rowcount': result.rowcount,
+                'lastrowid': result.lastrowid if hasattr(result, 'lastrowid') else None,
             }
 
         except SQLAlchemyError as e:
             if use_transaction:
                 self.session.rollback()
-            raise SQLAlchemyError(f"Update execution failed: {e}")
+            raise SQLAlchemyError(f'Update execution failed: {e}')
 
     def _execute_batch(
         self,
         sql: str,
-        params_list: List[Union[Dict[str, Any], List[Any]]],
+        params_list: list[dict[str, Any] | list[Any]],
         use_transaction: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute batch operation (INSERT/UPDATE multiple rows).
 
         Args:
@@ -360,7 +360,7 @@ class DatabaseExecutor(StepExecutor):
                 elif isinstance(params, list):
                     result = self.session.execute(text(sql), params)
                 else:
-                    raise ValueError("Parameters must be dict or list")
+                    raise ValueError('Parameters must be dict or list')
 
                 total_rowcount += result.rowcount
 
@@ -368,14 +368,14 @@ class DatabaseExecutor(StepExecutor):
             if use_transaction:
                 self.session.commit()
 
-            return {"rowcount": total_rowcount, "executed_count": len(params_list)}
+            return {'rowcount': total_rowcount, 'executed_count': len(params_list)}
 
         except SQLAlchemyError as e:
             if use_transaction:
                 self.session.rollback()
-            raise SQLAlchemyError(f"Batch execution failed: {e}")
+            raise SQLAlchemyError(f'Batch execution failed: {e}')
 
-    def _execute_script(self, script: str, use_transaction: bool) -> Dict[str, Any]:
+    def _execute_script(self, script: str, use_transaction: bool) -> dict[str, Any]:
         """Execute multiple SQL statements (DDL/DML script).
 
         Args:
@@ -390,25 +390,26 @@ class DatabaseExecutor(StepExecutor):
         """
         try:
             # Split script by semicolon and execute each statement
-            statements = [s.strip() for s in script.split(";") if s.strip()]
+            statements = [s.strip() for s in script.split(';') if s.strip()]
             results = []
 
             for statement in statements:
                 result = self.session.execute(text(statement))
-                results.append(
-                    {"statement": statement[:100], "rowcount": result.rowcount}
-                )
+                results.append({
+                    'statement': statement[:100],
+                    'rowcount': result.rowcount,
+                })
 
             # Commit if using transaction
             if use_transaction:
                 self.session.commit()
 
-            return {"executed_count": len(statements), "results": results}
+            return {'executed_count': len(statements), 'results': results}
 
         except SQLAlchemyError as e:
             if use_transaction:
                 self.session.rollback()
-            raise SQLAlchemyError(f"Script execution failed: {e}")
+            raise SQLAlchemyError(f'Script execution failed: {e}')
 
     def __del__(self):
         """Cleanup resources on deletion."""

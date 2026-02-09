@@ -4,12 +4,12 @@ This module implements JUnit XML format output for CI/CD integration.
 Following Google Python Style Guide.
 """
 
-import xml.etree.ElementTree as ET
-from typing import Any, Dict, List
 from datetime import datetime
 from io import StringIO
+import pathlib
+import xml.etree.ElementTree as ET
 
-from apirun.core.models import TestCase, TestCaseResult, StepResult
+from apirun.core.models import StepResult, TestCaseResult
 
 
 class JUnitExporter:
@@ -32,7 +32,7 @@ class JUnitExporter:
     - <skipped>: Skipped element for skipped tests
     """
 
-    def __init__(self, package_name: str = "sisyphus.api"):
+    def __init__(self, package_name: str = 'sisyphus.api'):
         """Initialize JUnitExporter.
 
         Args:
@@ -50,36 +50,36 @@ class JUnitExporter:
             JUnit XML string
         """
         # Create root element
-        testsuites = ET.Element("testsuites")
-        testsuites.set("name", result.name)
-        testsuites.set("time", str(round(result.duration, 3)))
-        testsuites.set("tests", str(result.total_steps))
-        testsuites.set("failures", str(result.failed_steps))
-        testsuites.set("errors", "0")
-        testsuites.set("skipped", str(result.skipped_steps))
-        testsuites.set("timestamp", result.start_time.isoformat())
+        testsuites = ET.Element('testsuites')
+        testsuites.set('name', result.name)
+        testsuites.set('time', str(round(result.duration, 3)))
+        testsuites.set('tests', str(result.total_steps))
+        testsuites.set('failures', str(result.failed_steps))
+        testsuites.set('errors', '0')
+        testsuites.set('skipped', str(result.skipped_steps))
+        testsuites.set('timestamp', result.start_time.isoformat())
 
         # Create testsuite element
-        testsuite = ET.SubElement(testsuites, "testsuite")
-        testsuite.set("name", result.name)
-        testsuite.set("package", self.package_name)
-        testsuite.set("time", str(round(result.duration, 3)))
-        testsuite.set("tests", str(result.total_steps))
-        testsuite.set("failures", str(result.failed_steps))
-        testsuite.set("errors", "0")
-        testsuite.set("skipped", str(result.skipped_steps))
-        testsuite.set("timestamp", result.start_time.isoformat())
+        testsuite = ET.SubElement(testsuites, 'testsuite')
+        testsuite.set('name', result.name)
+        testsuite.set('package', self.package_name)
+        testsuite.set('time', str(round(result.duration, 3)))
+        testsuite.set('tests', str(result.total_steps))
+        testsuite.set('failures', str(result.failed_steps))
+        testsuite.set('errors', '0')
+        testsuite.set('skipped', str(result.skipped_steps))
+        testsuite.set('timestamp', result.start_time.isoformat())
 
         # Add properties if available
         if result.final_variables:
-            properties = ET.SubElement(testsuite, "properties")
+            properties = ET.SubElement(testsuite, 'properties')
             for key, value in result.final_variables.items():
-                prop = ET.SubElement(properties, "property")
-                prop.set("name", str(key))
-                prop.set("value", str(value))
+                prop = ET.SubElement(properties, 'property')
+                prop.set('name', str(key))
+                prop.set('value', str(value))
 
         # Add system-out and system-err for test case info
-        system_out = ET.SubElement(testsuite, "system-out")
+        system_out = ET.SubElement(testsuite, 'system-out')
         system_out.text = self._generate_test_summary(result)
 
         # Add test cases (steps)
@@ -102,45 +102,63 @@ class JUnitExporter:
         Returns:
             Testcase XML element
         """
-        testcase = ET.Element("testcase")
-        testcase.set("name", step_result.name)
-        testcase.set("classname", f"{self.package_name}.{test_result.name}")
+        testcase = ET.Element('testcase')
+        testcase.set('name', step_result.name)
+        testcase.set('classname', f'{self.package_name}.{test_result.name}')
 
         # Calculate duration
         duration = 0.0
         if step_result.start_time and step_result.end_time:
             duration = (step_result.end_time - step_result.start_time).total_seconds()
-        testcase.set("time", str(round(duration, 3)))
+        testcase.set('time', str(round(duration, 3)))
 
         # Add timestamp
         if step_result.start_time:
-            testcase.set("timestamp", step_result.start_time.isoformat())
+            testcase.set('timestamp', step_result.start_time.isoformat())
 
         # Handle failure/error/skipped status
-        if step_result.status == "failure":
-            failure = ET.SubElement(testcase, "failure")
-            failure.set("type", step_result.error_info.type if step_result.error_info else "AssertionError")
-            failure.set("message", step_result.error_info.message if step_result.error_info else "Step failed")
+        if step_result.status == 'failure':
+            failure = ET.SubElement(testcase, 'failure')
+            failure.set(
+                'type',
+                step_result.error_info.type
+                if step_result.error_info
+                else 'AssertionError',
+            )
+            failure.set(
+                'message',
+                step_result.error_info.message
+                if step_result.error_info
+                else 'Step failed',
+            )
 
             # Build failure details
             failure_text = self._build_failure_details(step_result)
             failure.text = failure_text
 
-        elif step_result.status == "error":
-            error = ET.SubElement(testcase, "error")
-            error.set("type", step_result.error_info.type if step_result.error_info else "Error")
-            error.set("message", step_result.error_info.message if step_result.error_info else "Step error")
+        elif step_result.status == 'error':
+            error = ET.SubElement(testcase, 'error')
+            error.set(
+                'type',
+                step_result.error_info.type if step_result.error_info else 'Error',
+            )
+            error.set(
+                'message',
+                step_result.error_info.message
+                if step_result.error_info
+                else 'Step error',
+            )
 
             # Build error details
             error_text = self._build_error_details(step_result)
             error.text = error_text
 
-        elif step_result.status == "skipped":
-            skipped = ET.SubElement(testcase, "skipped")
-            skipped.set("message", "Step was skipped")
+        elif step_result.status == 'skipped':
+            skipped = ET.SubElement(testcase, 'skipped')
+            skipped.set('message', 'Step was skipped')
 
         # Add system-out with step details
-        system_out = ET.SubElement(testcase, "system-out")
+        system_out = ET.SubElement(testcase, 'system-out')
         system_out.text = self._build_step_output(step_result)
 
         return testcase
@@ -155,38 +173,40 @@ class JUnitExporter:
             Formatted failure details
         """
         lines = []
-        lines.append(f"Step: {step_result.name}")
-        lines.append(f"Status: {step_result.status.upper()}")
+        lines.append(f'Step: {step_result.name}')
+        lines.append(f'Status: {step_result.status.upper()}')
 
         if step_result.error_info:
-            lines.append(f"Error Type: {step_result.error_info.type}")
-            lines.append(f"Error Category: {step_result.error_info.category.value}")
-            lines.append(f"Message: {step_result.error_info.message}")
+            lines.append(f'Error Type: {step_result.error_info.type}')
+            lines.append(f'Error Category: {step_result.error_info.category.value}')
+            lines.append(f'Message: {step_result.error_info.message}')
             if step_result.error_info.suggestion:
-                lines.append(f"Suggestion: {step_result.error_info.suggestion}")
+                lines.append(f'Suggestion: {step_result.error_info.suggestion}')
             if step_result.error_info.stack_trace:
-                lines.append(f"\nStack Trace:\n{step_result.error_info.stack_trace}")
+                lines.append(f'\nStack Trace:\n{step_result.error_info.stack_trace}')
 
         # Add validation failures if present
         if step_result.validation_results:
-            lines.append("\nValidation Failures:")
+            lines.append('\nValidation Failures:')
             for validation in step_result.validation_results:
-                if not validation.get("passed", True):
-                    lines.append(f"  - {validation.get('description', 'N/A')}")
-                    lines.append(f"    Path: {validation.get('path', 'N/A')}")
-                    lines.append(f"    Expected: {validation.get('expected', 'N/A')}")
-                    lines.append(f"    Actual: {validation.get('actual', 'N/A')}")
+                if not validation.get('passed', True):
+                    lines.append(f'  - {validation.get("description", "N/A")}')
+                    lines.append(f'    Path: {validation.get("path", "N/A")}')
+                    lines.append(f'    Expected: {validation.get("expected", "N/A")}')
+                    lines.append(f'    Actual: {validation.get("actual", "N/A")}')
 
         # Add response info if available
         if step_result.response:
-            lines.append("\nResponse:")
+            lines.append('\nResponse:')
             if isinstance(step_result.response, dict):
-                if "status_code" in step_result.response:
-                    lines.append(f"  Status Code: {step_result.response['status_code']}")
-                if "body" in step_result.response:
-                    lines.append(f"  Body: {str(step_result.response['body'])[:200]}")
+                if 'status_code' in step_result.response:
+                    lines.append(
+                        f'  Status Code: {step_result.response["status_code"]}'
+                    )
+                if 'body' in step_result.response:
+                    lines.append(f'  Body: {str(step_result.response["body"])[:200]}')
 
-        return "\n".join(lines)
+        return '\n'.join(lines)
 
     def _build_error_details(self, step_result: StepResult) -> str:
         """Build detailed error information.
@@ -209,41 +229,41 @@ class JUnitExporter:
             Formatted step output
         """
         lines = []
-        lines.append(f"Step: {step_result.name}")
-        lines.append(f"Status: {step_result.status.upper()}")
+        lines.append(f'Step: {step_result.name}')
+        lines.append(f'Status: {step_result.status.upper()}')
 
         # Add timing info
         if step_result.start_time and step_result.end_time:
             duration = (step_result.end_time - step_result.start_time).total_seconds()
-            lines.append(f"Duration: {duration:.3f}s")
+            lines.append(f'Duration: {duration:.3f}s')
 
         # Add retry count
         if step_result.retry_count > 0:
-            lines.append(f"Retries: {step_result.retry_count}")
+            lines.append(f'Retries: {step_result.retry_count}')
 
         # Add performance metrics if available
         if step_result.performance:
             perf = step_result.performance
-            lines.append("\nPerformance Metrics:")
-            lines.append(f"  Total Time: {perf.total_time:.2f}ms")
+            lines.append('\nPerformance Metrics:')
+            lines.append(f'  Total Time: {perf.total_time:.2f}ms')
             if perf.dns_time > 0:
-                lines.append(f"  DNS Time: {perf.dns_time:.2f}ms")
+                lines.append(f'  DNS Time: {perf.dns_time:.2f}ms')
             if perf.tcp_time > 0:
-                lines.append(f"  TCP Time: {perf.tcp_time:.2f}ms")
+                lines.append(f'  TCP Time: {perf.tcp_time:.2f}ms')
             if perf.tls_time > 0:
-                lines.append(f"  TLS Time: {perf.tls_time:.2f}ms")
+                lines.append(f'  TLS Time: {perf.tls_time:.2f}ms')
             if perf.server_time > 0:
-                lines.append(f"  Server Time: {perf.server_time:.2f}ms")
+                lines.append(f'  Server Time: {perf.server_time:.2f}ms')
             if perf.download_time > 0:
-                lines.append(f"  Download Time: {perf.download_time:.2f}ms")
+                lines.append(f'  Download Time: {perf.download_time:.2f}ms')
 
         # Add extracted variables if present
         if step_result.extracted_vars:
-            lines.append("\nExtracted Variables:")
+            lines.append('\nExtracted Variables:')
             for key, value in step_result.extracted_vars.items():
-                lines.append(f"  {key}: {value}")
+                lines.append(f'  {key}: {value}')
 
-        return "\n".join(lines)
+        return '\n'.join(lines)
 
     def _generate_test_summary(self, result: TestCaseResult) -> str:
         """Generate test summary for system-out.
@@ -255,20 +275,22 @@ class JUnitExporter:
             Formatted test summary
         """
         lines = []
-        lines.append("=" * 60)
-        lines.append(f"Test Case: {result.name}")
-        lines.append(f"Status: {result.status.upper()}")
-        lines.append(f"Duration: {result.duration:.2f}s")
-        lines.append("")
-        lines.append("Statistics:")
-        lines.append(f"  Total Steps: {result.total_steps}")
-        lines.append(f"  Passed: {result.passed_steps}")
-        lines.append(f"  Failed: {result.failed_steps}")
-        lines.append(f"  Skipped: {result.skipped_steps}")
-        lines.append(f"  Pass Rate: {(result.passed_steps / result.total_steps * 100) if result.total_steps > 0 else 0:.1f}%")
-        lines.append("=" * 60)
+        lines.append('=' * 60)
+        lines.append(f'Test Case: {result.name}')
+        lines.append(f'Status: {result.status.upper()}')
+        lines.append(f'Duration: {result.duration:.2f}s')
+        lines.append('')
+        lines.append('Statistics:')
+        lines.append(f'  Total Steps: {result.total_steps}')
+        lines.append(f'  Passed: {result.passed_steps}')
+        lines.append(f'  Failed: {result.failed_steps}')
+        lines.append(f'  Skipped: {result.skipped_steps}')
+        lines.append(
+            f'  Pass Rate: {(result.passed_steps / result.total_steps * 100) if result.total_steps > 0 else 0:.1f}%'
+        )
+        lines.append('=' * 60)
 
-        return "\n".join(lines)
+        return '\n'.join(lines)
 
     def _prettify_xml(self, elem: ET.Element) -> str:
         """Prettify XML with proper indentation.
@@ -286,7 +308,7 @@ class JUnitExporter:
         output = StringIO()
         ET.ElementTree(elem).write(
             output,
-            encoding="unicode",
+            encoding='unicode',
             xml_declaration=True,
         )
         return output.getvalue()
@@ -298,10 +320,10 @@ class JUnitExporter:
             elem: XML element to indent
             level: Current indentation level
         """
-        indent = "\n" + "  " * level
+        indent = '\n' + '  ' * level
         if len(elem):
             if not elem.text or not elem.text.strip():
-                elem.text = indent + "  "
+                elem.text = indent + '  '
             if not elem.tail or not elem.tail.strip():
                 elem.tail = indent
             for child in elem:
@@ -321,7 +343,7 @@ class JUnitExporter:
         """
         xml_content = self.to_junit_xml(result)
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with pathlib.Path(output_path).open('w', encoding='utf-8') as f:
             f.write(xml_content)
 
 
@@ -332,14 +354,14 @@ class MultiTestSuiteJUnitExporter:
     a single JUnit XML report for all of them.
     """
 
-    def __init__(self, package_name: str = "sisyphus.api"):
+    def __init__(self, package_name: str = 'sisyphus.api'):
         """Initialize MultiTestSuiteJUnitExporter.
 
         Args:
             package_name: Package name for the test suite
         """
         self.package_name = package_name
-        self.results: List[TestCaseResult] = []
+        self.results: list[TestCaseResult] = []
 
     def add_result(self, result: TestCaseResult) -> None:
         """Add a test result to the collection.
@@ -368,14 +390,14 @@ class MultiTestSuiteJUnitExporter:
         latest_end = max(end_times) if end_times else datetime.now()
 
         # Create root element
-        testsuites = ET.Element("testsuites")
-        testsuites.set("name", "Sisyphus API Test Suite")
-        testsuites.set("time", str(round(total_duration, 3)))
-        testsuites.set("tests", str(total_tests))
-        testsuites.set("failures", str(total_failures))
-        testsuites.set("errors", "0")
-        testsuites.set("skipped", str(total_skipped))
-        testsuites.set("timestamp", earliest_start.isoformat())
+        testsuites = ET.Element('testsuites')
+        testsuites.set('name', 'Sisyphus API Test Suite')
+        testsuites.set('time', str(round(total_duration, 3)))
+        testsuites.set('tests', str(total_tests))
+        testsuites.set('failures', str(total_failures))
+        testsuites.set('errors', '0')
+        testsuites.set('skipped', str(total_skipped))
+        testsuites.set('timestamp', earliest_start.isoformat())
 
         # Create a testsuite for each test case
         for result in self.results:
@@ -385,7 +407,7 @@ class MultiTestSuiteJUnitExporter:
             suite_elem = ET.fromstring(xml_str)
 
             # Find the testsuite element and append it
-            testsuite = suite_elem.find("testsuite")
+            testsuite = suite_elem.find('testsuite')
             if testsuite is not None:
                 testsuites.append(testsuite)
 
@@ -408,7 +430,7 @@ class MultiTestSuiteJUnitExporter:
         output = StringIO()
         ET.ElementTree(elem).write(
             output,
-            encoding="unicode",
+            encoding='unicode',
             xml_declaration=True,
         )
         return output.getvalue()
@@ -420,10 +442,10 @@ class MultiTestSuiteJUnitExporter:
             elem: XML element to indent
             level: Current indentation level
         """
-        indent = "\n" + "  " * level
+        indent = '\n' + '  ' * level
         if len(elem):
             if not elem.text or not elem.text.strip():
-                elem.text = indent + "  "
+                elem.text = indent + '  '
             if not elem.tail or not elem.tail.strip():
                 elem.tail = indent
             for child in elem:
@@ -442,5 +464,5 @@ class MultiTestSuiteJUnitExporter:
         """
         xml_content = self.to_junit_xml()
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with pathlib.Path(output_path).open('w', encoding='utf-8') as f:
             f.write(xml_content)

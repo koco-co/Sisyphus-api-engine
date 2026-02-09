@@ -4,23 +4,23 @@ This module defines the abstract base class for all step executors.
 Following Google Python Style Guide.
 """
 
+from abc import ABC, abstractmethod
+from datetime import datetime
 import time
 import traceback
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from typing import Any
 
 from apirun.core.models import (
-    TestStep,
-    StepResult,
+    ErrorCategory,
     ErrorInfo,
     PerformanceMetrics,
-    ErrorCategory,
+    StepResult,
+    TestStep,
 )
-from apirun.core.variable_manager import VariableManager
 from apirun.core.retry import RetryManager, create_retry_policy_from_config
-from apirun.utils.template import render_template
+from apirun.core.variable_manager import VariableManager
 from apirun.utils.logger import get_logger
+from apirun.utils.template import render_template
 
 
 class StepExecutor(ABC):
@@ -70,7 +70,9 @@ class StepExecutor(ABC):
                 retry_policy = create_retry_policy_from_config(step.retry_policy)
                 self.retry_manager = RetryManager(retry_policy)
             except Exception as e:
-                print(f"Warning: Failed to parse retry_policy: {e}. Using legacy retry_times.")
+                print(
+                    f'Warning: Failed to parse retry_policy: {e}. Using legacy retry_times.'
+                )
         elif self.retry_times > 0:
             # Use legacy retry_times
             from apirun.core.retry import RetryPolicy, RetryStrategy
@@ -99,7 +101,7 @@ class StepExecutor(ABC):
         start_time = datetime.now()
         result = StepResult(
             name=self.step.name,
-            status="pending",
+            status='pending',
             start_time=start_time,
             end_time=None,
             retry_count=0,
@@ -111,14 +113,14 @@ class StepExecutor(ABC):
             self.logger.log_step_start(
                 step_name=self.step.name,
                 step_type=self.step.type,
-                description=getattr(self.step, 'description', '')
+                description=getattr(self.step, 'description', ''),
             )
 
             # Check step control conditions
             if not self._should_execute():
-                result.status = "skipped"
+                result.status = 'skipped'
                 result.end_time = datetime.now()
-                self.logger.log_step_end(self.step.name, "skipped", 0)
+                self.logger.log_step_end(self.step.name, 'skipped', 0)
                 return result
 
             # Execute setup hooks
@@ -141,7 +143,7 @@ class StepExecutor(ABC):
                             attempt=attempt + 1,
                             max_attempts=self.retry_manager.policy.max_attempts,
                             delay=delay_before,
-                            error=str(last_error) if last_error else "Unknown error"
+                            error=str(last_error) if last_error else 'Unknown error',
                         )
                         time.sleep(delay_before)
 
@@ -165,26 +167,28 @@ class StepExecutor(ABC):
                         )
 
                     # Merge step result into result
-                    result.status = "success"
+                    result.status = 'success'
 
                     # Handle both dict and object return values
                     if isinstance(step_result, dict):
-                        if "response" in step_result:
-                            result.response = step_result["response"]
-                        if "extracted_vars" in step_result:
-                            result.extracted_vars = step_result["extracted_vars"]
-                        if "performance" in step_result:
-                            result.performance = step_result["performance"]
-                        if "validation_results" in step_result:
-                            result.validation_results = step_result["validation_results"]
+                        if 'response' in step_result:
+                            result.response = step_result['response']
+                        if 'extracted_vars' in step_result:
+                            result.extracted_vars = step_result['extracted_vars']
+                        if 'performance' in step_result:
+                            result.performance = step_result['performance']
+                        if 'validation_results' in step_result:
+                            result.validation_results = step_result[
+                                'validation_results'
+                            ]
                     else:
-                        if hasattr(step_result, "response"):
+                        if hasattr(step_result, 'response'):
                             result.response = step_result.response
-                        if hasattr(step_result, "extracted_vars"):
+                        if hasattr(step_result, 'extracted_vars'):
                             result.extracted_vars = step_result.extracted_vars
-                        if hasattr(step_result, "performance"):
+                        if hasattr(step_result, 'performance'):
                             result.performance = step_result.performance
-                        if hasattr(step_result, "validation_results"):
+                        if hasattr(step_result, 'validation_results'):
                             result.validation_results = step_result.validation_results
 
                     # Extract variables
@@ -205,18 +209,20 @@ class StepExecutor(ABC):
                     performance_details = {}
                     if result.performance:
                         performance_details = {
-                            "total_time": result.performance.total_time,
-                            "dns_time": getattr(result.performance, "dns_time", None),
-                            "tcp_time": getattr(result.performance, "tcp_time", None),
-                            "tls_time": getattr(result.performance, "tls_time", None),
-                            "server_time": getattr(result.performance, "server_time", None),
+                            'total_time': result.performance.total_time,
+                            'dns_time': getattr(result.performance, 'dns_time', None),
+                            'tcp_time': getattr(result.performance, 'tcp_time', None),
+                            'tls_time': getattr(result.performance, 'tls_time', None),
+                            'server_time': getattr(
+                                result.performance, 'server_time', None
+                            ),
                         }
 
                     self.logger.log_step_end(
                         step_name=self.step.name,
-                        status="passed",
+                        status='passed',
                         duration=total_duration,
-                        **performance_details
+                        **performance_details,
                     )
 
                     # Log performance metrics if available
@@ -224,12 +230,20 @@ class StepExecutor(ABC):
                         self.logger.log_performance_metrics(
                             self.step.name,
                             {
-                                "total_time": result.performance.total_time,
-                                "dns_time": getattr(result.performance, "dns_time", None),
-                                "tcp_time": getattr(result.performance, "tcp_time", None),
-                                "tls_time": getattr(result.performance, "tls_time", None),
-                                "server_time": getattr(result.performance, "server_time", None),
-                            }
+                                'total_time': result.performance.total_time,
+                                'dns_time': getattr(
+                                    result.performance, 'dns_time', None
+                                ),
+                                'tcp_time': getattr(
+                                    result.performance, 'tcp_time', None
+                                ),
+                                'tls_time': getattr(
+                                    result.performance, 'tls_time', None
+                                ),
+                                'server_time': getattr(
+                                    result.performance, 'server_time', None
+                                ),
+                            },
                         )
 
                     # Success - no need to retry
@@ -267,7 +281,9 @@ class StepExecutor(ABC):
                         # Final attempt failed - but preserve any partial results
                         result.retry_count = attempt
                         if self.retry_manager:
-                            result.retry_history = self.retry_manager.get_retry_history()
+                            result.retry_history = (
+                                self.retry_manager.get_retry_history()
+                            )
 
                         # Try to extract response from the exception if available
                         # Some exceptions may contain partial response data
@@ -283,7 +299,7 @@ class StepExecutor(ABC):
             self._execute_teardown()
 
         except Exception as e:
-            result.status = "failure"
+            result.status = 'failure'
             result.error_info = self._create_error_info(e)
             result.end_time = datetime.now()
 
@@ -302,7 +318,7 @@ class StepExecutor(ABC):
         return result
 
     @abstractmethod
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Any:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> Any:
         """Execute the actual step implementation.
 
         Subclasses must implement this method.
@@ -316,7 +332,7 @@ class StepExecutor(ABC):
         Raises:
             Exception: If execution fails
         """
-        raise NotImplementedError("Subclasses must implement _execute_step()")
+        raise NotImplementedError('Subclasses must implement _execute_step()')
 
     def _should_execute(self) -> bool:
         """Check if step should be executed based on control conditions.
@@ -339,7 +355,10 @@ class StepExecutor(ABC):
             except Exception as e:
                 # If evaluation fails, log warning but don't skip
                 import warnings
-                warnings.warn(f"Failed to evaluate skip_if condition '{self.step.skip_if}': {e}")
+
+                warnings.warn(
+                    f"Failed to evaluate skip_if condition '{self.step.skip_if}': {e}"
+                )
 
         # Check only_if condition
         if self.step.only_if:
@@ -350,11 +369,14 @@ class StepExecutor(ABC):
             except Exception as e:
                 # If evaluation fails, log warning but don't execute
                 import warnings
-                warnings.warn(f"Failed to evaluate only_if condition '{self.step.only_if}': {e}")
+
+                warnings.warn(
+                    f"Failed to evaluate only_if condition '{self.step.only_if}': {e}"
+                )
                 return False
 
         # Check generic condition field (skip for wait steps where condition is a parameter)
-        if self.step.condition and self.step.type != "wait":
+        if self.step.condition and self.step.type != 'wait':
             try:
                 condition_met = evaluator.evaluate(self.step.condition)
                 if not condition_met:
@@ -362,7 +384,10 @@ class StepExecutor(ABC):
             except Exception as e:
                 # If evaluation fails, log warning but don't execute
                 import warnings
-                warnings.warn(f"Failed to evaluate condition '{self.step.condition}': {e}")
+
+                warnings.warn(
+                    f"Failed to evaluate condition '{self.step.condition}': {e}"
+                )
                 return False
 
         # Check depends_on conditions
@@ -374,7 +399,7 @@ class StepExecutor(ABC):
                     if result.name == dep_step_name:
                         dep_found = True
                         # Skip if dependency failed
-                        if result.status != "success":
+                        if result.status != 'success':
                             return False
                         break
                 # Skip if dependency step not found
@@ -383,7 +408,7 @@ class StepExecutor(ABC):
 
         return True
 
-    def _render_step(self) -> Dict[str, Any]:
+    def _render_step(self) -> dict[str, Any]:
         """Render variables in step definition.
 
         Returns:
@@ -392,61 +417,61 @@ class StepExecutor(ABC):
         context = self.variable_manager.get_all_variables()
 
         rendered = {
-            "name": self.step.name,
-            "type": self.step.type,
+            'name': self.step.name,
+            'type': self.step.type,
         }
 
         if self.step.method:
-            rendered["method"] = self.step.method
+            rendered['method'] = self.step.method
 
         if self.step.url:
-            rendered["url"] = render_template(self.step.url, context)
+            rendered['url'] = render_template(self.step.url, context)
 
         if self.step.params:
-            rendered["params"] = self.variable_manager.render_dict(self.step.params)
+            rendered['params'] = self.variable_manager.render_dict(self.step.params)
 
         if self.step.headers:
-            rendered["headers"] = self.variable_manager.render_dict(self.step.headers)
+            rendered['headers'] = self.variable_manager.render_dict(self.step.headers)
 
         if self.step.body is not None:
             if isinstance(self.step.body, str):
-                rendered["body"] = render_template(self.step.body, context)
+                rendered['body'] = render_template(self.step.body, context)
             elif isinstance(self.step.body, dict):
-                rendered["body"] = self.variable_manager.render_dict(self.step.body)
+                rendered['body'] = self.variable_manager.render_dict(self.step.body)
             else:
-                rendered["body"] = self.step.body
+                rendered['body'] = self.step.body
 
         # Render database-specific fields
         if self.step.database:
-            rendered["database"] = self.variable_manager.render_dict(self.step.database)
+            rendered['database'] = self.variable_manager.render_dict(self.step.database)
 
         if self.step.sql:
-            rendered["sql"] = render_template(self.step.sql, context)
+            rendered['sql'] = render_template(self.step.sql, context)
 
         if self.step.operation:
-            rendered["operation"] = self.step.operation
+            rendered['operation'] = self.step.operation
 
         # Render validations
         if self.step.validations:
-            rendered["validations"] = []
+            rendered['validations'] = []
             for val in self.step.validations:
                 rendered_val = self._render_validation(val, context)
-                rendered["validations"].append(rendered_val)
+                rendered['validations'].append(rendered_val)
 
         # Render extractors
         if self.step.extractors:
-            rendered["extractors"] = []
+            rendered['extractors'] = []
             for ext in self.step.extractors:
-                rendered["extractors"].append({
-                    "name": ext.name,
-                    "type": ext.type,
-                    "path": ext.path,
-                    "index": ext.index,
+                rendered['extractors'].append({
+                    'name': ext.name,
+                    'type': ext.type,
+                    'path': ext.path,
+                    'index': ext.index,
                 })
 
         return rendered
 
-    def _render_validation(self, val: Any, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _render_validation(self, val: Any, context: dict[str, Any]) -> dict[str, Any]:
         """Render validation rule with template support.
 
         Args:
@@ -462,23 +487,23 @@ class StepExecutor(ABC):
             return val
 
         rendered_val = {
-            "type": val.type,
-            "path": val.path,
-            "expect": render_template(str(val.expect), context)
+            'type': val.type,
+            'path': val.path,
+            'expect': render_template(str(val.expect), context)
             if isinstance(val.expect, str)
             else val.expect,
-            "description": val.description,
+            'description': val.description,
         }
 
         # Add logical operator support
         if val.logical_operator:
-            rendered_val["logical_operator"] = val.logical_operator
+            rendered_val['logical_operator'] = val.logical_operator
             # Recursively render sub_validations
             if val.sub_validations:
-                rendered_val["sub_validations"] = []
+                rendered_val['sub_validations'] = []
                 for sub_val in val.sub_validations:
                     rendered_sub_val = self._render_validation(sub_val, context)
-                    rendered_val["sub_validations"].append(rendered_sub_val)
+                    rendered_val['sub_validations'].append(rendered_sub_val)
 
         return rendered_val
 
@@ -498,12 +523,14 @@ class StepExecutor(ABC):
         # For request steps, extract from response body by default (like validation)
         # This allows users to use $.code instead of $.body.code
         extraction_data = result.response
-        if isinstance(result.response, dict) and "body" in result.response:
+        if isinstance(result.response, dict) and 'body' in result.response:
             # Check if extractor type is jsonpath - if so, use body as default
             # For other extractors (header, cookie), they work on the full response
-            first_extractor_type = self.step.extractors[0].type if self.step.extractors else None
-            if first_extractor_type in ["jsonpath", "regex"]:
-                extraction_data = result.response.get("body", result.response)
+            first_extractor_type = (
+                self.step.extractors[0].type if self.step.extractors else None
+            )
+            if first_extractor_type in ['jsonpath', 'regex']:
+                extraction_data = result.response.get('body', result.response)
 
         for extractor_def in self.step.extractors:
             try:
@@ -511,20 +538,35 @@ class StepExecutor(ABC):
                 if extractor_def.condition:
                     condition_met = self._evaluate_condition(
                         extractor_def.condition,
-                        extraction_data if extractor_def.type in ["jsonpath", "regex"] else result.response
+                        extraction_data
+                        if extractor_def.type in ['jsonpath', 'regex']
+                        else result.response,
                     )
 
                     if not condition_met:
                         # Condition not met, use default value if specified
-                        if extractor_def.on_failure and "use_default" in extractor_def.on_failure:
-                            default_value = extractor_def.on_failure["use_default"]
-                            self.variable_manager.set_variable(extractor_def.name, default_value)
+                        if (
+                            extractor_def.on_failure
+                            and 'use_default' in extractor_def.on_failure
+                        ):
+                            default_value = extractor_def.on_failure['use_default']
+                            self.variable_manager.set_variable(
+                                extractor_def.name, default_value
+                            )
                             result.extracted_vars[extractor_def.name] = default_value
-                            print(f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {default_value}")
+                            print(
+                                f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {default_value}"
+                            )
                         elif extractor_def.default is not None:
-                            self.variable_manager.set_variable(extractor_def.name, extractor_def.default)
-                            result.extracted_vars[extractor_def.name] = extractor_def.default
-                            print(f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {extractor_def.default}")
+                            self.variable_manager.set_variable(
+                                extractor_def.name, extractor_def.default
+                            )
+                            result.extracted_vars[extractor_def.name] = (
+                                extractor_def.default
+                            )
+                            print(
+                                f"ℹ️  条件不满足，使用默认值: '{extractor_def.name}' = {extractor_def.default}"
+                            )
                         else:
                             print(f"⚠️  条件不满足且无默认值: '{extractor_def.name}'")
                         continue
@@ -532,26 +574,26 @@ class StepExecutor(ABC):
                 extractor = extractor_factory.create_extractor(extractor_def.type)
 
                 # Choose data source based on extractor type
-                if extractor_def.type in ["jsonpath", "regex"]:
+                if extractor_def.type in ['jsonpath', 'regex']:
                     # jsonpath and regex extractors work on body by default
                     # Backward compatibility: if path starts with "$.body.", use full response
                     path = extractor_def.path
                     if isinstance(result.response, dict):
-                        if path.startswith("$.body."):
+                        if path.startswith('$.body.'):
                             # Old-style path with explicit $.body. prefix
                             data_source = result.response
-                        elif path.startswith("$"):
+                        elif path.startswith('$'):
                             # New-style path without $.body. prefix, auto-extract from body
-                            data_source = result.response.get("body", result.response)
+                            data_source = result.response.get('body', result.response)
                         else:
                             # Non-JSONPath path, use body
-                            data_source = result.response.get("body", result.response)
+                            data_source = result.response.get('body', result.response)
                     else:
                         data_source = result.response
-                elif extractor_def.type == "header":
+                elif extractor_def.type == 'header':
                     # header extractor works on full response (extracts headers internally)
                     data_source = result.response
-                elif extractor_def.type == "cookie":
+                elif extractor_def.type == 'cookie':
                     # cookie extractor works on full response (extracts cookies internally)
                     data_source = result.response
                 else:
@@ -562,66 +604,61 @@ class StepExecutor(ABC):
                 extract_index = -1 if extractor_def.extract_all else extractor_def.index
 
                 value = extractor.extract(
-                    extractor_def.path, data_source, extract_index,
-                    extractor_def.default
+                    extractor_def.path,
+                    data_source,
+                    extract_index,
+                    extractor_def.default,
                 )
 
                 if value is not None:
-                    old_value = self.variable_manager.get_variable(extractor_def.name, None)
+                    old_value = self.variable_manager.get_variable(
+                        extractor_def.name, None
+                    )
                     self.variable_manager.set_variable(extractor_def.name, value)
                     result.extracted_vars[extractor_def.name] = value
 
                     # Log successful extraction
                     self.logger.log_extraction_success(
-                        extractor_def.name,
-                        extractor_def.path,
-                        value
+                        extractor_def.name, extractor_def.path, value
                     )
 
                     # Log variable change
                     self.logger.log_variable_change(
-                        extractor_def.name,
-                        old_value,
-                        value,
-                        "extraction"
+                        extractor_def.name, old_value, value, 'extraction'
                     )
                 else:
                     # Extraction returned None - use logger
                     self.logger.log_extraction_failure(
-                        extractor_def.name,
-                        extractor_def.path,
-                        "未找到匹配的数据"
+                        extractor_def.name, extractor_def.path, '未找到匹配的数据'
                     )
 
             except Exception as e:
                 # Extraction failed with error - use logger
                 self.logger.log_extraction_failure(
-                    extractor_def.name,
-                    extractor_def.path,
-                    str(e)
+                    extractor_def.name, extractor_def.path, str(e)
                 )
-                print(f"   错误详情: {type(e).__name__}: {e}")
+                print(f'   错误详情: {type(e).__name__}: {e}')
 
                 # Provide specific suggestions based on error type
-                if "JSONPath" in str(e):
-                    print(f"   💡 JSONPath 路径建议:")
-                    print(f"      • 检查路径是否以 '$' 开头")
-                    print(f"      • 验证数组索引: $.data[0].field")
-                    print(f"      • 确认字段名称拼写正确")
-                elif "regex" in str(e).lower() or "pattern" in str(e).lower():
-                    print(f"   💡 Regex 表达式建议:")
-                    print(f"      • 验证正则表达式语法")
-                    print(f"      • 检查捕获组索引 (group: {extractor_def.index})")
-                    print(f"      • 确保模式与响应数据匹配")
-                elif "No value found" in str(e):
-                    print(f"   💡 数据匹配建议:")
-                    print(f"      • 确认响应中包含目标字段")
-                    print(f"      • 检查字段名是否区分大小写")
-                    print(f"      • 尝试使用更通用的路径表达式")
+                if 'JSONPath' in str(e):
+                    print('   💡 JSONPath 路径建议:')
+                    print("      • 检查路径是否以 '$' 开头")
+                    print('      • 验证数组索引: $.data[0].field')
+                    print('      • 确认字段名称拼写正确')
+                elif 'regex' in str(e).lower() or 'pattern' in str(e).lower():
+                    print('   💡 Regex 表达式建议:')
+                    print('      • 验证正则表达式语法')
+                    print(f'      • 检查捕获组索引 (group: {extractor_def.index})')
+                    print('      • 确保模式与响应数据匹配')
+                elif 'No value found' in str(e):
+                    print('   💡 数据匹配建议:')
+                    print('      • 确认响应中包含目标字段')
+                    print('      • 检查字段名是否区分大小写')
+                    print('      • 尝试使用更通用的路径表达式')
                 else:
-                    print(f"   💡 通用建议:")
-                    print(f"      • 使用 -v 参数查看详细响应数据")
-                    print(f"      • 检查 API 响应格式是否符合预期")
+                    print('   💡 通用建议:')
+                    print('      • 使用 -v 参数查看详细响应数据')
+                    print('      • 检查 API 响应格式是否符合预期')
 
     @staticmethod
     def _evaluate_condition(condition: str, data_source: Any) -> bool:
@@ -643,7 +680,6 @@ class StepExecutor(ABC):
         Returns:
             True if condition is met, False otherwise
         """
-        from apirun.utils.enhanced_jsonpath import EnhancedJSONPath
 
         try:
             # 首先处理括号 - 找到最内层的括号并先评估
@@ -661,29 +697,37 @@ class StepExecutor(ABC):
 
                 if depth == 0:
                     # 提取括号内的表达式
-                    sub_expr = condition[start+1:end-1]
+                    sub_expr = condition[start + 1 : end - 1]
                     # 递归评估子表达式
                     result = StepExecutor._evaluate_condition(sub_expr, data_source)
                     # 将结果替换回表达式
-                    condition = condition[:start] + ('true' if result else 'false') + condition[end:]
+                    condition = (
+                        condition[:start]
+                        + ('true' if result else 'false')
+                        + condition[end:]
+                    )
                 else:
                     # 括号不匹配,跳过括号处理
                     break
 
             # 处理 AND 逻辑 (优先级高于 OR)
-            if " and " in condition.lower():
+            if ' and ' in condition.lower():
                 parts = StepExecutor._split_by_operators(condition, [' and '])
                 results = []
                 for part in parts:
-                    results.append(StepExecutor._evaluate_condition(part.strip(), data_source))
+                    results.append(
+                        StepExecutor._evaluate_condition(part.strip(), data_source)
+                    )
                 return all(results)
 
             # 处理 OR 逻辑
-            elif " or " in condition.lower():
+            elif ' or ' in condition.lower():
                 parts = StepExecutor._split_by_operators(condition, [' or '])
                 results = []
                 for part in parts:
-                    results.append(StepExecutor._evaluate_condition(part.strip(), data_source))
+                    results.append(
+                        StepExecutor._evaluate_condition(part.strip(), data_source)
+                    )
                 return any(results)
 
             # 处理简单的布尔值
@@ -694,16 +738,18 @@ class StepExecutor(ABC):
 
             # 处理简单条件
             else:
-                return StepExecutor._evaluate_simple_condition(condition.strip(), data_source)
+                return StepExecutor._evaluate_simple_condition(
+                    condition.strip(), data_source
+                )
 
         except Exception as e:
-            print(f"⚠️  条件评估失败: {condition}")
-            print(f"   错误: {e}")
+            print(f'⚠️  条件评估失败: {condition}')
+            print(f'   错误: {e}')
             # If condition evaluation fails, proceed with extraction
             return True
 
     @staticmethod
-    def _split_by_operators(expression: str, operators: List[str]) -> List[str]:
+    def _split_by_operators(expression: str, operators: list[str]) -> list[str]:
         """Split expression by operators, respecting quoted strings.
 
         Args:
@@ -748,7 +794,7 @@ class StepExecutor(ABC):
                 # Check for operator matches
                 matched = False
                 for op in sorted(operators, key=len, reverse=True):
-                    if expression[i:i+len(op)].lower() == op.lower():
+                    if expression[i : i + len(op)].lower() == op.lower():
                         if current:
                             parts.append(''.join(current))
                             current = []
@@ -780,9 +826,9 @@ class StepExecutor(ABC):
         Returns:
             True if condition is met, False otherwise
         """
-        from apirun.utils.enhanced_jsonpath import EnhancedJSONPath
-
         import re
+
+        from apirun.utils.enhanced_jsonpath import EnhancedJSONPath
 
         # 优先检查多词操作符: in, not in, contains
         # 模式: path in value, path not in value, path contains value
@@ -799,10 +845,12 @@ class StepExecutor(ABC):
                 actual_value = jsonpath.extract(path, data_source, 0)
 
                 # Convert expected value
-                expected_value = StepExecutor._convert_condition_value(expected_value.strip())
+                expected_value = StepExecutor._convert_condition_value(
+                    expected_value.strip()
+                )
 
                 # Perform operation
-                if operator == "in":
+                if operator == 'in':
                     # Check if value is in array/string
                     if isinstance(actual_value, (list, tuple)):
                         return expected_value in actual_value
@@ -810,7 +858,7 @@ class StepExecutor(ABC):
                         return str(expected_value) in actual_value
                     return False
 
-                elif operator == "not in":
+                elif operator == 'not in':
                     # Check if value is NOT in array/string
                     if isinstance(actual_value, (list, tuple)):
                         return expected_value not in actual_value
@@ -818,7 +866,7 @@ class StepExecutor(ABC):
                         return str(expected_value) not in actual_value
                     return False
 
-                elif operator == "contains":
+                elif operator == 'contains':
                     # Check if array/string contains value
                     if isinstance(actual_value, (list, tuple)):
                         return expected_value in actual_value
@@ -841,20 +889,22 @@ class StepExecutor(ABC):
                 actual_value = jsonpath.extract(path, data_source, 0)
 
                 # Convert expected value to appropriate type
-                expected_value = StepExecutor._convert_condition_value(expected_value.strip())
+                expected_value = StepExecutor._convert_condition_value(
+                    expected_value.strip()
+                )
 
                 # Perform comparison
-                if operator == "==":
+                if operator == '==':
                     return actual_value == expected_value
-                elif operator == "!=":
+                elif operator == '!=':
                     return actual_value != expected_value
-                elif operator == ">":
+                elif operator == '>':
                     return actual_value is not None and actual_value > expected_value
-                elif operator == "<":
+                elif operator == '<':
                     return actual_value is not None and actual_value < expected_value
-                elif operator == ">=":
+                elif operator == '>=':
                     return actual_value is not None and actual_value >= expected_value
-                elif operator == "<=":
+                elif operator == '<=':
                     return actual_value is not None and actual_value <= expected_value
                 else:
                     return False
@@ -863,7 +913,7 @@ class StepExecutor(ABC):
                 return False
 
         # If no match, check if the path exists (existence check)
-        elif condition.startswith("$"):
+        elif condition.startswith('$'):
             jsonpath = EnhancedJSONPath()
             try:
                 value = jsonpath.extract(condition, data_source, 0)
@@ -886,18 +936,19 @@ class StepExecutor(ABC):
         value_lower = value.lower()
 
         # Boolean values
-        if value_lower == "true":
+        if value_lower == 'true':
             return True
-        elif value_lower == "false":
+        elif value_lower == 'false':
             return False
 
         # Null value
-        elif value_lower == "null":
+        elif value_lower == 'null':
             return None
 
         # Quoted string
-        elif (value.startswith('"') and value.endswith('"')) or \
-             (value.startswith("'") and value.endswith("'")):
+        elif (value.startswith('"') and value.endswith('"')) or (
+            value.startswith("'") and value.endswith("'")
+        ):
             return value[1:-1]
 
         # Numeric values
@@ -953,20 +1004,26 @@ class StepExecutor(ABC):
 
         # Categorize error
         category = ErrorCategory.SYSTEM
-        if "Assertion" in error_type or "validation" in error_message.lower():
+        if 'Assertion' in error_type or 'validation' in error_message.lower():
             category = ErrorCategory.ASSERTION
-        elif "timeout" in error_message.lower():
+        elif 'timeout' in error_message.lower():
             category = ErrorCategory.TIMEOUT
-        elif "connection" in error_message.lower() or "network" in error_message.lower():
+        elif (
+            'connection' in error_message.lower() or 'network' in error_message.lower()
+        ):
             category = ErrorCategory.NETWORK
-        elif "parse" in error_message.lower():
+        elif 'parse' in error_message.lower():
             category = ErrorCategory.PARSING
 
         # Generate suggestion
         suggestion = self._generate_error_suggestion(category, error_message)
 
         return ErrorInfo(
-            type=error_type, category=category, message=error_message, suggestion=suggestion, stack_trace=stack_trace
+            type=error_type,
+            category=category,
+            message=error_message,
+            suggestion=suggestion,
+            stack_trace=stack_trace,
         )
 
     def _generate_error_suggestion(self, category: ErrorCategory, message: str) -> str:
@@ -980,15 +1037,15 @@ class StepExecutor(ABC):
             Suggestion text
         """
         suggestions = {
-            ErrorCategory.ASSERTION: "建议检查预期值设置是否正确，或查看实际响应数据",
-            ErrorCategory.NETWORK: "建议检查网络连接、URL 地址和端口是否正确",
-            ErrorCategory.TIMEOUT: "建议增加超时时间配置或检查服务响应速度",
-            ErrorCategory.PARSING: "建议检查响应数据格式是否与预期一致",
-            ErrorCategory.BUSINESS: "建议检查业务逻辑配置",
-            ErrorCategory.SYSTEM: "建议查看系统日志获取详细信息",
+            ErrorCategory.ASSERTION: '建议检查预期值设置是否正确，或查看实际响应数据',
+            ErrorCategory.NETWORK: '建议检查网络连接、URL 地址和端口是否正确',
+            ErrorCategory.TIMEOUT: '建议增加超时时间配置或检查服务响应速度',
+            ErrorCategory.PARSING: '建议检查响应数据格式是否与预期一致',
+            ErrorCategory.BUSINESS: '建议检查业务逻辑配置',
+            ErrorCategory.SYSTEM: '建议查看系统日志获取详细信息',
         }
 
-        return suggestions.get(category, "请联系技术支持获取帮助")
+        return suggestions.get(category, '请联系技术支持获取帮助')
 
     def _create_performance_metrics(
         self,

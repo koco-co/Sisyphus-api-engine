@@ -1,17 +1,15 @@
-"""Global Configuration Manager for Sisyphus API Engine.
+"""全局配置管理器：Sisyphus API Engine 的分层配置加载。
 
-This module implements hierarchical configuration loading:
-1. Global config from .sisyphus/config.yaml
-2. Test case config from YAML file
-3. Default values as fallback
+实现配置优先级：
+1. 全局配置：.sisyphus/config.yaml
+2. 测试用例配置：YAML 文件
+3. 默认值作为兜底
 
-Following Google Python Style Guide.
+遵循 Google Python Style Guide。
 """
 
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional
-from typing import Union
+from typing import Any
 
 import yaml
 
@@ -19,234 +17,248 @@ from apirun.core.models import GlobalConfig, ProfileConfig
 
 
 class GlobalConfigManager:
-    """Manager for loading and merging global configurations.
+    """全局配置管理器：加载和合并全局配置。
 
-    Configuration priority (highest to lowest):
-    1. Test case config (from YAML file)
-    2. Global config (from .sisyphus/config.yaml)
-    3. Default values
+    配置优先级（从高到低）：
+    1. 测试用例配置（来自 YAML 文件）
+    2. 全局配置（来自 .sisyphus/config.yaml）
+    3. 默认值
 
-    Attributes:
-        project_root: Project root directory
-        global_config_path: Path to global config file
-        global_config: Loaded global configuration dict
+    属性：
+        project_root: 项目根目录
+        global_config_path: 全局配置文件路径
+        global_config: 已加载的全局配置字典
     """
 
-    # Global config filename
-    CONFIG_FILENAME = ".sisyphus"
-    CONFIG_FILE = "config.yaml"
-    CONFIG_PATH = os.path.join(CONFIG_FILENAME, CONFIG_FILE)
+    # 全局配置文件名
+    CONFIG_FILENAME = '.sisyphus'
+    CONFIG_FILE = 'config.yaml'
+    CONFIG_PATH = str(Path(CONFIG_FILENAME) / CONFIG_FILE)
 
-    def __init__(self, test_file_path: Optional[str] = None):
-        """Initialize GlobalConfigManager.
+    def __init__(self, test_file_path: str | None = None):
+        """初始化全局配置管理器。
 
-        Args:
-            test_file_path: Path to test case YAML file (used to locate project root)
+        参数：
+            test_file_path: 测试用例 YAML 文件路径（用于定位项目根目录）
         """
         self.project_root = self._find_project_root(test_file_path)
-        self.global_config_path = os.path.join(self.project_root, self.CONFIG_PATH)
-        self.global_config: Dict[str, Any] = {}
+        self.global_config_path = str(Path(self.project_root) / self.CONFIG_PATH)
+        self.global_config: dict[str, Any] = {}
         self._load_global_config()
 
-    def _find_project_root(self, test_file_path: Optional[str] = None) -> str:
-        """Find project root directory by searching for config file.
+    def _find_project_root(self, test_file_path: str | None = None) -> str:
+        """通过搜索配置文件查找项目根目录。
 
-        Search strategy:
-        1. If test_file_path provided, start from its directory
-        2. Search upward for .sisyphus directory
-        3. Fall back to current directory
+        搜索策略：
+        1. 如果提供 test_file_path，从其目录开始
+        2. 向上搜索 .sisyphus 目录
+        3. 回退到当前目录
 
-        Args:
-            test_file_path: Path to test case file
+        参数：
+            test_file_path: 测试用例文件路径
 
-        Returns:
-            Project root directory path
+        返回：
+            项目根目录路径
         """
-        # Start from test file directory or current directory
+        # 从测试文件目录或当前目录开始
         if test_file_path:
-            start_dir = os.path.abspath(os.path.dirname(test_file_path))
+            start_dir = str(Path(test_file_path).parent.resolve())
         else:
-            start_dir = os.path.abspath(".")
+            start_dir = str(Path.cwd().resolve())
 
-        # Search upward for .sisyphus directory
-        current_dir = start_dir
-        while current_dir != "/":
-            config_path = os.path.join(current_dir, self.CONFIG_PATH)
-            if os.path.exists(config_path):
-                return current_dir
+        # 向上搜索 .sisyphus 目录
+        current_dir = Path(start_dir)
+        while current_dir != current_dir.parent:  # 不是根目录
+            config_path = current_dir / self.CONFIG_PATH
+            if config_path.exists():
+                return str(current_dir)
 
-            parent_dir = os.path.dirname(current_dir)
-            if parent_dir == current_dir:
-                break
-            current_dir = parent_dir
+            current_dir = current_dir.parent
 
-        # Fall back to current directory
-        return os.path.abspath(".")
+        # 回退到当前目录
+        return str(Path.cwd().resolve())
 
     def _load_global_config(self) -> None:
-        """Load global configuration from .sisyphus/config.yaml.
+        """从 .sisyphus/config.yaml 加载全局配置。
 
-        If config file doesn't exist, global_config remains empty dict.
+        如果配置文件不存在，global_config 保持为空字典。
         """
-        if not os.path.exists(self.global_config_path):
+        config_path = Path(self.global_config_path)
+        if not config_path.exists():
             return
 
         try:
-            with open(self.global_config_path, "r", encoding="utf-8") as f:
+            with config_path.open(encoding='utf-8') as f:
                 self.global_config = yaml.safe_load(f) or {}
         except Exception as e:
-            print(f"Warning: Failed to load global config from {self.global_config_path}: {e}")
+            print(
+                f'警告：从 {self.global_config_path} 加载全局配置失败: {e}'
+            )
             self.global_config = {}
 
-    def get_merged_config(self, test_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Merge test case config with global config.
+    def get_merged_config(
+        self, test_config: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """合并测试用例配置和全局配置。
 
-        Priority: test_config > global_config > defaults
+        优先级：test_config > global_config > 默认值
 
-        Args:
-            test_config: Configuration from test case YAML file
+        参数：
+            test_config: 测试用例 YAML 文件中的配置
 
-        Returns:
-            Merged configuration dictionary
+        返回：
+            合并后的配置字典
         """
-        # Start with global config
+        # 从全局配置开始
         merged = self.global_config.copy()
 
-        # Apply test config overrides
+        # 应用测试用例配置覆盖
         if test_config:
             merged = self._deep_merge(merged, test_config)
 
-        # Ensure required fields have defaults
-        merged.setdefault("profiles", {})
-        merged.setdefault("active_profile", "dev")
-        merged.setdefault("timeout", 30)
-        merged.setdefault("retry_times", 2)
+        # 确保必填字段有默认值
+        merged.setdefault('profiles', {})
+        merged.setdefault('active_profile', 'dev')
+        merged.setdefault('timeout', 30)
+        merged.setdefault('retry_times', 2)
 
-        # Handle versioned profiles (e.g., "v1.dev", "v2.prod")
-        if "variables" in merged and "active_profile" in merged:
-            active_profile = merged["active_profile"]
+        # 处理版本化配置（例如 "v1.dev", "v2.prod"）
+        if 'variables' in merged and 'active_profile' in merged:
+            active_profile = merged['active_profile']
             profile_vars = self._get_profile_variables(merged, active_profile)
             if profile_vars:
-                # Merge global variables into profile variables
-                # Profile variables have higher priority
-                merged["profiles"][active_profile] = merged["profiles"].get(active_profile, {})
-                merged["profiles"][active_profile]["variables"] = {
-                    **merged.get("variables", {}),
-                    **profile_vars
+                # 将全局变量合并到配置变量中
+                # 配置变量优先级更高
+                merged['profiles'][active_profile] = merged['profiles'].get(
+                    active_profile, {}
+                )
+                merged['profiles'][active_profile]['variables'] = {
+                    **merged.get('variables', {}),
+                    **profile_vars,
                 }
 
         return merged
 
-    def _get_profile_variables(self, config: Dict[str, Any], active_profile: str) -> Dict[str, Any]:
-        """Get variables from active profile, supporting versioned profiles.
+    def _get_profile_variables(
+        self, config: dict[str, Any], active_profile: str
+    ) -> dict[str, Any]:
+        """从活动配置中获取变量，支持版本化配置。
 
-        Args:
-            config: Merged configuration dictionary
-            active_profile: Active profile name (e.g., "dev" or "v1.dev")
+        参数：
+            config: 合并后的配置字典
+            active_profile: 活动配置名称（例如 "dev" 或 "v1.dev"）
 
-        Returns:
-            Variables dictionary from the profile
+        返回：
+            配置中的变量字典
         """
-        profiles = config.get("profiles", {})
+        profiles = config.get('profiles', {})
 
-        # Check if profile exists directly (non-versioned)
+        # 检查配置是否直接存在（非版本化）
         if active_profile in profiles:
-            return profiles[active_profile].get("variables", {})
+            return profiles[active_profile].get('variables', {})
 
-        # Check if profile is versioned (e.g., "v1.dev")
-        if "." in active_profile:
-            version, env = active_profile.split(".", 1)
+        # 检查配置是否版本化（例如 "v1.dev"）
+        if '.' in active_profile:
+            version, env = active_profile.split('.', 1)
             if version in profiles and isinstance(profiles[version], dict):
                 version_profiles = profiles[version]
                 if env in version_profiles:
-                    return version_profiles[env].get("variables", {})
+                    return version_profiles[env].get('variables', {})
 
         return {}
 
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge two dictionaries.
+    def _deep_merge(
+        self, base: dict[str, Any], override: dict[str, Any]
+    ) -> dict[str, Any]:
+        """深度合并两个字典。
 
-        Args:
-            base: Base dictionary (lower priority)
-            override: Override dictionary (higher priority)
+        参数：
+            base: 基础字典（低优先级）
+            override: 覆盖字典（高优先级）
 
-        Returns:
-            Merged dictionary
+        返回：
+            合并后的字典
         """
         result = base.copy()
 
         for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
 
         return result
 
-    def create_global_config_model(self, merged_config: Dict[str, Any]) -> Optional[GlobalConfig]:
-        """Create GlobalConfig model from merged configuration.
+    def create_global_config_model(
+        self, merged_config: dict[str, Any]
+    ) -> GlobalConfig | None:
+        """从合并后的配置创建 GlobalConfig 模型。
 
-        Args:
-            merged_config: Merged configuration dictionary
+        参数：
+            merged_config: 合并后的配置字典
 
-        Returns:
-            GlobalConfig object or None if creation fails
+        返回：
+            GlobalConfig 对象或 None（创建失败时）
         """
         try:
-            # Extract profiles
-            profiles_data = merged_config.get("profiles", {})
+            # 提取配置
+            profiles_data = merged_config.get('profiles', {})
             profiles = {}
             for name, profile_data in profiles_data.items():
                 profiles[name] = ProfileConfig(
-                    base_url=profile_data.get("base_url"),
-                    variables=profile_data.get("variables"),
-                    timeout=profile_data.get("timeout"),
-                    verify_ssl=profile_data.get("verify_ssl", True),
-                    overrides=profile_data.get("overrides"),
-                    priority=profile_data.get("priority", 0),
+                    base_url=profile_data.get('base_url'),
+                    variables=profile_data.get('variables'),
+                    timeout=profile_data.get('timeout'),
+                    verify_ssl=profile_data.get('verify_ssl', True),
+                    overrides=profile_data.get('overrides'),
+                    priority=profile_data.get('priority', 0),
                 )
 
-            # Create GlobalConfig
+            # 创建 GlobalConfig
             config = GlobalConfig(
-                name=merged_config.get("name", "Global Config"),
-                active_profile=merged_config.get("active_profile", "dev"),
+                name=merged_config.get('name', 'Global Config'),
+                active_profile=merged_config.get('active_profile', 'dev'),
                 profiles=profiles or None,
-                variables=merged_config.get("variables"),
-                timeout=merged_config.get("timeout", 30),
-                retry_times=merged_config.get("retry_times", 2),
-                retry_policy=merged_config.get("retry_policy"),
-                debug=merged_config.get("debug"),
-                env_vars=merged_config.get("env_vars"),
-                data_source=merged_config.get("data_source"),
-                websocket=merged_config.get("websocket"),
-                output=merged_config.get("output"),
+                variables=merged_config.get('variables'),
+                timeout=merged_config.get('timeout', 30),
+                retry_times=merged_config.get('retry_times', 2),
+                retry_policy=merged_config.get('retry_policy'),
+                debug=merged_config.get('debug'),
+                env_vars=merged_config.get('env_vars'),
+                data_source=merged_config.get('data_source'),
+                websocket=merged_config.get('websocket'),
+                output=merged_config.get('output'),
             )
 
             return config
 
         except Exception as e:
-            print(f"Warning: Failed to create GlobalConfig model: {e}")
+            print(f'警告：创建 GlobalConfig 模型失败: {e}')
             return None
 
     @staticmethod
     def is_global_config_available() -> bool:
-        """Check if global config file exists.
+        """检查全局配置文件是否存在。
 
-        Returns:
-            True if .sisyphus/config.yaml exists
+        返回：
+            如果 .sisyphus/config.yaml 存在则返回 True
         """
-        return os.path.exists(GlobalConfigManager.CONFIG_PATH)
+        return Path(GlobalConfigManager.CONFIG_PATH).exists()
 
 
-# Convenience function for backward compatibility
-def load_global_config(test_file_path: Optional[str] = None) -> Dict[str, Any]:
-    """Load global configuration.
+# 向后兼容的便捷函数
+def load_global_config(test_file_path: str | None = None) -> dict[str, Any]:
+    """加载全局配置。
 
-    Args:
-        test_file_path: Path to test case file
+    参数：
+        test_file_path: 测试用例文件路径
 
-    Returns:
-        Global configuration dictionary (empty if not found)
+    返回：
+        全局配置字典（未找到时为空）
     """
     manager = GlobalConfigManager(test_file_path)
     return manager.global_config

@@ -4,7 +4,6 @@ Tests for the new feature that allows variables in config.variables
 to reference config.profiles.* values.
 """
 
-import pytest
 from apirun.parser.v2_yaml_parser import V2YamlParser
 
 
@@ -40,16 +39,16 @@ steps:
         test_case = parser.parse_string(yaml_content)
 
         # Verify the test case was parsed
-        assert test_case.name == "测试用例"
+        assert test_case.name == '测试用例'
         assert test_case.config is not None
         assert test_case.config.variables is not None
 
         # Verify nested references were rendered correctly
-        assert "category_name" in test_case.config.variables
-        assert test_case.config.variables["category_name"] == "test_0202093000"
+        assert 'category_name' in test_case.config.variables
+        assert test_case.config.variables['category_name'] == 'test_0202093000'
 
-        assert "datasource_name" in test_case.config.variables
-        assert test_case.config.variables["datasource_name"] == "ds_0202093000"
+        assert 'datasource_name' in test_case.config.variables
+        assert test_case.config.variables['datasource_name'] == 'ds_0202093000'
 
     def test_multiple_nested_references(self):
         """Test multiple nested references in one variable."""
@@ -73,7 +72,7 @@ steps: []
         parser = V2YamlParser()
         test_case = parser.parse_string(yaml_content)
 
-        assert test_case.config.variables["combined"] == "0202093000_ci"
+        assert test_case.config.variables['combined'] == '0202093000_ci'
 
     def test_reference_active_profile(self):
         """Test referencing active_profile variable."""
@@ -97,7 +96,7 @@ steps: []
         test_case = parser.parse_string(yaml_content)
 
         # active_profile 可以直接引用
-        assert test_case.config.variables["environment"] == "dev"
+        assert test_case.config.variables['environment'] == 'dev'
 
     def test_known_limitation_dynamic_key_access(self):
         """Test known limitation: cannot dynamically access dictionary keys."""
@@ -123,7 +122,7 @@ steps: []
         test_case = parser.parse_string(yaml_content)
 
         # 直接引用可以工作
-        assert test_case.config.variables["api_url"] == "http://dev.api.com"
+        assert test_case.config.variables['api_url'] == 'http://dev.api.com'
 
     def test_complex_nested_scenario(self):
         """Test complex nested reference scenario from the actual use case."""
@@ -148,9 +147,9 @@ steps: []
         parser = V2YamlParser()
         test_case = parser.parse_string(yaml_content)
 
-        assert test_case.config.variables["category_name"] == "test_0202093000"
-        assert test_case.config.variables["datasource_name"] == "ds_0202093000"
-        assert test_case.config.variables["full_name"] == "test_0202093000"
+        assert test_case.config.variables['category_name'] == 'test_0202093000'
+        assert test_case.config.variables['datasource_name'] == 'ds_0202093000'
+        assert test_case.config.variables['full_name'] == 'test_0202093000'
 
     def test_nested_reference_with_non_string_values(self):
         """Test nested references with numeric values."""
@@ -175,8 +174,8 @@ steps: []
         test_case = parser.parse_string(yaml_content)
 
         # Numeric values should be rendered as strings
-        assert test_case.config.variables["dev_timeout"] == "30"
-        assert test_case.config.variables["max_retries"] == "3"
+        assert test_case.config.variables['dev_timeout'] == '30'
+        assert test_case.config.variables['max_retries'] == '3'
 
     def test_backward_compatibility(self):
         """Test that old syntax without nested references still works."""
@@ -200,9 +199,9 @@ steps: []
         parser = V2YamlParser()
         test_case = parser.parse_string(yaml_content)
 
-        assert test_case.config.variables["api_key"] == "12345"
-        assert test_case.config.variables["username"] == "testuser"
-        assert test_case.config.variables["base_url"] == "http://static.url.com"
+        assert test_case.config.variables['api_key'] == '12345'
+        assert test_case.config.variables['username'] == 'testuser'
+        assert test_case.config.variables['base_url'] == 'http://static.url.com'
 
     def test_empty_config_context(self):
         """Test handling of empty config context."""
@@ -219,7 +218,7 @@ steps: []
         test_case = parser.parse_string(yaml_content)
 
         # Should work fine without profiles
-        assert test_case.config.variables["simple_var"] == "value"
+        assert test_case.config.variables['simple_var'] == 'value'
 
     def test_mixed_variables(self):
         """Test mixing nested references with regular variables."""
@@ -248,7 +247,7 @@ steps: []
         parser = V2YamlParser()
         test_case = parser.parse_string(yaml_content)
 
-        assert test_case.config.variables["static_value"] == "static"
-        assert test_case.config.variables["ref_static"] == "static"
-        assert test_case.config.variables["nested_ref"] == "test_123"
-        assert test_case.config.variables["combined"] == "static_test_123"
+        assert test_case.config.variables['static_value'] == 'static'
+        assert test_case.config.variables['ref_static'] == 'static'
+        assert test_case.config.variables['nested_ref'] == 'test_123'
+        assert test_case.config.variables['combined'] == 'static_test_123'

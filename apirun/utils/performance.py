@@ -6,14 +6,11 @@ including DNS lookup, TCP connection, TLS handshake, server processing, and down
 Following Google Python Style Guide.
 """
 
+import threading
 import time
-import socket
-from typing import Dict, Any, Optional, Callable
-from urllib3.connection import HTTPConnection
-from urllib3.connectionpool import HTTPConnectionPool
+
 import requests
 from requests.adapters import HTTPAdapter
-import threading
 
 
 class Timings:
@@ -58,20 +55,20 @@ class Timings:
         self.download = download
         self.upload = upload
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Convert timings to dictionary.
 
         Returns:
             Dictionary with all timing metrics
         """
         return {
-            "total_time": self.total,
-            "dns_time": self.dns,
-            "tcp_time": self.tcp,
-            "tls_time": self.tls,
-            "server_time": self.server,
-            "download_time": self.download,
-            "upload_time": self.upload,
+            'total_time': self.total,
+            'dns_time': self.dns,
+            'tcp_time': self.tcp,
+            'tls_time': self.tls,
+            'server_time': self.server,
+            'download_time': self.download,
+            'upload_time': self.upload,
         }
 
 
@@ -93,7 +90,7 @@ class PerformanceCollector:
 
     def __init__(self):
         """Initialize PerformanceCollector."""
-        self._timings_map: Dict[int, Timings] = {}
+        self._timings_map: dict[int, Timings] = {}
         self._lock = threading.Lock()
         self._request_count = 0
 
@@ -127,7 +124,7 @@ class PerformanceCollector:
         with self._lock:
             self._timings_map[request_id] = timings
 
-    def get_timings(self, request_id: int) -> Optional[Timings]:
+    def get_timings(self, request_id: int) -> Timings | None:
         """Get timings for a request.
 
         Args:
@@ -170,7 +167,7 @@ class TimingsAdapter(HTTPAdapter):
         """
         request_id = self.collector.start_request()
         url = request.url
-        is_https = url.startswith("https://")
+        is_https = url.startswith('https://')
 
         # Start total timer
         total_start = time.perf_counter()
@@ -193,9 +190,7 @@ class TimingsAdapter(HTTPAdapter):
 
             # Extract detailed timings from response if available
             # urllib3 doesn't expose detailed timings, so we calculate them
-            timings = self._extract_timings(
-                response, total_time, upload_time, is_https
-            )
+            timings = self._extract_timings(response, total_time, upload_time, is_https)
 
             # Record timings
             self.collector.record_timings(request_id, timings)
@@ -205,7 +200,7 @@ class TimingsAdapter(HTTPAdapter):
 
             return response
 
-        except Exception as e:
+        except Exception:
             # Record failed attempt timings
             total_end = time.perf_counter()
             total_time = (total_end - total_start) * 1000
@@ -236,7 +231,7 @@ class TimingsAdapter(HTTPAdapter):
             Timings object with breakdown
         """
         # Try to get elapsed time from response
-        elapsed = getattr(response, "elapsed", None)
+        elapsed = getattr(response, 'elapsed', None)
         if elapsed:
             total_time = elapsed.total_seconds() * 1000
 
@@ -285,8 +280,8 @@ class PerformanceTimer:
 
     def __init__(self):
         """Initialize PerformanceTimer."""
-        self._start_time: Optional[float] = None
-        self._end_time: Optional[float] = None
+        self._start_time: float | None = None
+        self._end_time: float | None = None
 
     def __enter__(self):
         """Enter context, start timer.
@@ -326,7 +321,7 @@ class PerformanceTimer:
         return self.elapsed() / 1000
 
 
-def calculate_size(size_bytes: int) -> Dict[str, float]:
+def calculate_size(size_bytes: int) -> dict[str, float]:
     """Calculate size in various units.
 
     Args:
@@ -337,15 +332,15 @@ def calculate_size(size_bytes: int) -> Dict[str, float]:
     """
     if size_bytes == 0:
         return {
-            "bytes": 0,
-            "kilobytes": 0.0,
-            "megabytes": 0.0,
+            'bytes': 0,
+            'kilobytes': 0.0,
+            'megabytes': 0.0,
         }
 
     return {
-        "bytes": size_bytes,
-        "kilobytes": round(size_bytes / 1024, 2),
-        "megabytes": round(size_bytes / (1024 * 1024), 4),
+        'bytes': size_bytes,
+        'kilobytes': round(size_bytes / 1024, 2),
+        'megabytes': round(size_bytes / (1024 * 1024), 4),
     }
 
 
@@ -360,16 +355,16 @@ def format_timings(timings: Timings) -> str:
     """
     parts = []
     if timings.dns > 0:
-        parts.append(f"DNS: {timings.dns:.2f}ms")
+        parts.append(f'DNS: {timings.dns:.2f}ms')
     if timings.tcp > 0:
-        parts.append(f"TCP: {timings.tcp:.2f}ms")
+        parts.append(f'TCP: {timings.tcp:.2f}ms')
     if timings.tls > 0:
-        parts.append(f"TLS: {timings.tls:.2f}ms")
+        parts.append(f'TLS: {timings.tls:.2f}ms')
     if timings.server > 0:
-        parts.append(f"Server: {timings.server:.2f}ms")
+        parts.append(f'Server: {timings.server:.2f}ms')
     if timings.download > 0:
-        parts.append(f"Download: {timings.download:.2f}ms")
+        parts.append(f'Download: {timings.download:.2f}ms')
     if timings.upload > 0:
-        parts.append(f"Upload: {timings.upload:.2f}ms")
+        parts.append(f'Upload: {timings.upload:.2f}ms')
 
-    return " | ".join(parts) if parts else f"Total: {timings.total:.2f}ms"
+    return ' | '.join(parts) if parts else f'Total: {timings.total:.2f}ms'

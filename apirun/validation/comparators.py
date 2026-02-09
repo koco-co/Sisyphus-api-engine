@@ -60,7 +60,7 @@ class Comparators:
         try:
             return float(actual) > float(expected)
         except (ValueError, TypeError) as e:
-            raise ComparatorError(f"Cannot compare values: {e}")
+            raise ComparatorError(f'Cannot compare values: {e}')
 
     @staticmethod
     def lt(actual: Any, expected: Any) -> bool:
@@ -79,7 +79,7 @@ class Comparators:
         try:
             return float(actual) < float(expected)
         except (ValueError, TypeError) as e:
-            raise ComparatorError(f"Cannot compare values: {e}")
+            raise ComparatorError(f'Cannot compare values: {e}')
 
     @staticmethod
     def ge(actual: Any, expected: Any) -> bool:
@@ -98,7 +98,7 @@ class Comparators:
         try:
             return float(actual) >= float(expected)
         except (ValueError, TypeError) as e:
-            raise ComparatorError(f"Cannot compare values: {e}")
+            raise ComparatorError(f'Cannot compare values: {e}')
 
     @staticmethod
     def le(actual: Any, expected: Any) -> bool:
@@ -117,7 +117,7 @@ class Comparators:
         try:
             return float(actual) <= float(expected)
         except (ValueError, TypeError) as e:
-            raise ComparatorError(f"Cannot compare values: {e}")
+            raise ComparatorError(f'Cannot compare values: {e}')
 
     @staticmethod
     def contains(actual: Any, expected: Any) -> bool:
@@ -188,18 +188,22 @@ class Comparators:
             ComparatorError: If pattern is invalid
         """
         # Convert actual to string for matching
-        actual_str = str(actual) if actual is not None else ""
+        actual_str = str(actual) if actual is not None else ''
 
         try:
             # Check if pattern expects full match (^...$)
             # If so, use fullmatch for better accuracy
-            if isinstance(expected, str) and expected.startswith("^") and expected.endswith("$"):
+            if (
+                isinstance(expected, str)
+                and expected.startswith('^')
+                and expected.endswith('$')
+            ):
                 return bool(re.fullmatch(expected, actual_str))
             else:
                 # Use search for partial matching
                 return bool(re.search(expected, actual_str))
         except re.error as e:
-            raise ComparatorError(f"Invalid regex pattern: {e}")
+            raise ComparatorError(f'Invalid regex pattern: {e}')
 
     @staticmethod
     def type(actual: Any, expected: Any) -> bool:
@@ -213,13 +217,13 @@ class Comparators:
             True if actual is of expected type, False otherwise
         """
         type_map = {
-            "str": str,
-            "int": int,
-            "float": float,
-            "bool": bool,
-            "list": list,
-            "dict": dict,
-            "null": type(None),
+            'str': str,
+            'int': int,
+            'float': float,
+            'bool': bool,
+            'list': list,
+            'dict': dict,
+            'null': type(None),
         }
 
         expected_type = type_map.get(expected)
@@ -372,8 +376,8 @@ class Comparators:
             expected_str = str(expected).lower()
 
             # Check for range pattern (e.g., "2xx", "4xx")
-            if "xx" in expected_str:
-                prefix = expected_str.replace("xx", "")
+            if 'xx' in expected_str:
+                prefix = expected_str.replace('xx', '')
                 expected_prefix = str(actual_code)[0]
                 return prefix == expected_prefix
 
@@ -427,7 +431,7 @@ class Comparators:
             ComparatorError: If expected is not a valid range
         """
         if not isinstance(expected, (list, tuple)) or len(expected) != 2:
-            raise ComparatorError("between comparator requires [min, max] format")
+            raise ComparatorError('between comparator requires [min, max] format')
 
         try:
             actual_val = float(actual)
@@ -435,7 +439,7 @@ class Comparators:
             max_val = float(expected[1])
             return min_val <= actual_val <= max_val
         except (ValueError, TypeError) as e:
-            raise ComparatorError(f"Cannot compare values: {e}")
+            raise ComparatorError(f'Cannot compare values: {e}')
 
     @staticmethod
     def starts_with(actual: Any, expected: Any) -> bool:
@@ -449,9 +453,9 @@ class Comparators:
             True if actual starts with expected, False otherwise
         """
         if actual is None:
-            return expected is None or expected == ""
+            return expected is None or expected == ''
         actual_str = str(actual)
-        expected_str = str(expected) if expected is not None else ""
+        expected_str = str(expected) if expected is not None else ''
         return actual_str.startswith(expected_str)
 
     @staticmethod
@@ -466,9 +470,9 @@ class Comparators:
             True if actual ends with expected, False otherwise
         """
         if actual is None:
-            return expected is None or expected == ""
+            return expected is None or expected == ''
         actual_str = str(actual)
-        expected_str = str(expected) if expected is not None else ""
+        expected_str = str(expected) if expected is not None else ''
         return actual_str.endswith(expected_str)
 
 
@@ -488,25 +492,25 @@ def get_comparator(name: str):
     # 别名映射，支持多种命名方式
     aliases = {
         # 比较验证器别名
-        "gte": "ge",
-        "lte": "le",
+        'gte': 'ge',
+        'lte': 'le',
         # 字符串验证器别名
-        "startswith": "starts_with",
-        "endswith": "ends_with",
+        'startswith': 'starts_with',
+        'endswith': 'ends_with',
         # 列表验证器别名
-        "in": "in_list",
-        "not_in": "not_in_list",
+        'in': 'in_list',
+        'not_in': 'not_in_list',
         # 长度验证器别名
-        "len_eq": "length_eq",
-        "len_gt": "length_gt",
-        "len_lt": "length_lt",
-        "length_eq": "length_eq",
-        "length_gt": "length_gt",
-        "length_lt": "length_lt",
+        'len_eq': 'length_eq',
+        'len_gt': 'length_gt',
+        'len_lt': 'length_lt',
+        'length_eq': 'length_eq',
+        'length_gt': 'length_gt',
+        'length_lt': 'length_lt',
         # 状态验证器别名
-        "is_empty": "is_empty",
-        "is_null": "is_null",
-        "not_empty": "not_empty",
+        'is_empty': 'is_empty',
+        'is_null': 'is_null',
+        'not_empty': 'not_empty',
     }
 
     # 查找别名对应的标准名称
@@ -514,5 +518,5 @@ def get_comparator(name: str):
 
     comparator_func = getattr(Comparators, standard_name, None)
     if comparator_func is None:
-        raise ComparatorError(f"Unknown comparator: {name}")
+        raise ComparatorError(f'Unknown comparator: {name}')
     return comparator_func

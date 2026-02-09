@@ -4,10 +4,10 @@ This module defines the event types and data structures for WebSocket communicat
 Following Google Python Style Guide.
 """
 
-from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class EventType(Enum):
@@ -24,14 +24,14 @@ class EventType(Enum):
         VARIABLE_UPDATE: Variable updated
     """
 
-    TEST_START = "test_start"
-    TEST_COMPLETE = "test_complete"
-    STEP_START = "step_start"
-    STEP_COMPLETE = "step_complete"
-    LOG = "log"
-    PROGRESS = "progress"
-    ERROR = "error"
-    VARIABLE_UPDATE = "variable_update"
+    TEST_START = 'test_start'
+    TEST_COMPLETE = 'test_complete'
+    STEP_START = 'step_start'
+    STEP_COMPLETE = 'step_complete'
+    LOG = 'log'
+    PROGRESS = 'progress'
+    ERROR = 'error'
+    VARIABLE_UPDATE = 'variable_update'
 
 
 class LogLevel(Enum):
@@ -45,11 +45,11 @@ class LogLevel(Enum):
         CRITICAL: Critical level
     """
 
-    DEBUG = "debug"
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
+    DEBUG = 'debug'
+    INFO = 'info'
+    WARNING = 'warning'
+    ERROR = 'error'
+    CRITICAL = 'critical'
 
 
 @dataclass
@@ -66,22 +66,22 @@ class WebSocketEvent:
 
     type: EventType
     timestamp: datetime = field(default_factory=datetime.now)
-    data: Dict[str, Any] = field(default_factory=dict)
-    test_case_id: Optional[str] = None
-    step_name: Optional[str] = None
+    data: dict[str, Any] = field(default_factory=dict)
+    test_case_id: str | None = None
+    step_name: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for JSON serialization.
 
         Returns:
             Dictionary representation of the event
         """
         return {
-            "type": self.type.value,
-            "timestamp": self.timestamp.isoformat(),
-            "data": self.data,
-            "test_case_id": self.test_case_id,
-            "step_name": self.step_name,
+            'type': self.type.value,
+            'timestamp': self.timestamp.isoformat(),
+            'data': self.data,
+            'test_case_id': self.test_case_id,
+            'step_name': self.step_name,
         }
 
 
@@ -97,18 +97,18 @@ class TestStartData:
 
     test_name: str
     total_steps: int
-    description: str = ""
+    description: str = ''
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "test_name": self.test_name,
-            "total_steps": self.total_steps,
-            "description": self.description,
+            'test_name': self.test_name,
+            'total_steps': self.total_steps,
+            'description': self.description,
         }
 
 
@@ -132,19 +132,19 @@ class TestCompleteData:
     skipped_steps: int
     duration: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "status": self.status,
-            "total_steps": self.total_steps,
-            "passed_steps": self.passed_steps,
-            "failed_steps": self.failed_steps,
-            "skipped_steps": self.skipped_steps,
-            "duration": self.duration,
+            'status': self.status,
+            'total_steps': self.total_steps,
+            'passed_steps': self.passed_steps,
+            'failed_steps': self.failed_steps,
+            'skipped_steps': self.skipped_steps,
+            'duration': self.duration,
         }
 
 
@@ -164,17 +164,17 @@ class StepStartData:
     step_index: int
     total_steps: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "step_name": self.step_name,
-            "step_type": self.step_type,
-            "step_index": self.step_index,
-            "total_steps": self.total_steps,
+            'step_name': self.step_name,
+            'step_type': self.step_type,
+            'step_index': self.step_index,
+            'total_steps': self.total_steps,
         }
 
 
@@ -196,18 +196,18 @@ class StepCompleteData:
     retry_count: int = 0
     has_error: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "step_name": self.step_name,
-            "status": self.status,
-            "duration": self.duration,
-            "retry_count": self.retry_count,
-            "has_error": self.has_error,
+            'step_name': self.step_name,
+            'status': self.status,
+            'duration': self.duration,
+            'retry_count': self.retry_count,
+            'has_error': self.has_error,
         }
 
 
@@ -223,18 +223,18 @@ class LogData:
 
     level: LogLevel
     message: str
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "level": self.level.value,
-            "message": self.message,
-            "context": self.context,
+            'level': self.level.value,
+            'message': self.message,
+            'context': self.context,
         }
 
 
@@ -256,21 +256,21 @@ class ProgressData:
     percentage: float
     passed_steps: int = 0
     failed_steps: int = 0
-    estimated_remaining: Optional[float] = None
+    estimated_remaining: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "current_step": self.current_step,
-            "total_steps": self.total_steps,
-            "percentage": round(self.percentage, 2),
-            "passed_steps": self.passed_steps,
-            "failed_steps": self.failed_steps,
-            "estimated_remaining": self.estimated_remaining,
+            'current_step': self.current_step,
+            'total_steps': self.total_steps,
+            'percentage': round(self.percentage, 2),
+            'passed_steps': self.passed_steps,
+            'failed_steps': self.failed_steps,
+            'estimated_remaining': self.estimated_remaining,
         }
 
 
@@ -289,21 +289,21 @@ class ErrorData:
     error_type: str
     error_category: str
     message: str
-    suggestion: str = ""
-    step_name: Optional[str] = None
+    suggestion: str = ''
+    step_name: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "error_type": self.error_type,
-            "error_category": self.error_category,
-            "message": self.message,
-            "suggestion": self.suggestion,
-            "step_name": self.step_name,
+            'error_type': self.error_type,
+            'error_category': self.error_category,
+            'message': self.message,
+            'suggestion': self.suggestion,
+            'step_name': self.step_name,
         }
 
 
@@ -319,16 +319,16 @@ class VariableUpdateData:
 
     variable_name: str
     variable_value: Any
-    source: str = "extracted"
+    source: str = 'extracted'
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
             Dictionary representation
         """
         return {
-            "variable_name": self.variable_name,
-            "variable_value": self.variable_value,
-            "source": self.source,
+            'variable_name': self.variable_name,
+            'variable_value': self.variable_value,
+            'source': self.source,
         }

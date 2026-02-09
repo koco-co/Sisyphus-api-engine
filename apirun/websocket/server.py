@@ -5,16 +5,15 @@ Following Google Python Style Guide.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
+from datetime import datetime
 import json
 import logging
-from typing import Set, Optional, Callable, Awaitable
-from datetime import datetime
 
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from apirun.websocket.events import WebSocketEvent, EventType
-
+from apirun.websocket.events import EventType, WebSocketEvent
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,9 @@ class WebSocketServer:
 
     def __init__(
         self,
-        host: str = "localhost",
+        host: str = 'localhost',
         port: int = 8765,
-        event_callback: Optional[Callable[[dict], Awaitable[None]]] = None,
+        event_callback: Callable[[dict], Awaitable[None]] | None = None,
     ):
         """Initialize WebSocket server.
 
@@ -51,8 +50,8 @@ class WebSocketServer:
         """
         self.host = host
         self.port = port
-        self.clients: Set[WebSocketServerProtocol] = set()
-        self.server: Optional[websockets.server.serve] = None
+        self.clients: set[WebSocketServerProtocol] = set()
+        self.server: websockets.server.serve | None = None
         self.event_callback = event_callback
         self._running = False
 
@@ -62,14 +61,14 @@ class WebSocketServer:
         This method starts the server in the background.
         """
         if self._running:
-            logger.warning("WebSocket server is already running")
+            logger.warning('WebSocket server is already running')
             return
 
         self.server = await websockets.serve(
             self._handle_client, self.host, self.port, ping_interval=20, ping_timeout=20
         )
         self._running = True
-        logger.info(f"WebSocket server started at ws://{self.host}:{self.port}")
+        logger.info(f'WebSocket server started at ws://{self.host}:{self.port}')
 
     async def stop(self):
         """Stop the WebSocket server.
@@ -92,7 +91,7 @@ class WebSocketServer:
             self.server = None
 
         self._running = False
-        logger.info("WebSocket server stopped")
+        logger.info('WebSocket server stopped')
 
     async def _handle_client(self, websocket: WebSocketServerProtocol, path: str):
         """Handle a client connection.
@@ -101,8 +100,8 @@ class WebSocketServer:
             websocket: WebSocket client connection
             path: WebSocket URL path
         """
-        client_id = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
-        logger.info(f"Client connected: {client_id}")
+        client_id = f'{websocket.remote_address[0]}:{websocket.remote_address[1]}'
+        logger.info(f'Client connected: {client_id}')
 
         # Register client
         self.clients.add(websocket)
@@ -112,8 +111,8 @@ class WebSocketServer:
             welcome_event = WebSocketEvent(
                 type=EventType.LOG,
                 data={
-                    "level": "info",
-                    "message": f"Connected to Sisyphus WebSocket server at {datetime.now().isoformat()}",
+                    'level': 'info',
+                    'message': f'Connected to Sisyphus WebSocket server at {datetime.now().isoformat()}',
                 },
             )
             await self._send_to_client(websocket, welcome_event)
@@ -122,25 +121,25 @@ class WebSocketServer:
             async for message in websocket:
                 try:
                     data = json.loads(message)
-                    logger.debug(f"Received message from {client_id}: {data}")
+                    logger.debug(f'Received message from {client_id}: {data}')
 
                     # Call event callback if provided
                     if self.event_callback:
                         await self.event_callback(data)
 
                 except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON from {client_id}: {e}")
+                    logger.error(f'Invalid JSON from {client_id}: {e}')
                 except Exception as e:
-                    logger.error(f"Error handling message from {client_id}: {e}")
+                    logger.error(f'Error handling message from {client_id}: {e}')
 
         except websockets.exceptions.ConnectionClosed:
-            logger.info(f"Client disconnected: {client_id}")
+            logger.info(f'Client disconnected: {client_id}')
         except Exception as e:
-            logger.error(f"Error handling client {client_id}: {e}")
+            logger.error(f'Error handling client {client_id}: {e}')
         finally:
             # Unregister client
             self.clients.discard(websocket)
-            logger.info(f"Client removed: {client_id}")
+            logger.info(f'Client removed: {client_id}')
 
     async def broadcast(self, event: WebSocketEvent):
         """Broadcast an event to all connected clients.
@@ -160,7 +159,9 @@ class WebSocketServer:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _send_to_client(self, client: WebSocketServerProtocol, event: WebSocketEvent):
+    async def _send_to_client(
+        self, client: WebSocketServerProtocol, event: WebSocketEvent
+    ):
         """Send an event to a specific client.
 
         Args:
@@ -171,7 +172,7 @@ class WebSocketServer:
             message = json.dumps(event.to_dict())
             await client.send(message)
         except (websockets.exceptions.ConnectionClosed, Exception) as e:
-            logger.debug(f"Failed to send to client: {e}")
+            logger.debug(f'Failed to send to client: {e}')
             self.clients.discard(client)
 
     def get_client_count(self) -> int:
@@ -204,6 +205,6 @@ class WebSocketServer:
             while self._running:
                 await asyncio.sleep(1)
         except asyncio.CancelledError:
-            logger.info("Server run cancelled")
+            logger.info('Server run cancelled')
         finally:
             await self.stop()

@@ -4,14 +4,11 @@ This module implements progress tracking for test execution.
 Following Google Python Style Guide.
 """
 
-import time
+from datetime import datetime
 import logging
-from typing import Optional, List
-from datetime import datetime, timedelta
 
 from apirun.core.models import StepResult
 from apirun.websocket.broadcaster import EventBroadcaster
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +34,7 @@ class ProgressTracker:
     def __init__(
         self,
         broadcaster: EventBroadcaster,
-        test_case_id: Optional[str] = None,
+        test_case_id: str | None = None,
     ):
         """Initialize progress tracker.
 
@@ -48,8 +45,8 @@ class ProgressTracker:
         self.broadcaster = broadcaster
         self.test_case_id = test_case_id
         self.total_steps = 0
-        self.step_durations: List[float] = []
-        self.start_time: Optional[datetime] = None
+        self.step_durations: list[float] = []
+        self.start_time: datetime | None = None
         self.current_step = 0
         self._passed_steps = 0
         self._failed_steps = 0
@@ -79,9 +76,7 @@ class ProgressTracker:
         self.current_step = step_index
         await self._broadcast_progress()
 
-    async def update_step_complete(
-        self, step_index: int, step_result: StepResult
-    ):
+    async def update_step_complete(self, step_index: int, step_result: StepResult):
         """Update progress when a step completes.
 
         Args:
@@ -96,9 +91,9 @@ class ProgressTracker:
             self.step_durations.append(duration)
 
         # Update counts
-        if step_result.status == "success":
+        if step_result.status == 'success':
             self._passed_steps += 1
-        elif step_result.status == "failure":
+        elif step_result.status == 'failure':
             self._failed_steps += 1
 
         # Broadcast updated progress
@@ -115,7 +110,7 @@ class ProgressTracker:
 
         return (self.current_step / self.total_steps) * 100
 
-    def _estimate_remaining_time(self) -> Optional[float]:
+    def _estimate_remaining_time(self) -> float | None:
         """Estimate remaining execution time.
 
         Returns:
@@ -159,15 +154,17 @@ class ProgressTracker:
             elapsed = (datetime.now() - self.start_time).total_seconds()
 
         return {
-            "current_step": self.current_step,
-            "total_steps": self.total_steps,
-            "percentage": self._calculate_percentage(),
-            "passed_steps": self._passed_steps,
-            "failed_steps": self._failed_steps,
-            "skipped_steps": self.current_step - self._passed_steps - self._failed_steps,
-            "elapsed_time": elapsed,
-            "estimated_remaining": self._estimate_remaining_time(),
-            "average_step_duration": (
+            'current_step': self.current_step,
+            'total_steps': self.total_steps,
+            'percentage': self._calculate_percentage(),
+            'passed_steps': self._passed_steps,
+            'failed_steps': self._failed_steps,
+            'skipped_steps': self.current_step
+            - self._passed_steps
+            - self._failed_steps,
+            'elapsed_time': elapsed,
+            'estimated_remaining': self._estimate_remaining_time(),
+            'average_step_duration': (
                 sum(self.step_durations) / len(self.step_durations)
                 if self.step_durations
                 else None

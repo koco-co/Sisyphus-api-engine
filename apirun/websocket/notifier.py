@@ -4,14 +4,11 @@ This module implements the notifier that bridges test execution and WebSocket br
 Following Google Python Style Guide.
 """
 
-import asyncio
 import logging
-from typing import Optional
 
-from apirun.core.models import TestCase, StepResult, ErrorInfo
+from apirun.core.models import StepResult, TestCase
 from apirun.websocket.broadcaster import EventBroadcaster
 from apirun.websocket.progress import ProgressTracker
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +32,7 @@ class WebSocketNotifier:
     def __init__(
         self,
         broadcaster: EventBroadcaster,
-        test_case_id: Optional[str] = None,
+        test_case_id: str | None = None,
         enable_progress: bool = True,
         enable_logs: bool = True,
         enable_variables: bool = False,
@@ -56,7 +53,7 @@ class WebSocketNotifier:
         self.enable_variables = enable_variables
 
         # Initialize progress tracker
-        self.progress_tracker: Optional[ProgressTracker] = None
+        self.progress_tracker: ProgressTracker | None = None
         if enable_progress:
             self.progress_tracker = ProgressTracker(broadcaster, test_case_id)
 
@@ -109,7 +106,9 @@ class WebSocketNotifier:
             test_case_id=self.test_case_id,
         )
 
-    async def notify_step_start(self, step_name: str, step_type: str, step_index: int, total_steps: int):
+    async def notify_step_start(
+        self, step_name: str, step_type: str, step_index: int, total_steps: int
+    ):
         """Notify that a step has started.
 
         Args:
@@ -188,8 +187,8 @@ class WebSocketNotifier:
         error_type: str,
         error_category: str,
         message: str,
-        suggestion: str = "",
-        step_name: Optional[str] = None,
+        suggestion: str = '',
+        step_name: str | None = None,
     ):
         """Notify an error.
 
@@ -210,7 +209,7 @@ class WebSocketNotifier:
         )
 
     async def notify_variable_update(
-        self, variable_name: str, variable_value, source: str = "extracted"
+        self, variable_name: str, variable_value, source: str = 'extracted'
     ):
         """Notify a variable update.
 
@@ -229,7 +228,7 @@ class WebSocketNotifier:
             test_case_id=self.test_case_id,
         )
 
-    def get_progress_summary(self) -> Optional[dict]:
+    def get_progress_summary(self) -> dict | None:
         """Get current progress summary.
 
         Returns:

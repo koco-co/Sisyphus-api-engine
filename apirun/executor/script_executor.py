@@ -6,17 +6,17 @@ to execute Python scripts within test cases for advanced logic.
 Following Google Python Style Guide.
 """
 
-import sys
-import io
-import traceback
 import ast
-from typing import Any, Dict, Optional, List
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
+import io
+import sys
+import traceback
+from typing import Any
 
-from apirun.executor.step_executor import StepExecutor
-from apirun.core.models import TestStep, ErrorInfo, ErrorCategory
+from apirun.core.models import TestStep
 from apirun.core.variable_manager import VariableManager
+from apirun.executor.step_executor import StepExecutor
 from apirun.utils.template import render_template
 
 
@@ -40,27 +40,27 @@ class ScriptSandbox:
 
     # Default allowed modules (safe for testing)
     DEFAULT_ALLOWED_MODULES = {
-        "json",
-        "datetime",
-        "time",
-        "random",
-        "math",
-        "re",
-        "string",
-        "collections",
-        "itertools",
-        "hashlib",
-        "base64",
-        "uuid",
+        'json',
+        'datetime',
+        'time',
+        'random',
+        'math',
+        're',
+        'string',
+        'collections',
+        'itertools',
+        'hashlib',
+        'base64',
+        'uuid',
     }
 
     # Blocked built-in functions (security sensitive)
     BLOCKED_BUILTINS = {
-        "eval",
-        "exec",
-        "compile",
-        "open",
-        "file",
+        'eval',
+        'exec',
+        'compile',
+        'open',
+        'file',
     }
 
     def __init__(self, variable_manager: VariableManager, allow_imports: bool = True):
@@ -72,8 +72,8 @@ class ScriptSandbox:
         """
         self.variable_manager = variable_manager
         self.allow_imports = allow_imports
-        self.global_vars: Dict[str, Any] = {}
-        self.local_vars: Dict[str, Any] = {}
+        self.global_vars: dict[str, Any] = {}
+        self.local_vars: dict[str, Any] = {}
         self._setup_environment()
 
     def _setup_environment(self) -> None:
@@ -86,20 +86,20 @@ class ScriptSandbox:
         safe_builtins = {
             name: obj
             for name, obj in __builtins__.items()
-            if name not in self.BLOCKED_BUILTINS and not name.startswith("_")
+            if name not in self.BLOCKED_BUILTINS and not name.startswith('_')
         }
 
         # Add safe __import__ function
-        safe_builtins["__import__"] = self._safe_import
+        safe_builtins['__import__'] = self._safe_import
 
         # Start with safe built-ins
         self.global_vars = {
-            "__builtins__": safe_builtins,
-            "__name__": "__main__",  # Set __name__ for if __name__ == "__main__" checks
-            "print": self._safe_print,
-            "True": True,
-            "False": False,
-            "None": None,
+            '__builtins__': safe_builtins,
+            '__name__': '__main__',  # Set __name__ for if __name__ == "__main__" checks
+            'print': self._safe_print,
+            'True': True,
+            'False': False,
+            'None': None,
         }
 
         # Add allowed modules
@@ -112,9 +112,9 @@ class ScriptSandbox:
                     pass
 
         # Add variable manager functions
-        self.global_vars["get_var"] = self._get_var
-        self.global_vars["set_var"] = self._set_var
-        self.global_vars["get_all_vars"] = self._get_all_vars
+        self.global_vars['get_var'] = self._get_var
+        self.global_vars['set_var'] = self._set_var
+        self.global_vars['get_all_vars'] = self._get_all_vars
 
     def _safe_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         """Safe import function that only allows whitelisted modules.
@@ -136,7 +136,7 @@ class ScriptSandbox:
         if name not in self.DEFAULT_ALLOWED_MODULES:
             raise ImportError(
                 f"Module '{name}' is not allowed. "
-                f"Allowed modules: {', '.join(sorted(self.DEFAULT_ALLOWED_MODULES))}"
+                f'Allowed modules: {", ".join(sorted(self.DEFAULT_ALLOWED_MODULES))}'
             )
 
         # Use the real __import__
@@ -179,7 +179,7 @@ class ScriptSandbox:
         """
         self.variable_manager.set_variable(name, value)
 
-    def _get_all_vars(self) -> Dict[str, Any]:
+    def _get_all_vars(self) -> dict[str, Any]:
         """Get all variables from the variable manager.
 
         Returns:
@@ -196,23 +196,24 @@ class ScriptSandbox:
         """
         # Write directly to stdout so it can be captured by redirect_stdout
         import sys
+
         print(*args, **kwargs, file=sys.stdout)
         # Also store for later retrieval
         output = io.StringIO()
         print(*args, **kwargs, file=output)
-        if not hasattr(self, "_print_output"):
+        if not hasattr(self, '_print_output'):
             self._print_output = []
         self._print_output.append(output.getvalue())
 
-    def get_print_output(self) -> List[str]:
+    def get_print_output(self) -> list[str]:
         """Get captured print output.
 
         Returns:
             List of printed strings
         """
-        return getattr(self, "_print_output", [])
+        return getattr(self, '_print_output', [])
 
-    def inject_args(self, args: Dict[str, Any]) -> None:
+    def inject_args(self, args: dict[str, Any]) -> None:
         """Inject arguments into the sandbox environment.
 
         Args:
@@ -221,7 +222,7 @@ class ScriptSandbox:
         if args:
             self.global_vars.update(args)
 
-    def execute(self, script: str, capture_output: bool = True) -> Dict[str, Any]:
+    def execute(self, script: str, capture_output: bool = True) -> dict[str, Any]:
         """Execute a script in the sandbox.
 
         Args:
@@ -243,7 +244,7 @@ class ScriptSandbox:
             tree = ast.parse(script)
             self._check_ast_security(tree)
         except SyntaxError as e:
-            raise ScriptSecurityError(f"Syntax error in script: {e}")
+            raise ScriptSecurityError(f'Syntax error in script: {e}')
 
         # Execute script
         # Use the same dict for globals and locals to allow recursive function calls
@@ -252,19 +253,25 @@ class ScriptSandbox:
 
         try:
             with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                exec(compile(tree, filename="<script>", mode="exec"), self.global_vars, self.global_vars)
+                exec(
+                    compile(tree, filename='<script>', mode='exec'),
+                    self.global_vars,
+                    self.global_vars,
+                )
 
         except Exception as e:
             # Get full traceback
-            tb_lines = traceback.format_exc().split("\n")
+            tb_lines = traceback.format_exc().split('\n')
             # Filter out internal frames
             filtered_tb = []
             for line in tb_lines:
-                if "<script>" in line or "Traceback" in line or line.strip() == "":
+                if '<script>' in line or 'Traceback' in line or line.strip() == '':
                     filtered_tb.append(line)
 
-            error_msg = f"{type(e).__name__}: {str(e)}"
-            raise Exception(f"Script execution failed: {error_msg}\n{''.join(filtered_tb[-5:])}")
+            error_msg = f'{type(e).__name__}: {str(e)}'
+            raise Exception(
+                f'Script execution failed: {error_msg}\n{"".join(filtered_tb[-5:])}'
+            )
 
         # Get output
         stdout_output = stdout_capture.getvalue()
@@ -274,8 +281,17 @@ class ScriptSandbox:
         # Extract new/modified variables (non-system, non-private)
         # We track what was added during this execution
         exported_vars = {}
-        system_vars = {"__builtins__", "__name__", "print", "True", "False", "None",
-                      "get_var", "set_var", "get_all_vars"}
+        system_vars = {
+            '__builtins__',
+            '__name__',
+            'print',
+            'True',
+            'False',
+            'None',
+            'get_var',
+            'set_var',
+            'get_all_vars',
+        }
 
         # Get all allowed modules
         for module_name in self.DEFAULT_ALLOWED_MODULES:
@@ -283,18 +299,22 @@ class ScriptSandbox:
 
         # Extract variables that were added in this script execution
         for name, value in self.global_vars.items():
-            if not name.startswith("_") and name not in system_vars:
+            if not name.startswith('_') and name not in system_vars:
                 # Only include if it's not a built-in module or function
                 import types
-                if not isinstance(value, types.ModuleType) or name not in self.DEFAULT_ALLOWED_MODULES:
+
+                if (
+                    not isinstance(value, types.ModuleType)
+                    or name not in self.DEFAULT_ALLOWED_MODULES
+                ):
                     exported_vars[name] = value
 
         return {
-            "output": stdout_output,
-            "errors": stderr_output,
-            "print_output": print_output,
-            "variables": exported_vars,
-            "success": True,
+            'output': stdout_output,
+            'errors': stderr_output,
+            'print_output': print_output,
+            'variables': exported_vars,
+            'success': True,
         }
 
     def _check_ast_security(self, tree: ast.AST) -> None:
@@ -371,7 +391,7 @@ class ScriptExecutor(StepExecutor):
         super().__init__(variable_manager, step, timeout, retry_times, previous_results)
         self.sandbox = None
 
-    def _execute_step(self, rendered_step: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_step(self, rendered_step: dict[str, Any]) -> dict[str, Any]:
         """Execute the script step.
 
         Args:
@@ -388,12 +408,12 @@ class ScriptExecutor(StepExecutor):
         start_time = datetime.now()
 
         # Get script configuration
-        script = rendered_step.get("script")
-        script_file = rendered_step.get("script_file")
-        script_type = rendered_step.get("script_type", "python")
-        allow_imports = rendered_step.get("allow_imports", True)
-        args = rendered_step.get("args", {})
-        capture_output = rendered_step.get("capture_output", True)
+        script = rendered_step.get('script')
+        script_file = rendered_step.get('script_file')
+        script_type = rendered_step.get('script_type', 'python')
+        allow_imports = rendered_step.get('allow_imports', True)
+        args = rendered_step.get('args', {})
+        capture_output = rendered_step.get('capture_output', True)
 
         # Load script from file if specified
         if script_file and not script:
@@ -402,49 +422,49 @@ class ScriptExecutor(StepExecutor):
         if not script:
             raise ValueError("Script step must specify 'script' code or 'script_file'")
 
-        if script_type != "python":
-            raise ValueError(f"Unsupported script type: {script_type}. Only 'python' is supported.")
+        if script_type != 'python':
+            raise ValueError(
+                f"Unsupported script type: {script_type}. Only 'python' is supported."
+            )
 
         # Create sandbox
-        self.sandbox = ScriptSandbox(
-            self.variable_manager, allow_imports=allow_imports
-        )
+        self.sandbox = ScriptSandbox(self.variable_manager, allow_imports=allow_imports)
 
         # Inject arguments into sandbox as 'args' variable
         if args:
-            self.sandbox.global_vars["args"] = args
+            self.sandbox.global_vars['args'] = args
 
         # Execute script
         try:
             result = self.sandbox.execute(script, capture_output=capture_output)
         except ScriptSecurityError as e:
-            raise ScriptSecurityError(f"Security error: {e}")
+            raise ScriptSecurityError(f'Security error: {e}')
         except Exception as e:
-            raise Exception(f"Script execution failed: {e}")
+            raise Exception(f'Script execution failed: {e}')
 
         end_time = datetime.now()
         elapsed = (end_time - start_time).total_seconds()
 
         # Merge exported variables into variable manager (filter non-serializable)
-        if result.get("variables"):
-            for var_name, var_value in result["variables"].items():
+        if result.get('variables'):
+            for var_name, var_value in result['variables'].items():
                 # Only set serializable variables
                 if self._is_serializable(var_value):
                     self.variable_manager.set_variable(var_name, var_value)
 
         # Return result
         return {
-            "response": {
-                "script_type": script_type,
-                "script_file": script_file,
-                "output": result.get("output", ""),
-                "print_output": result.get("print_output", []),
-                "errors": result.get("errors", ""),
-                "exported_variables": list(result.get("variables", {}).keys()),
-                "args": args,
+            'response': {
+                'script_type': script_type,
+                'script_file': script_file,
+                'output': result.get('output', ''),
+                'print_output': result.get('print_output', []),
+                'errors': result.get('errors', ''),
+                'exported_variables': list(result.get('variables', {}).keys()),
+                'args': args,
             },
-            "performance": self._create_performance_metrics(total_time=elapsed * 1000),
-            "extracted_vars": result.get("variables", {}),
+            'performance': self._create_performance_metrics(total_time=elapsed * 1000),
+            'extracted_vars': result.get('variables', {}),
         }
 
     def _load_script_from_file(self, script_file: str) -> str:
@@ -470,20 +490,21 @@ class ScriptExecutor(StepExecutor):
             if not file_path.is_absolute():
                 # Try relative to test file directory
                 import os
+
                 test_dir = Path(os.getcwd())
                 file_path = test_dir / script_file
 
                 if not file_path.exists():
-                    raise FileNotFoundError(f"Script file not found: {script_file}")
+                    raise FileNotFoundError(f'Script file not found: {script_file}')
 
         # Read file content
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with Path(file_path).open('r', encoding='utf-8') as f:
                 return f.read()
         except Exception as e:
             raise ValueError(f"Failed to read script file '{script_file}': {e}")
 
-    def _render_step(self) -> Dict[str, Any]:
+    def _render_step(self) -> dict[str, Any]:
         """Render variables in script step definition.
 
         Returns:
@@ -492,17 +513,17 @@ class ScriptExecutor(StepExecutor):
         context = self.variable_manager.get_all_variables()
 
         rendered = {
-            "name": self.step.name,
-            "type": self.step.type,
+            'name': self.step.name,
+            'type': self.step.type,
         }
 
         # Render script (inline)
         if self.step.script:
-            rendered["script"] = render_template(self.step.script, context)
+            rendered['script'] = render_template(self.step.script, context)
 
         # Render script_file (external file path)
         if self.step.script_file:
-            rendered["script_file"] = render_template(self.step.script_file, context)
+            rendered['script_file'] = render_template(self.step.script_file, context)
 
         # Render args (arguments)
         if self.step.args:
@@ -512,19 +533,19 @@ class ScriptExecutor(StepExecutor):
                     rendered_args[key] = render_template(value, context)
                 else:
                     rendered_args[key] = value
-            rendered["args"] = rendered_args
+            rendered['args'] = rendered_args
 
         # Render script_type
         if self.step.script_type:
-            rendered["script_type"] = self.step.script_type
+            rendered['script_type'] = self.step.script_type
 
         # Render allow_imports
         if self.step.allow_imports is not None:
-            rendered["allow_imports"] = self.step.allow_imports
+            rendered['allow_imports'] = self.step.allow_imports
 
         # Render capture_output
         if self.step.capture_output is not None:
-            rendered["capture_output"] = self.step.capture_output
+            rendered['capture_output'] = self.step.capture_output
 
         return rendered
 
@@ -545,6 +566,7 @@ class ScriptExecutor(StepExecutor):
 
         try:
             import copy
+
             copy.deepcopy(obj)
             return True
         except (TypeError, AttributeError):
