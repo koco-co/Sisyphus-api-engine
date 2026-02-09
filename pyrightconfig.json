@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode/pyrightconfiguration.schema.json",
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.12",
+  "include": [
+    "apirun",
+    "tests"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "**/*.pyc"
+  ],
+  "reportMissingTypeStubs": "none",
+  "reportUnusedImport": "warning",
+  "reportUnusedVariable": "warning",
+  "reportUnknownMemberType": "warning",
+  "reportUnknownArgumentType": "warning",
+  "reportUnknownVariableType": "warning",
+  "reportUnknownParameterType": "warning",
+  "reportMissingTypeArgument": "warning"
+}
