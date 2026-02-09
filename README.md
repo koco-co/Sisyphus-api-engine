@@ -1,9 +1,9 @@
 # Sisyphus API Engine
 
 ![Sisyphus](https://img.shields.io/badge/Sisyphus-API%20Engine-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
+![Python](https://img.shields.io/badge/python-3.12%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-2.0.5-orange)
+![Version](https://img.shields.io/badge/version-2.1.0-orange)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen)
 
 **企业级 API 自动化测试引擎**
@@ -136,10 +136,33 @@ variables:
 
 ### 环境要求
 
-- Python 3.8 或更高版本
-- pip 包管理器
+- **Python 3.12 或更高版本**（推荐使用 Python 3.14）
+- **uv** 包管理器（推荐）或 pip
 
 ### 安装步骤
+
+#### 方法一：使用 uv（推荐）
+
+```bash
+# 克隆仓库
+git clone https://github.com/koco-co/Sisyphus-api-engine.git
+cd Sisyphus-api-engine
+
+# 创建虚拟环境（Python 3.14）
+uv venv -p 3.14 .venv
+
+# 激活虚拟环境
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows
+
+# 安装项目（开发模式）
+uv pip install -e .
+
+# 或安装包含开发依赖
+uv pip install -e ".[dev]"
+```
+
+#### 方法二：使用 pip
 
 ```bash
 # 克隆仓库
@@ -821,10 +844,79 @@ if step.type == "my_type":
 
 ### 代码规范
 
+项目使用现代化 Python 开发工具链：
+
+#### 🛠️ 开发工具
+
+- **uv** - 极速包管理器（替代 pip）
+- **Ruff** - 代码检查和格式化（替代 black/isort/flake8）
+- **Pyright** - 静态类型检查（替代 mypy）
+- **pre-commit** - Git 钩子自动化
+- **rich** - 终端美化输出
+
+> **工具安装方式**：
+> - **项目级**：通过 `uv pip install -e ".[dev]"` 安装（推荐用于贡献者）
+> - **全局级**：通过 `uv tool install` 安装（推荐用于多项目开发者）
+> 两种方式都可以，选择适合你的方式即可。
+
+#### 📝 开发工作流
+
+```bash
+# 1. 激活虚拟环境
+source .venv/bin/activate
+
+# 2. 安装项目依赖（包含开发工具）
+uv pip install -e ".[dev]"
+
+# 3. 安装 pre-commit 钩子
+pre-commit install
+
+# 4. 代码格式化
+ruff format .
+
+# 5. 代码检查并自动修复
+ruff check . --fix
+
+# 6. 类型检查
+pyright .
+
+# 7. 运行测试
+pytest
+
+# 8. 提交代码（pre-commit 自动运行检查）
+git add .
+git commit -m "feat: add new feature"
+```
+
+#### 🔍 代码质量要求
+
 - 遵循 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
-- 添加类型注解
-- 编写单元测试
-- 更新相关文档
+- 使用类型注解（Pyright strict mode）
+- 单元测试覆盖率 ≥ 80%
+- 所有注释使用中文
+- 通过 pre-commit 钩子检查
+
+#### 📋 Ruff 配置
+
+```toml
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "C4", "TID", "ARG", "PTH"]
+```
+
+#### 🔬 类型检查
+
+项目使用 Pyright strict mode：
+
+```json
+{
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.12"
+}
+```
 
 ---
 
