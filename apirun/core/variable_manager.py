@@ -556,15 +556,35 @@ class VariableManager:
         返回：
             结构化的变量导出
         """
+        env_variables = self._get_matching_environment_variables() if include_env else {}
+
         if include_source:
             exported = {}
             all_vars = self.get_all_variables()
             for var_name in all_vars:
                 value, source = self.get_variable_with_source(var_name)
                 exported[var_name] = {'value': value, 'source': source}
+            for env_key, env_value in env_variables.items():
+                if env_key not in exported:
+                    exported[env_key] = {'value': env_value, 'source': 'env'}
             return exported
-        else:
-            return self.get_all_variables()
+
+        exported = self.get_all_variables().copy()
+        for env_key, env_value in env_variables.items():
+            exported.setdefault(env_key, env_value)
+        return exported
+
+    def _get_matching_environment_variables(self) -> dict[str, str]:
+        """获取与配置前缀匹配的环境变量（标准化为小写键）。"""
+        environment_variables: dict[str, str] = {}
+        for key, value in os.environ.items():
+            if self.env_vars_prefix:
+                if key.startswith(self.env_vars_prefix):
+                    normalized_key = key[len(self.env_vars_prefix) :].lower()
+                    environment_variables[normalized_key] = value
+            else:
+                environment_variables[key.lower()] = value
+        return environment_variables
 
 
 class VariableScope:

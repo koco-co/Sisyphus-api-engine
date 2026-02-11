@@ -385,9 +385,7 @@ class MultiTestSuiteJUnitExporter:
 
         # Get earliest and latest timestamps
         start_times = [r.start_time for r in self.results if r.start_time]
-        end_times = [r.end_time for r in self.results if r.end_time]
         earliest_start = min(start_times) if start_times else datetime.now()
-        latest_end = max(end_times) if end_times else datetime.now()
 
         # Create root element
         testsuites = ET.Element('testsuites')

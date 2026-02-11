@@ -252,7 +252,17 @@ class ScriptSandbox:
         stderr_capture = io.StringIO()
 
         try:
-            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+            context_manager = (
+                redirect_stdout(stdout_capture), redirect_stderr(stderr_capture)
+            )
+            if capture_output:
+                with context_manager[0], context_manager[1]:
+                    exec(
+                        compile(tree, filename='<script>', mode='exec'),
+                        self.global_vars,
+                        self.global_vars,
+                    )
+            else:
                 exec(
                     compile(tree, filename='<script>', mode='exec'),
                     self.global_vars,
@@ -488,10 +498,7 @@ class ScriptExecutor(StepExecutor):
         if not file_path.exists():
             # Try relative to current working directory
             if not file_path.is_absolute():
-                # Try relative to test file directory
-                import os
-
-                test_dir = Path(os.getcwd())
+                test_dir = Path.cwd()
                 file_path = test_dir / script_file
 
                 if not file_path.exists():

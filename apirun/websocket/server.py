@@ -93,12 +93,12 @@ class WebSocketServer:
         self._running = False
         logger.info('WebSocket server stopped')
 
-    async def _handle_client(self, websocket: WebSocketServerProtocol, path: str):
+    async def _handle_client(self, websocket: WebSocketServerProtocol, _path: str):
         """Handle a client connection.
 
         Args:
             websocket: WebSocket client connection
-            path: WebSocket URL path
+            _path: WebSocket URL path
         """
         client_id = f'{websocket.remote_address[0]}:{websocket.remote_address[1]}'
         logger.info(f'Client connected: {client_id}')
@@ -149,8 +149,6 @@ class WebSocketServer:
         """
         if not self.clients:
             return
-
-        message = json.dumps(event.to_dict())
 
         # Create a list of coroutines for all clients
         tasks = [self._send_to_client(client, event) for client in self.clients.copy()]

@@ -11,12 +11,10 @@
 - 支持验证规则和提取器解析
 """
 
-import os
 import pathlib
 from typing import Any
 
 from yaml import YAMLError, safe_load
-from yaml_include import Constructor
 
 from apirun.core.global_config_manager import GlobalConfigManager
 from apirun.core.models import (
@@ -27,6 +25,7 @@ from apirun.core.models import (
     TestStep,
     ValidationRule,
 )
+from apirun.utils.yaml_loader import load_yaml_with_include
 
 
 class YamlParseError(Exception):
@@ -75,22 +74,9 @@ class V2YamlParser:
 
         示例：
             # test.yaml
-            config: !include ../config/global_config.yaml
+            config: !include ../.sisyphus/config.yaml
         """
-        import yaml
-
-        # 获取基础目录，用于解析相对路径
-        base_dir = os.path.dirname(os.path.abspath(yaml_file))
-
-        # 创建 include 构造器，指定基础目录
-        constructor = Constructor(base_dir=base_dir)
-
-        # 将 !include 构造器注册到 yaml.FullLoader
-        yaml.add_constructor('!include', constructor, yaml.FullLoader)
-
-        # 使用 FullLoader 加载 YAML 文件
-        with pathlib.Path(yaml_file).open(encoding='utf-8') as f:
-            return yaml.load(f, yaml.FullLoader)
+        return load_yaml_with_include(yaml_file)
 
     def parse(self, yaml_file: str) -> TestCase:
         """解析 YAML 文件为 TestCase 对象。
@@ -266,7 +252,7 @@ class V2YamlParser:
 
             # 构建配置上下文，用于支持 config 嵌套引用
             # 同时包含展平的 profiles 和嵌套结构
-            nested_profiles = self._build_nested_profiles(profiles, flattened_profiles)
+            nested_profiles = self._build_nested_profiles(profiles)
 
             config_context = {
                 'profiles': nested_profiles,
@@ -309,7 +295,7 @@ class V2YamlParser:
                         json_str = json.dumps(value)
                         rendered_str = vm.render_string(json_str)
                         rendered_variables[key] = json.loads(rendered_str)
-                    except:
+                    except (TypeError, ValueError, json.JSONDecodeError):
                         rendered_variables[key] = value
 
             # 更新变量管理器中的变量为渲染后的值
@@ -661,7 +647,6 @@ class V2YamlParser:
     def _build_nested_profiles(
         self,
         profiles: dict[str, ProfileConfig],
-        flattened_profiles: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         """构建嵌套 profiles 结构用于模板渲染。
 
@@ -672,13 +657,11 @@ class V2YamlParser:
 
         参数：
             profiles: 展平的 ProfileConfig 对象字典（如 "v1.dev"、"v2.prod"）
-            flattened_profiles: 原始展平的 profile 数据
 
         返回：
             嵌套的 profiles 字典
         """
         nested = {}
-        original_data = flattened_profiles
 
         # 从展平的键构建嵌套结构
         for profile_key, profile_config in profiles.items():

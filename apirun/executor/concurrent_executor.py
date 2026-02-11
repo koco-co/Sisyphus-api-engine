@@ -295,6 +295,8 @@ class ConcurrentExecutor(StepExecutor):
         Returns:
             StepResult object
         """
+        _ = index  # Reserved for future nested-step context/trace output.
+
         from apirun.parser.v2_yaml_parser import V2YamlParser
 
         # Parse step dict to TestStep

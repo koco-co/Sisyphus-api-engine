@@ -29,6 +29,8 @@ class CookieExtractor:
         Returns:
             Cookie value or default value if not found
         """
+        _ = index  # Reserved for extractor API compatibility.
+
         if not isinstance(data, dict):
             return default
 

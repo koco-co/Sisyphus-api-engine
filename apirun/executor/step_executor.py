@@ -759,11 +759,6 @@ class StepExecutor(ABC):
         Returns:
             List of expression parts
         """
-        import re
-
-        # Build regex pattern that matches operators but not those inside quotes
-        pattern = '|'.join(re.escape(op) for op in operators)
-
         # Split but keep track of quoted strings
         parts = []
         current = []
@@ -1044,6 +1039,14 @@ class StepExecutor(ABC):
             ErrorCategory.BUSINESS: '建议检查业务逻辑配置',
             ErrorCategory.SYSTEM: '建议查看系统日志获取详细信息',
         }
+
+        message_lower = message.lower()
+        if category == ErrorCategory.NETWORK and 'dns' in message_lower:
+            return '建议检查 DNS 配置或目标域名是否可解析'
+        if category == ErrorCategory.TIMEOUT and 'read' in message_lower:
+            return '建议增加读取超时，或排查服务端慢查询/慢响应'
+        if category == ErrorCategory.PARSING and 'json' in message_lower:
+            return '建议检查响应是否为合法 JSON，或调整提取/断言路径'
 
         return suggestions.get(category, '请联系技术支持获取帮助')
 

@@ -16,7 +16,7 @@ name: "使用全局配置示例"
 description: "展示如何通过 !include 引用全局配置，实现配置复用和环境切换"
 
 # 使用 !include 引入全局配置（相对于当前文件的路径）
-config: !include ../config/global_config.yaml
+config: !include ../.sisyphus/config.yaml
 
 steps:
   - 步骤1_测试GET请求:

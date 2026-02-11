@@ -3,7 +3,7 @@
 # ==============================================================================
 # 此文件包含所有测试用例共享的配置信息
 # 使用方法：在测试用例文件中引入此配置
-#   config: !include ../config/global_config.yaml
+#   config: !include ../.sisyphus/config.yaml
 #
 # 环境切换：
 #   sisyphus --cases test.yaml --profile dev
@@ -85,4 +85,3 @@ retry_policy:
   strategy: "exponential"
   base_delay: 1.0
   max_delay: 10.0
-

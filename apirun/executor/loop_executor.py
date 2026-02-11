@@ -248,6 +248,8 @@ class LoopExecutor(StepExecutor):
         Returns:
             StepResult object
         """
+        _ = iteration  # Reserved for nested-step debugging context.
+
         from apirun.parser.v2_yaml_parser import V2YamlParser
 
         # Parse step dict to TestStep

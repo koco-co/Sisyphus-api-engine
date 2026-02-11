@@ -336,6 +336,13 @@ class OutputFormatter:
 
         self.console.print(grid)
 
+        # Show brief failure reason when provided (verbose only).
+        if self.verbose and is_failed and error:
+            self.console.print(
+                f'     └─ [dim red]{error.error_type}: {error.message}[/]',
+                highlight=False,
+            )
+
         # Check if we have performance data to show (for tree connector logic)
         has_performance = (
             self.verbose and performance and self._has_performance_data(performance)
@@ -604,15 +611,12 @@ class OutputFormatter:
         """
         # Determine background color based on status
         if status in ['passed', 'success']:
-            bg_style = 'green'
             text_style = 'bold green'
             status_text = 'PASS'
         elif status in ['failed', 'failure']:
-            bg_style = 'red'
             text_style = 'bold red'
             status_text = 'FAIL'
         else:
-            bg_style = 'yellow'
             text_style = 'bold yellow'
             status_text = 'WARN'
 
@@ -623,6 +627,8 @@ class OutputFormatter:
 
         passed_text = self._t('通过', 'Passed')
         failed_text = self._t('失败', 'Failed')
+        skipped_text = self._t('跳过', 'Skipped')
+        pass_rate_text = self._t('通过率', 'Pass Rate')
         duration_text = self._t('执行耗时', 'Duration')  # Updated Copy
 
         # Simple, inline summary
@@ -632,14 +638,18 @@ class OutputFormatter:
         summary_grid.add_column(style='dim')
         summary_grid.add_column(style='green')
         summary_grid.add_column(style='red' if failed > 0 else 'dim')
+        summary_grid.add_column(style='yellow' if skipped > 0 else 'dim')
         summary_grid.add_column(style='cyan')
+        summary_grid.add_column(style='blue')
         summary_grid.add_column(style=text_style, justify='right')
 
         summary_grid.add_row(
             f'{chart_emoji} {self._t("总计", "Total")}: {total}',
             f'{self._emoji(Emoji.SUCCESS)} {passed_text}: {passed}',
             f'{failure_emoji} {failed_text}: {failed}',
+            f'{self._emoji(Emoji.SKIPPED)} {skipped_text}: {skipped}',
             f'{stopwatch_emoji} {duration_text}: {duration:.2f}s',
+            f'{pass_rate_text}: {pass_rate:.1f}%',
             f'[{status_text}]',
         )
 

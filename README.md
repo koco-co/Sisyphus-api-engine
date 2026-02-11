@@ -397,61 +397,9 @@ steps: []                     # 必填：测试步骤列表
 - ❌ 修改环境需要改动多个文件
 - ❌ 容易出现配置不一致的问题
 
-### 解决方案:全局配置 + 环境切换
+### 解决方案:统一全局配置 + 环境切换
 
-**方案一:使用全局配置文件**
-
-创建 `config/global_config.yaml`:
-
-```yaml
-# 全局配置文件
-profiles:
-  dev:
-    base_url: "http://dev-api.example.com"
-    variables:
-      api_key: "dev-key-12345"
-  staging:
-    base_url: "http://staging-api.example.com"
-    variables:
-      api_key: "staging-key-67890"
-  prod:
-    base_url: "https://api.example.com"
-    variables:
-      api_key: "prod-key-abcde"
-
-active_profile: "dev"
-```
-
-在测试用例中引入:
-
-```yaml
-name: "我的测试"
-config: !include ../config/global_config.yaml
-
-steps:
-  - 测试请求:
-      type: request
-      url: "${config.profiles.${active_profile}.base_url}/api/users"
-      headers:
-        X-API-Key: "${config.profiles.${active_profile}.variables.api_key}"
-```
-
-**方案二:使用 `!include` 分层配置**
-
-创建分层配置文件:
-
-```yaml
-# config/environments.yaml (仅环境配置)
-profiles:
-  dev: {base_url: "http://dev.example.com"}
-  prod: {base_url: "https://api.example.com"}
-active_profile: "dev"
-
-# 测试用例文件
-config: !include config/environments.yaml
-```
-
-**方案三（推荐）:使用 `.sisyphus/config.yaml` 全局配置 (v2.0.5+)**
+**推荐方案: 使用项目根目录 `.sisyphus/config.yaml` 作为唯一共享环境配置**
 
 在项目根目录创建 `.sisyphus/config.yaml`:
 
@@ -470,7 +418,7 @@ profiles:
 active_profile: "dev"
 ```
 
-测试用例中无需配置（自动使用全局配置）:
+测试用例中可直接使用（自动加载全局配置）:
 
 ```yaml
 name: "我的测试"
@@ -517,6 +465,13 @@ sisyphus --cases test.yaml --profile prod
 ✅ **配置复用** - 多个用例共享同一配置,修改一处全部生效
 ✅ **分层配置** - 支持全局配置 + 用例特定配置
 ✅ **敏感信息保护** - 配合环境变量使用,避免硬编码敏感信息
+
+如需显式引入同一份配置（例如跨目录复用）:
+
+```yaml
+name: "我的测试"
+config: !include ../.sisyphus/config.yaml
+```
 
 ### 示例参考
 
@@ -737,6 +692,7 @@ validations:
 
 - **[输入协议规范](docs/API-Engine输入协议规范.md)** - 完整的 YAML 语法和配置说明
 - **[输出协议规范](docs/API-Engine输出协议规范.md)** - 测试结果输出格式
+- **[架构重构与目录规范](docs/17_架构重构与目录规范.md)** - 统一目录和配置约束
 
 ---
 
@@ -746,6 +702,8 @@ validations:
 
 ```
 Sisyphus-api-engine/
+├── .sisyphus/          # 统一环境配置
+│   └── config.yaml
 ├── apirun/
 │   ├── core/           # 核心数据模型
 │   ├── parser/         # YAML 解析器
@@ -759,6 +717,7 @@ Sisyphus-api-engine/
 │   └── utils/          # 工具函数
 ├── examples/           # 示例用例
 ├── docs/               # 项目文档
+├── scripts/            # 脚本示例与辅助脚本
 └── tests/              # 测试文件
 ```
 

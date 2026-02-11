@@ -1037,7 +1037,7 @@ class HTMLExporter:
                     <div class="step-icon" style="background-color: {status_color}">
                         {status_icon}
                     </div>
-                    <div class="step-name">{self._escape_html(step.name)}</div>
+                    <div class="step-name">#{index} {self._escape_html(step.name)}</div>
                 </div>
                 <div class="step-meta">
                     <div><strong>{self.texts['status']}:</strong> {step.status.upper()}</div>

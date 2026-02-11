@@ -10,9 +10,12 @@ Following Google Python Style Guide.
 """
 
 from dataclasses import dataclass, field
-import os
 from pathlib import Path
 from typing import Any
+
+import yaml
+
+from apirun.utils.yaml_loader import load_yaml_with_include
 
 
 # ANSI color codes for terminal output
@@ -410,21 +413,7 @@ class YamlValidator:
             return result
 
         try:
-            import yaml
-            from yaml_include import Constructor
-
-            # Get base directory for relative paths
-            base_dir = os.path.dirname(os.path.abspath(file_path))
-
-            # Create include constructor with base_dir
-            constructor = Constructor(base_dir=base_dir)
-
-            # Register constructor globally to yaml.FullLoader
-            yaml.add_constructor('!include', constructor, yaml.FullLoader)
-
-            # Load YAML with FullLoader (supports !include tag)
-            with Path(file_path).open(encoding='utf-8') as f:
-                data = yaml.load(f, yaml.FullLoader)
+            data = load_yaml_with_include(file_path)
 
             if data is None:
                 result.syntax_errors.append('YAML 文件为空')

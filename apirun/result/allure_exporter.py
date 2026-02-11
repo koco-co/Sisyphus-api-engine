@@ -273,8 +273,6 @@ class AllureExporter:
         allure_steps = []
 
         for step_result in test_result.step_results:
-            step_uuid = str(uuid.uuid4())
-
             # Convert step status
             status_map = {
                 'success': 'passed',
@@ -647,13 +645,13 @@ class AllureExporter:
         return details
 
     def _format_labels(
-        self, test_case: TestCase, test_result: TestCaseResult
+        self, test_case: TestCase, _test_result: TestCaseResult
     ) -> list[dict[str, str]]:
         """Format labels for Allure report.
 
         Args:
             test_case: Test case
-            test_result: Test execution result
+            _test_result: Test execution result (reserved for future extension)
 
         Returns:
             List of label objects

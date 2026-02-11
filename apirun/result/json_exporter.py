@@ -117,6 +117,14 @@ class JSONExporter:
         for sr in step_results:
             final_variables.update(sr.extracted_vars)
 
+        # Add runtime variable manager state if available
+        if variable_manager and hasattr(variable_manager, 'get_all_variables'):
+            try:
+                final_variables.update(variable_manager.get_all_variables())
+            except Exception:
+                # Ignore variable export issues to avoid breaking result generation
+                pass
+
         # Get error info if failed
         error_info = None
         if status == 'failed':

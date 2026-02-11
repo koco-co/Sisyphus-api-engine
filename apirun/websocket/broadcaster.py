@@ -4,14 +4,19 @@ This module implements event broadcasting and subscription management.
 Following Google Python Style Guide.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Awaitable, Callable
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from apirun.websocket.events import EventType, WebSocketEvent
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from apirun.websocket.server import WebSocketServer
 
 
 class EventBroadcaster:
@@ -28,7 +33,7 @@ class EventBroadcaster:
         server: WebSocket server instance for broadcasting
     """
 
-    def __init__(self, server: Optional['WebSocketServer'] = None):
+    def __init__(self, server: WebSocketServer | None = None):
         """Initialize event broadcaster.
 
         Args:

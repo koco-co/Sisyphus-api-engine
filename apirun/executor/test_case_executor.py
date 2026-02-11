@@ -4,8 +4,10 @@ This module implements the main test case execution scheduler.
 Following Google Python Style Guide.
 """
 
+from __future__ import annotations
+
 import asyncio
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from apirun.core.models import TestCase, TestStep
 from apirun.core.variable_manager import VariableManager
@@ -18,6 +20,9 @@ from apirun.executor.script_executor import ScriptExecutor
 from apirun.executor.wait_executor import WaitExecutor
 from apirun.result.json_exporter import JSONExporter
 from apirun.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from apirun.websocket.notifier import WebSocketNotifier
 
 
 class TestCaseExecutor:
@@ -39,7 +44,7 @@ class TestCaseExecutor:
     """
 
     def __init__(
-        self, test_case: TestCase, notifier: Optional['WebSocketNotifier'] = None
+        self, test_case: TestCase, notifier: WebSocketNotifier | None = None
     ):
         """Initialize TestCaseExecutor.
 
