@@ -3,6 +3,7 @@
     "apirun",
     "pydantic",
     "pypi",
+    "pypirc",
     "pyproject",
     "pytest",
     "teststeps"

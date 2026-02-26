@@ -1,0 +1,9 @@
+include README.md
+include CHANGELOG.md
+include LICENSE
+
+recursive-include docs *.md
+
+recursive-exclude .venv *
+recursive-exclude .git *
+

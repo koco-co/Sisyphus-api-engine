@@ -1,21 +1,20 @@
 [project]
 name = "sisyphus-api-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sisyphus-X 接口自动化核心执行器 - YAML 驱动的 API 测试引擎"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
     "click>=8.1.0",
-    "pyyaml>=6.0.0",
+    "PyYAML>=6.0.2",
+    "pyyaml-include>=1.3",
     "pydantic>=2.0.0",
-    "requests>=2.31.0",
+    "requests>=2.32.0",
     "jsonpath-ng>=1.6.0",
-    "rich>=13.0.0",
-    "pymysql>=1.1.0",
+    "rich>=13.9.0",
+    "PyMySQL>=1.1.0",
     "psycopg2-binary>=2.9.0",
-    "allure-pytest>=2.13.0",
-    "pytest>=8.0.0",
 ]
 
 [project.scripts]
@@ -23,9 +22,11 @@ sisyphus = "apirun.cli:main"
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.15.0",
-    "pyright>=1.1.0",
-    "pytest-cov>=7.0.0",
+    "ruff>=0.9.0",
+    "pyright>=1.1.390",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "pre-commit>=4.0.0",
 ]
 
 [build-system]

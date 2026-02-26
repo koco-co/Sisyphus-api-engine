@@ -1,0 +1,17 @@
+profiles:
+  dev:
+    base_url: "http://dev.example.com"
+    variables:
+      api_key: "dev-key-please-change"
+
+  prod:
+    base_url: "https://api.example.com"
+    variables:
+      api_key: "prod-key-please-change"
+
+active_profile: "dev"
+
+variables:
+  common_headers:
+    User-Agent: "sisyphus-api-engine/0.2.0"
+
