@@ -56,10 +56,15 @@ rm -rf *.egg-info/
 echo -e "${GREEN}✅ 清理完成${NC}"
 echo ""
 
-# 运行测试
+# 运行测试（优先用 uv 跑项目环境，否则用当前 Python -m pytest）
 echo -e "${YELLOW}🧪 运行测试...${NC}"
 if [ -d "tests" ]; then
-    if pytest tests/ -v --tb=short; then
+    if command -v uv &> /dev/null; then
+        UV_PYTEST="uv run python -m pytest tests/ -v --tb=short"
+    else
+        UV_PYTEST="$PYTHON_CMD -m pytest tests/ -v --tb=short"
+    fi
+    if $UV_PYTEST; then
         echo -e "${GREEN}✅ 测试通过${NC}"
     else
         echo -e "${RED}❌ 测试失败，取消发布${NC}"
