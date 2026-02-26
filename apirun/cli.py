@@ -9,9 +9,10 @@ import click
 from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.json_reporter import to_json, to_json_engine_error
+from apirun.result.text_reporter import render as render_text
 
 
-def _run_single_case(path: str, output_format: str) -> dict[str, Any]:
+def _run_single_case(path: str, output_format: str, verbose: bool = False) -> dict[str, Any]:
     """执行单个 YAML 用例并返回结果 dict（引擎异常时抛出）。"""
     try:
         case_model = load_case(path)
@@ -22,14 +23,13 @@ def _run_single_case(path: str, output_format: str) -> dict[str, Any]:
         click.echo(str(e.message), err=True)
         raise
 
-    exec_result = run_case(case_model)
+    exec_result = run_case(case_model, verbose=verbose)
     result: dict[str, Any] = exec_result.model_dump()
 
     if output_format == "json":
         return result
 
-    click.echo(f"执行测试用例: {path}")
-    click.echo(f"场景: {result.get('scenario_name', '')} 状态: {result.get('status', '')}")
+    render_text(result, verbose=verbose)
     return result
 
 
@@ -61,7 +61,7 @@ def main(
     output_format: str,
     allure_dir: str | None,  # noqa: ARG001
     html_dir: str | None,  # noqa: ARG001
-    verbose: bool,  # noqa: ARG001
+    verbose: bool,
 ) -> None:
     """sisyphus-api-engine: YAML 驱动的接口自动化测试引擎.
 
@@ -96,7 +96,7 @@ def main(
 
         for path in yaml_files:
             try:
-                result = _run_single_case(str(path), output_format)
+                result = _run_single_case(str(path), output_format, verbose=verbose)
                 results.append(result)
             except Exception:  # noqa: BLE001
                 has_error = True
@@ -114,7 +114,7 @@ def main(
     # 单用例模式: sisyphus --case xxx.yaml
     path = case or ""
     try:
-        result = _run_single_case(path, output_format)
+        result = _run_single_case(path, output_format, verbose=verbose)
     except (FileNotFoundError, ValueError, EngineError):
         sys.exit(1)
     except Exception:  # noqa: BLE001
