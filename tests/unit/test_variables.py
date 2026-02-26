@@ -11,7 +11,11 @@ from apirun.utils.functions import (
     fn_timestamp,
     fn_timestamp_ms,
 )
-from apirun.utils.variables import render_template
+from apirun.utils.variables import (
+    GLOBAL_PARAM_FUNCTIONS,
+    register_global_param_function,
+    render_template,
+)
 
 
 def test_fn_random_length_and_charset():
@@ -85,4 +89,34 @@ def test_render_template_builtin_function_random():
     assert rendered.startswith("user_")
     suffix = rendered.split("_", 1)[1]
     assert len(suffix) == 8
+
+
+def test_global_param_function_no_args():
+    """VAR-009: {{方法名}} 调用平台注册的全局参数函数（无参）。"""
+    try:
+        register_global_param_function("platform_sn", lambda: "SN-001")
+        out = render_template("{{platform_sn}}", {})
+        assert out == "SN-001"
+    finally:
+        GLOBAL_PARAM_FUNCTIONS.pop("platform_sn", None)
+
+
+def test_global_param_function_with_args():
+    """VAR-009: {{方法名(参数)}} 调用平台注册的全局参数函数。"""
+    try:
+        register_global_param_function("concat", lambda a, b: f"{a}_{b}")
+        out = render_template("{{concat('x', 'y')}}", {})
+        assert out == "x_y"
+    finally:
+        GLOBAL_PARAM_FUNCTIONS.pop("concat", None)
+
+
+def test_variable_takes_precedence_over_global_func():
+    """变量优先于全局参数函数同名。"""
+    try:
+        register_global_param_function("foo", lambda: "from_func")
+        out = render_template("{{foo}}", {"foo": "from_var"})
+        assert out == "from_var"
+    finally:
+        GLOBAL_PARAM_FUNCTIONS.pop("foo", None)
 

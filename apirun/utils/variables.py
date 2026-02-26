@@ -3,15 +3,23 @@
 支持特性:
 - 递归渲染 dict / list / str 结构中的变量引用
 - 变量优先从 variables 字典中读取
-- 未找到的函数名若在内置函数表中, 则按 {{func(...)}} 语法调用
+- 内置函数与全局参数函数: {{func(...)}} 或 {{方法名}}（VAR-009）
 """
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Callable
 
 from apirun.utils.functions import BUILTIN_FUNCTIONS
+
+# 平台注册的全局参数函数：{{方法名}} / {{方法名(参数)}}（VAR-009）
+GLOBAL_PARAM_FUNCTIONS: dict[str, Callable[..., Any]] = {}
+
+
+def register_global_param_function(name: str, func: Callable[..., Any]) -> None:
+    """注册全局参数函数，供模板 {{name}} 或 {{name(...)}} 调用。"""
+    GLOBAL_PARAM_FUNCTIONS[name] = func
 
 
 _TEMPLATE_PATTERN = re.compile(r"\{\{\s*(?P<expr>[^}]+?)\s*\}\}")
@@ -21,33 +29,34 @@ class VariableRenderError(Exception):
     """变量渲染错误。"""
 
 
+def _parse_func_args(args_part: str) -> list[Any]:
+    """解析函数参数字符串为列表。"""
+    args: list[Any] = []
+    for raw in args_part.split(","):
+        token = raw.strip()
+        if not token:
+            continue
+        if (token.startswith("'") and token.endswith("'")) or (
+            token.startswith('"') and token.endswith('"')
+        ):
+            args.append(token[1:-1])
+        else:
+            try:
+                args.append(int(token))
+            except ValueError:
+                args.append(token)
+    return args
+
+
 def _eval_function(expr: str) -> Any:
-    """解析并执行内置函数表达式, 如 random(8) / random_uuid()."""
+    """解析并执行函数表达式：先内置函数，再全局参数函数（VAR-009）。"""
     name, _, args_part = expr.partition("(")
     name = name.strip()
     args_part = args_part.rstrip(")")
-    func = BUILTIN_FUNCTIONS.get(name)
+    func = BUILTIN_FUNCTIONS.get(name) or GLOBAL_PARAM_FUNCTIONS.get(name)
     if not func:
-        raise VariableRenderError(f"未知内置函数: {name}")
-
-    args: list[Any] = []
-    if args_part.strip():
-        # 简单按逗号分割, 去掉两侧空白与引号; 暂不支持复杂嵌套表达式
-        for raw in args_part.split(","):
-            token = raw.strip()
-            if not token:
-                continue
-            # 去掉成对引号
-            if (token.startswith("'") and token.endswith("'")) or (
-                token.startswith('"') and token.endswith('"')
-            ):
-                args.append(token[1:-1])
-            else:
-                # 尝试解析为 int, 失败则按字符串处理
-                try:
-                    args.append(int(token))
-                except ValueError:
-                    args.append(token)
+        raise VariableRenderError(f"未知函数: {name}")
+    args = _parse_func_args(args_part)
     return func(*args)
 
 
@@ -61,26 +70,25 @@ def _render_string(template: str, variables: dict[str, Any]) -> Any:
     其他情况按普通模板字符串处理, 返回 str。
     """
 
+    def _resolve_expr(expr: str) -> Any:
+        # 仅变量名：先 variables，再全局参数函数无参调用（VAR-009）
+        if "(" not in expr and ")" not in expr:
+            if expr in variables:
+                return variables[expr]
+            if expr in GLOBAL_PARAM_FUNCTIONS:
+                return GLOBAL_PARAM_FUNCTIONS[expr]()
+            raise VariableRenderError(f"变量或函数未找到: {expr}")
+        return _eval_function(expr)
+
     def replace(match: re.Match[str]) -> str:
         expr = match.group("expr").strip()
-        # 仅变量名
-        if "(" not in expr and ")" not in expr:
-            if expr not in variables:
-                raise VariableRenderError(f"变量未找到: {expr}")
-            return str(variables[expr])
-        # 函数调用
-        value = _eval_function(expr)
-        return str(value)
+        return str(_resolve_expr(expr))
 
     # 整个字符串正好是一个 {{...}} 表达式时, 尝试返回原始类型
     full_match = _TEMPLATE_PATTERN.fullmatch(template.strip())
     if full_match:
         expr = full_match.group("expr").strip()
-        if "(" not in expr and ")" not in expr:
-            if expr not in variables:
-                raise VariableRenderError(f"变量未找到: {expr}")
-            return variables[expr]
-        return _eval_function(expr)
+        return _resolve_expr(expr)
 
     try:
         return _TEMPLATE_PATTERN.sub(replace, template)
