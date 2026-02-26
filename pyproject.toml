@@ -1,209 +1,66 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "Sisyphus-api-engine"
-version = "2.1.0"
-description = "企业级 API 自动化测试引擎，使用 YAML 声明式语法，支持 HTTP/HTTPS、数据库操作、数据驱动测试、并发执行和 WebSocket 实时推送。"
+name = "sisyphus-api-engine"
+version = "0.1.0"
+description = "Sisyphus-X 接口自动化核心执行器 - YAML 驱动的 API 测试引擎"
 readme = "README.md"
-license = {text = "MIT"}
 requires-python = ">=3.12"
-authors = [
-    {name = "koco-co", email = "kopohub@gmail.com"}
-]
-maintainers = [
-    {name = "koco-co", email = "kopohub@gmail.com"}
-]
-keywords = ["api", "testing", "automation", "yaml", "json", "mock", "concurrent", "allure", "websocket", "ddt", "data-driven"]
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Quality Assurance",
-    "Topic :: Software Development :: Testing",
-    "Topic :: Software Development :: Testing :: Unit",
-    "Topic :: Software Development :: Testing :: Acceptance",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Operating System :: OS Independent",
-    "Natural Language :: English",
-    "Natural Language :: Chinese (Simplified)",
-]
-
+license = { text = "MIT" }
 dependencies = [
-    "Jinja2>=3.1.0",
+    "click>=8.1.0",
+    "pyyaml>=6.0.0",
+    "pydantic>=2.0.0",
+    "requests>=2.31.0",
     "jsonpath-ng>=1.6.0",
-    "PyYAML>=6.0.2",
-    "pyyaml-include>=1.3",
-    "requests>=2.32.0",
-    "httpx>=0.28.0",
-    "PyMySQL>=1.1.0",
-    "SQLAlchemy>=2.0.36",
-    "sqlmodel>=0.0.32",
-    "typing-extensions>=4.12.0",
-    "python-dateutil>=2.9.0",
-    "Flask>=3.1.0",
-    "websockets>=14.0",
-    "rich>=13.9.0",
-]
-
-[project.optional-dependencies]
-dev = [
+    "rich>=13.0.0",
+    "pymysql>=1.1.0",
+    "psycopg2-binary>=2.9.0",
+    "allure-pytest>=2.13.0",
     "pytest>=8.0.0",
-    "pytest-cov>=6.0.0",
-    "pytest-asyncio>=0.24.0",
-    "ruff>=0.9.0",
-    "pyright>=1.1.390",
-    "pre-commit>=4.0.0",
 ]
-docs = [
-    "sphinx>=8.0.0",
-    "sphinx-rtd-theme>=3.0.0",
-    "myst-parser>=4.0.0",
-]
-all = [
-    "Sisyphus-api-engine[dev,docs]",
-]
-
-[project.urls]
-"Homepage" = "https://github.com/koco-co/Sisyphus-api-engine"
-"Documentation" = "https://github.com/koco-co/Sisyphus-api-engine/blob/main/README.md"
-"Repository" = "https://github.com/koco-co/Sisyphus-api-engine.git"
-"Bug Tracker" = "https://github.com/koco-co/Sisyphus-api-engine/issues"
-"Changelog" = "https://github.com/koco-co/Sisyphus-api-engine/blob/main/README.md#-更新日志"
 
 [project.scripts]
 sisyphus = "apirun.cli:main"
-sisyphus-validate = "apirun.cli:validate_main"
 
-[tool.setuptools]
-zip-safe = false
-include-package-data = true
-
-[tool.setuptools.packages.find]
-exclude = ["tests*", "examples*"]
-
-# ============ Ruff 配置 ============
-[tool.ruff]
-target-version = "py312"
-line-length = 88
-preview = true
-fix = true
-unsafe-fixes = false
-extend-exclude = [
-    ".git",
-    "__pycache__",
-    "venv",
-    ".venv",
-    "build",
-    "dist",
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.15.0",
+    "pyright>=1.1.0",
+    "pytest-cov>=7.0.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apirun"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["apirun"]
 
 [tool.ruff.lint]
-select = [
-    "E",   # pycodestyle 错误
-    "W",   # pycodestyle 警告
-    "F",   # pyflakes
-    "I",   # isort
-    "UP",  # pyupgrade
-    "C4",  # flake8-comprehensions
-    "TID", # flake8-tidy-imports
-    "ARG", # flake8-unused-arguments
-    "PTH", # flake8-use-pathlib
-]
-ignore = [
-    "E501",  # 行长度限制（由 formatter 处理）
-]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
-    "S101",   # 允许使用 assert
-    "ARG",    # 允许未使用的参数（测试夹具）
-    "F841",   # 允许未使用的局部变量（测试辅助函数）
-    "PTH",    # 测试文件暂不强制使用 pathlib
-    "C416",   # 允许不必要的 dict comprehension
-]
-"scripts/**/*.py" = [
-    "T20",    # 允许 print 输出
-]
-"apirun/**/__init__.py" = [
-    "F401",   # 允许 __init__.py 中的未使用导入
-]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apirun"]
-combine-as-imports = true
-force-sort-within-sections = true
 
-[tool.ruff.format]
-quote-style = "single"
-indent-style = "space"
-line-ending = "auto"
-skip-magic-trailing-comma = false
-
-# ============ Pyright 配置 ============
 [tool.pyright]
-typeCheckingMode = "strict"
+include = ["apirun"]
+typeCheckingMode = "basic"
 pythonVersion = "3.12"
-include = ["apirun", "tests"]
-exclude = [
-    "**/node_modules",
-    "**/__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "**/*.pyc",
-]
-reportMissingTypeStubs = "none"
-reportUnusedImport = "warning"
-reportUnusedVariable = "warning"
-reportUnknownMemberType = "warning"
-reportUnknownArgumentType = "warning"
-reportUnknownVariableType = "warning"
-reportUnknownParameterType = "warning"
-reportMissingTypeArgument = "warning"
+reportMissingImports = "warning"
+reportMissingTypeStubs = false
 
-# ============ Pytest 配置 ============
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "-v",
-]
-filterwarnings = [
-    "ignore::pytest.PytestCollectionWarning",
-]
+addopts = ["-v", "--strict-markers", "-ra"]
 markers = [
-    "slow: 标记慢速测试（使用 '-m \"not slow\"' 跳过）",
-    "integration: 标记集成测试",
-    "unit: 标记单元测试",
-]
-
-# ============ Coverage 配置 ============
-[tool.coverage.run]
-source = ["apirun"]
-omit = [
-    "*/tests/*",
-    "*/test_*.py",
-    "*/__pycache__/*",
-    "*/site-packages/*",
-]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
 ]

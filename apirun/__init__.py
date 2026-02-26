@@ -1,62 +1,7 @@
-"""Sisyphus API Engine - Enterprise-grade API Automation Testing Engine.
+"""sisyphus-api-engine: YAML 驱动的接口自动化测试引擎"""
 
-This package provides the core functionality for executing YAML-based API tests.
-"""
+__version__ = "0.1.0"
 
-__version__ = '2.0.5'
-__author__ = 'koco-co'
+from apirun.keyword import Keyword
 
-from apirun.core.models import (
-    ErrorCategory,
-    ErrorInfo,
-    Extractor,
-    GlobalConfig,
-    HttpMethod,
-    PerformanceMetrics,
-    ProfileConfig,
-    StepResult,
-    TestCase,
-    TestCaseResult,
-    TestStep,
-    ValidationRule,
-)
-from apirun.core.variable_manager import VariableManager, VariableScope
-from apirun.executor.api_executor import APIExecutor
-from apirun.executor.test_case_executor import TestCaseExecutor
-from apirun.parser.v2_yaml_parser import (
-    V2YamlParser,
-    parse_yaml_file,
-    parse_yaml_string,
-)
-from apirun.result.json_exporter import JSONExporter
-from apirun.validation.engine import ValidationEngine
-
-__all__ = [
-    # Models
-    'TestCase',
-    'TestStep',
-    'GlobalConfig',
-    'ProfileConfig',
-    'ValidationRule',
-    'Extractor',
-    'StepResult',
-    'TestCaseResult',
-    'ErrorInfo',
-    'PerformanceMetrics',
-    'HttpMethod',
-    'ErrorCategory',
-    # Core
-    'VariableManager',
-    'VariableScope',
-    # Parser
-    'V2YamlParser',
-    'parse_yaml_file',
-    'parse_yaml_string',
-    # Executor
-    'TestCaseExecutor',
-    'APIExecutor',
-    # Validation
-    'ValidationEngine',
-    # Result
-    'JSONExporter',
-]
+__all__ = ["__version__", "Keyword"]

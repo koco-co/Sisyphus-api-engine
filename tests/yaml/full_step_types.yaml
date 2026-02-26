@@ -1,0 +1,57 @@
+config:
+  name: "用户注册 → 登录 → 查看信息 → 数据库验证"
+  project_id: "proj-001"
+  scenario_id: "scen-001"
+
+teststeps:
+  - name: "获取用户列表"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/v1/users"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+
+  - name: "验证响应 code 字段"
+    keyword_type: "assertion"
+    keyword_name: "json_assertion"
+    assertion:
+      target: "json"
+      source_variable: "last_response"
+      expression: "$.code"
+      comparator: "eq"
+      expected: 0
+
+  - name: "提取第一个用户 ID"
+    keyword_type: "extract"
+    keyword_name: "json_extract"
+    extract:
+      - name: "first_user_id"
+        type: "json"
+        source_variable: "last_response"
+        expression: "$.data.items[0].id"
+        scope: "global"
+
+  - name: "数据库验证用户记录"
+    keyword_type: "db"
+    keyword_name: "db_operation"
+    db:
+      datasource: "db_main"
+      sql: "SELECT id, email FROM users WHERE id = '{{first_user_id}}';"
+      validate:
+        - expression: "$.length"
+          comparator: "gte"
+          expected: 0
+
+  - name: "自定义业务编号"
+    keyword_type: "custom"
+    keyword_name: "generate_business_code"
+    custom:
+      parameters:
+        prefix: "BIZ"
+        length: 12
+        include_timestamp: true
+
