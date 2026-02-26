@@ -10,6 +10,12 @@
 
 set -e  # 遇到错误立即退出
 
+# 非交互模式：PYPI_AUTO_YES=1 或 CI=1 时自动确认所有提示
+AUTO_YES=0
+if [ -n "${PYPI_AUTO_YES}" ] || [ -n "${CI}" ]; then
+    AUTO_YES=1
+fi
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -80,8 +86,12 @@ echo -e "${YELLOW}📋 检查 git 状态...${NC}"
 if [ -n "$(git status --porcelain)" ]; then
     echo -e "${YELLOW}⚠️  警告: 有未提交的更改${NC}"
     git status --short
-    read -p "是否继续发布？(y/N) " -n 1 -r
-    echo
+    if [ "$AUTO_YES" != "1" ]; then
+        read -p "是否继续发布？(y/N) " -n 1 -r
+        echo
+    else
+        REPLY=y
+    fi
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${RED}❌ 取消发布${NC}"
         exit 1
@@ -93,8 +103,12 @@ echo ""
 echo -e "${YELLOW}🏷️  检查版本标签...${NC}"
 if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
     echo -e "${YELLOW}⚠️  标签 v${VERSION} 已存在${NC}"
-    read -p "是否继续发布？(y/N) " -n 1 -r
-    echo
+    if [ "$AUTO_YES" != "1" ]; then
+        read -p "是否继续发布？(y/N) " -n 1 -r
+        echo
+    else
+        REPLY=y
+    fi
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${RED}❌ 取消发布${NC}"
         exit 1
@@ -129,8 +143,12 @@ echo -e "${YELLOW}⚠️  即将发布到 PyPI:${NC}"
 echo -e "  项目: ${PROJECT_NAME}"
 echo -e "  版本: ${VERSION}"
 echo ""
-read -p "确认发布？(y/N) " -n 1 -r
-echo
+if [ "$AUTO_YES" != "1" ]; then
+    read -p "确认发布？(y/N) " -n 1 -r
+    echo
+else
+    REPLY=y
+fi
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${RED}❌ 取消发布${NC}"
     exit 1
@@ -140,13 +158,13 @@ echo ""
 # 发布到 PyPI
 echo -e "${YELLOW}📤 发布到 PyPI...${NC}"
 
-# 检查 token
+# 检查 token（使用 python -m twine 避免 PATH 中无 twine 时失败）
 if [ -n "$PYPI_API_TOKEN" ]; then
     echo -e "${GREEN}✅ 使用环境变量中的 token${NC}"
-    twine upload dist/* --username __token__ --password "$PYPI_API_TOKEN"
+    "$PYTHON_CMD" -m twine upload dist/* --username __token__ --password "$PYPI_API_TOKEN"
 elif [ -f ~/.pypirc ]; then
     echo -e "${GREEN}✅ 使用 ~/.pypirc 配置${NC}"
-    twine upload dist/*
+    "$PYTHON_CMD" -m twine upload dist/*
 else
     echo -e "${RED}❌ 错误: 未找到 PyPI token${NC}"
     echo ""
