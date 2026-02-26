@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from apirun.core.models import CaseModel, Config, ExtractRule, StepDefinition
+from apirun.core.models import CaseModel, Config, DbParams, ExtractRule, StepDefinition
 from apirun.data_driven.driver import get_parameter_sets, run_data_driven
 from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
@@ -88,6 +88,14 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
     if config.environment and config.environment.variables:
         pool.set_environment(config.environment.variables)
     variables = pool.as_dict()
+
+    # RUN-018: 前置 SQL 执行
+    if config.pre_sql:
+        for stmt in config.pre_sql.statements or []:
+            execute_db_step_safe(
+                DbParams(datasource=config.pre_sql.datasource, sql=stmt),
+                variables,
+            )
 
     start_time = datetime.now(timezone.utc)
     steps_result: list[dict[str, Any]] = []
@@ -338,6 +346,15 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
                 **_step_result_base(step, i, step_start, step_end, 0, "error", step_error),
             })
             scenario_status = "error"
+
+    # RUN-019: 后置 SQL 执行（无论成功失败）
+    if config.post_sql:
+        variables = pool.as_dict()
+        for stmt in config.post_sql.statements or []:
+            execute_db_step_safe(
+                DbParams(datasource=config.post_sql.datasource, sql=stmt),
+                variables,
+            )
 
     # RUN-016: 场景整体 status（已在上方循环中维护 scenario_status）
     # RUN-017: summary 断言统计
