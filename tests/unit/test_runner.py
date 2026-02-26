@@ -42,31 +42,33 @@ teststeps:
 
 
 def test_run_case_returns_top_level_keys(minimal_case_path):
-    """run_case 返回结构包含规范要求的顶层字段"""
+    """run_case 返回 ExecutionResult，model_dump 含规范要求的顶层字段"""
     case = load_case(minimal_case_path)
     result = run_case(case)
-    assert "execution_id" in result
-    assert "scenario_id" in result
-    assert "scenario_name" in result
-    assert "project_id" in result
-    assert "status" in result
-    assert "start_time" in result
-    assert "end_time" in result
-    assert "duration" in result
-    assert "summary" in result
-    assert "environment" in result
-    assert "steps" in result
-    assert "data_driven" in result
-    assert "variables" in result
-    assert "logs" in result
-    assert "error" in result
+    data = result.model_dump()
+    assert "execution_id" in data
+    assert "scenario_id" in data
+    assert "scenario_name" in data
+    assert "project_id" in data
+    assert "status" in data
+    assert "start_time" in data
+    assert "end_time" in data
+    assert "duration" in data
+    assert "summary" in data
+    assert "environment" in data
+    assert "steps" in data
+    assert "data_driven" in data
+    assert "variables" in data
+    assert "logs" in data
+    assert "error" in data
 
 
 def test_run_case_summary_structure(minimal_case_path):
     """summary 包含规范要求字段"""
     case = load_case(minimal_case_path)
     result = run_case(case)
-    s = result["summary"]
+    data = result.model_dump()
+    s = data["summary"]
     assert "total_steps" in s
     assert "passed_steps" in s
     assert "failed_steps" in s
@@ -79,8 +81,9 @@ def test_run_case_steps_have_required_fields(minimal_case_path):
     """steps 每项包含 step_index, name, keyword_type, status 等"""
     case = load_case(minimal_case_path)
     result = run_case(case)
-    assert len(result["steps"]) >= 1
-    step = result["steps"][0]
+    data = result.model_dump()
+    assert len(data["steps"]) >= 1
+    step = data["steps"][0]
     assert "step_index" in step
     assert "name" in step
     assert "keyword_type" in step
@@ -91,10 +94,11 @@ def test_run_case_steps_have_required_fields(minimal_case_path):
 
 
 def test_run_case_json_serializable(minimal_case_path):
-    """结果可被 json.dumps 序列化"""
+    """ExecutionResult.model_dump() 可被 json.dumps 序列化"""
     case = load_case(minimal_case_path)
     result = run_case(case)
-    s = json.dumps(result, ensure_ascii=False)
+    data = result.model_dump()
+    s = json.dumps(data, ensure_ascii=False)
     assert len(s) > 0
     back = json.loads(s)
-    assert back["scenario_name"] == result["scenario_name"]
+    assert back["scenario_name"] == result.scenario_name
