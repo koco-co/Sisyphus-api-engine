@@ -1,6 +1,5 @@
 """CLI 入口点 - sisyphus 命令"""
 
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -8,27 +7,25 @@ from typing import Any
 import click
 
 from apirun.core.runner import load_case, run_case
+from apirun.errors import EngineError
+from apirun.result.json_reporter import to_json, to_json_engine_error
 
 
 def _run_single_case(path: str, output_format: str) -> dict[str, Any]:
-    """执行单个 YAML 用例并返回结果."""
+    """执行单个 YAML 用例并返回结果 dict（引擎异常时抛出）。"""
     try:
         case_model = load_case(path)
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError) as e:
         click.echo(str(e), err=True)
         raise
-    except ValueError as e:
-        click.echo(str(e), err=True)
+    except EngineError as e:
+        click.echo(str(e.message), err=True)
         raise
 
-    try:
-        result: dict[str, Any] = run_case(case_model)
-    except Exception as e:  # noqa: BLE001
-        click.echo(f"执行失败: {e}", err=True)
-        raise
+    exec_result = run_case(case_model)
+    result: dict[str, Any] = exec_result.model_dump()
 
     if output_format == "json":
-        # 单用例 json 输出由调用方统一处理
         return result
 
     click.echo(f"执行测试用例: {path}")
@@ -107,8 +104,9 @@ def main(
                 continue
 
         if output_format == "json":
-            click.echo(json.dumps(results, ensure_ascii=False, indent=2))
+            click.echo(to_json(results, ensure_ascii=False, indent=2))
 
+        # CLI-015: 断言失败(status=failed)时 exit 0，仅引擎异常时 exit 1
         if has_error:
             sys.exit(1)
         sys.exit(0)
@@ -117,11 +115,13 @@ def main(
     path = case or ""
     try:
         result = _run_single_case(path, output_format)
+    except (FileNotFoundError, ValueError, EngineError):
+        sys.exit(1)
     except Exception:  # noqa: BLE001
         sys.exit(1)
 
     if output_format == "json":
-        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        click.echo(to_json(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
