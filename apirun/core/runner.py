@@ -9,10 +9,11 @@ import yaml
 from pydantic import ValidationError
 
 from apirun.core.models import CaseModel, Config, ExtractRule, StepDefinition
+from apirun.data_driven.driver import get_parameter_sets, run_data_driven
 from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
-from apirun.result.models import ExecutionResult
+from apirun.result.models import DataDrivenResult, ExecutionResult, ExecutionSummary
 from apirun.utils.variable_pool import VariablePool
 from apirun.validation.validator import run_assertion
 
@@ -61,16 +62,29 @@ def _step_result_base(
     }
 
 
-def run_case(case: CaseModel) -> ExecutionResult:
-    """执行用例，返回 ExecutionResult 模型（RUN-008～RUN-028）。"""
+def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) -> ExecutionResult:
+    """执行用例，返回 ExecutionResult 模型。支持数据驱动注入 data_driven_vars（RUN-020～RUN-023）。"""
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
     config: Config = case.config
     base_url = ""
     if config.environment:
         base_url = config.environment.base_url or ""
 
+    # 数据驱动：无 data_driven_vars 且 case 配置了 ddts 或 csv_datasource 时执行多轮（RUN-020～RUN-023）
+    if data_driven_vars is None:
+        enabled, source, dataset_name, param_list = get_parameter_sets(case)
+        if enabled and param_list:
+            ddr, first_result = run_data_driven(case, lambda params: run_case(case, data_driven_vars=params))
+            if first_result is not None:
+                d = first_result.model_dump()
+                d["data_driven"] = ddr.model_dump()
+                d["summary"] = {**d["summary"], "total_data_driven_runs": ddr.total_runs}
+                return ExecutionResult.model_validate(d)
+
     pool = VariablePool()
     pool.set_scenario(config.variables or {})
+    if data_driven_vars:
+        pool.set_data_driven(data_driven_vars)
     if config.environment and config.environment.variables:
         pool.set_environment(config.environment.variables)
     variables = pool.as_dict()
