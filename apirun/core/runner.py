@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from apirun.core.models import CaseModel, Config, DbParams, ExtractRule, StepDefinition
 from apirun.data_driven.driver import get_parameter_sets, run_data_driven
+from apirun.executor.custom import execute_custom_step_safe
 from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
@@ -333,12 +334,43 @@ def run_case(
                     "assertion_results": assertion_results if step.db.validate and not step_error else None,
                 })
 
-            elif step.keyword_type == "custom":
-                # RUN-012: custom 步骤暂未实现，记为 skipped
-                step_end = datetime.now(timezone.utc)
-                steps_result.append(
-                    _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
+            elif step.keyword_type == "custom" and step.custom:
+                # RUN-012: custom 步骤（CST-001～CST-007）
+                variables = pool.as_dict()
+                custom_out = execute_custom_step_safe(
+                    step.keyword_name or "",
+                    step.custom,
+                    variables,
                 )
+                custom_detail = custom_out.get("custom_detail")
+                step_error = custom_out.get("error")
+                return_value = custom_out.get("return_value")
+                if step_error:
+                    step_status = "error"
+                    duration_custom = (custom_detail or {}).get("execution_time", 0)
+                else:
+                    step_status = "passed"
+                    duration_custom = (custom_detail or {}).get("execution_time", 0)
+                    if step.custom.extract and return_value is not None:
+                        fake_response = {"body": return_value, "headers": {}, "cookies": {}}
+                        ex_results = run_extract_batch(
+                            step.custom.extract, fake_response, variables, db_rows=None
+                        )
+                        extract_results = [r.model_dump() for r in ex_results]
+                        total_extractions += len(ex_results)
+                        if any(r.status == "failed" for r in ex_results):
+                            step_status = "failed"
+                        for er in ex_results:
+                            if er.status == "success" and er.value is not None:
+                                pool.set(er.name, er.value, scope=er.scope)
+                step_end = datetime.now(timezone.utc)
+                steps_result.append({
+                    **_step_result_base(
+                        step, i, step_start, step_end, duration_custom, step_status, step_error
+                    ),
+                    "custom_detail": custom_detail,
+                    "extract_results": extract_results if step.custom.extract and not step_error else None,
+                })
 
             else:
                 step_end = datetime.now(timezone.utc)
