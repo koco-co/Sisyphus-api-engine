@@ -8,7 +8,8 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from apirun.core.models import CaseModel, Config, StepDefinition
+from apirun.core.models import CaseModel, Config, ExtractRule, StepDefinition
+from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
 from apirun.result.models import ExecutionResult
@@ -233,12 +234,67 @@ def run_case(case: CaseModel) -> ExecutionResult:
                     "extract_results": extract_results,
                 })
 
-            elif step.keyword_type == "db":
-                # RUN-011: db 步骤暂未实现，记为 skipped
+            elif step.keyword_type == "db" and step.db:
+                # RUN-011: db 步骤（DB-001～DB-011）
+                extract_results = None
+                assertion_results = None
+                variables = pool.as_dict()
+                db_out = execute_db_step_safe(step.db, variables)
+                db_detail = db_out.get("db_detail")
+                db_rows = db_out.get("rows") or []
+                step_error = db_out.get("error")
+                if step_error:
+                    step_status = "error"
+                else:
+                    # DB-010/011: db.extract 与 db.validate
+                    if step.db.extract:
+                        rules = [
+                            ExtractRule(
+                                name=r.name,
+                                type="db_result",
+                                expression=r.expression,
+                                scope=r.scope,
+                                default=r.default,
+                            )
+                            for r in step.db.extract
+                        ]
+                        ex_results = run_extract_batch(rules, variables=variables, db_rows=db_rows)
+                        extract_results = [r.model_dump() for r in ex_results]
+                        total_extractions += len(ex_results)
+                        for er in ex_results:
+                            if er.status == "success" and er.value is not None:
+                                pool.set(er.name, er.value, scope=er.scope)
+                        if any(r.status == "failed" for r in ex_results):
+                            step_status = "failed"
+                    if step.db.validate:
+                        variables = pool.as_dict()
+                        ar_list = []
+                        for vr in step.db.validate:
+                            ar = run_assertion(
+                                target="db_result",
+                                comparator=vr.comparator,
+                                expected=vr.expected,
+                                expression=vr.expression,
+                                message=vr.message,
+                                variables=variables,
+                                db_rows=db_rows,
+                            )
+                            ar_list.append(ar.model_dump())
+                            total_assertions += 1
+                            if ar.status == "passed":
+                                passed_assertions += 1
+                            else:
+                                failed_assertions += 1
+                                step_status = "failed"
+                        assertion_results = ar_list
                 step_end = datetime.now(timezone.utc)
-                steps_result.append(
-                    _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
-                )
+                duration_db = (db_detail or {}).get("execution_time", 0)
+                steps_result.append({
+                    **_step_result_base(step, i, step_start, step_end, duration_db, step_status, step_error),
+                    "db_detail": db_detail,
+                    "extract_results": extract_results if step.db.extract and not step_error else None,
+                    "assertion_results": assertion_results if step.db.validate and not step_error else None,
+                })
 
             elif step.keyword_type == "custom":
                 # RUN-012: custom 步骤暂未实现，记为 skipped
@@ -296,7 +352,7 @@ def run_case(case: CaseModel) -> ExecutionResult:
         "failed_assertions": failed_assertions,
         "pass_rate": pass_rate,
         "total_requests": total_requests,
-        "total_db_operations": 0,
+        "total_db_operations": sum(1 for s in steps_result if s.get("db_detail") is not None),
         "total_extractions": total_extractions,
         "avg_response_time": avg_rt,
         "max_response_time": max_rt,
