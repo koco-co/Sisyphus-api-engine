@@ -9,7 +9,7 @@ venv/
 env/
 
 # 编辑器 / IDE
-.vscode/
+# .vscode/
 .idea/
 *.code-workspace
 

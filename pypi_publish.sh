@@ -28,16 +28,21 @@ echo -e "${BLUE}   版本: ${VERSION}${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# 检查必要工具
+# 选择 Python 命令（python / python3）
+PYTHON_CMD=""
 echo -e "${YELLOW}⏳ 检查必要工具...${NC}"
-if ! command -v python &> /dev/null; then
-    echo -e "${RED}❌ 错误: 未找到 Python${NC}"
+if command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+elif command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+else
+    echo -e "${RED}❌ 错误: 未找到 Python（python 或 python3）${NC}"
     exit 1
 fi
 
 if ! command -v twine &> /dev/null; then
     echo -e "${YELLOW}⚠️  警告: 未找到 twine，正在安装...${NC}"
-    pip install twine
+    "$PYTHON_CMD" -m pip install twine
 fi
 
 echo -e "${GREEN}✅ 工具检查完成${NC}"
@@ -96,7 +101,7 @@ echo ""
 
 # 构建包
 echo -e "${YELLOW}🔨 构建发布包...${NC}"
-python -m build
+"$PYTHON_CMD" -m build
 echo -e "${GREEN}✅ 构建完成${NC}"
 echo ""
 
