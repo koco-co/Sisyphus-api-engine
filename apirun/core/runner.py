@@ -13,6 +13,7 @@ from apirun.data_driven.driver import get_parameter_sets, run_data_driven
 from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
+from apirun.result.log_collector import LogCollector
 from apirun.result.models import DataDrivenResult, ExecutionResult, ExecutionSummary
 from apirun.utils.variable_pool import VariablePool
 from apirun.validation.validator import run_assertion
@@ -62,8 +63,12 @@ def _step_result_base(
     }
 
 
-def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) -> ExecutionResult:
-    """执行用例，返回 ExecutionResult 模型。支持数据驱动注入 data_driven_vars（RUN-020～RUN-023）。"""
+def run_case(
+    case: CaseModel,
+    data_driven_vars: dict[str, Any] | None = None,
+    verbose: bool = False,
+) -> ExecutionResult:
+    """执行用例，返回 ExecutionResult 模型。支持数据驱动与日志收集（RUN-020～RUN-026）。"""
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
     config: Config = case.config
     base_url = ""
@@ -74,7 +79,10 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
     if data_driven_vars is None:
         enabled, source, dataset_name, param_list = get_parameter_sets(case)
         if enabled and param_list:
-            ddr, first_result = run_data_driven(case, lambda params: run_case(case, data_driven_vars=params))
+            ddr, first_result = run_data_driven(
+                case,
+                lambda params: run_case(case, data_driven_vars=params, verbose=verbose),
+            )
             if first_result is not None:
                 d = first_result.model_dump()
                 d["data_driven"] = ddr.model_dump()
@@ -88,6 +96,9 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
     if config.environment and config.environment.variables:
         pool.set_environment(config.environment.variables)
     variables = pool.as_dict()
+
+    logs = LogCollector(verbose=verbose)
+    logs.info(f"开始执行场景: {config.name}")
 
     # RUN-018: 前置 SQL 执行
     if config.pre_sql:
@@ -118,9 +129,11 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
         response_detail: dict[str, Any] | None = None
 
         try:
+            logs.info(f"[步骤 {i}] 开始执行: {step.name}", step_index=i)
             if not step.enabled:
                 # RUN-008: enabled=false 时生成 skipped StepResult
                 step_end = datetime.now(timezone.utc)
+                logs.info(f"[步骤 {i}] 完成: skipped", step_index=i)
                 steps_result.append(
                     _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
                 )
@@ -130,6 +143,8 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
                 # request 步骤
                 total_requests += 1
                 variables = pool.as_dict()
+                req_url = (base_url.rstrip("/") + "/" + step.request.url.lstrip("/")) if base_url and not step.request.url.startswith(("http://", "https://")) else step.request.url
+                logs.debug(f"[步骤 {i}] 发送 {step.request.method or 'GET'} 请求 → {req_url}", step_index=i)
                 out = execute_request_step(step.request, base_url, variables)
                 rt = out.get("response_time") or 0
                 response_times.append(rt)
@@ -331,6 +346,7 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
                     _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
                 )
 
+            logs.info(f"[步骤 {i}] 完成: {step_status}", step_index=i)
             if step_status == "failed":
                 scenario_status = "failed"
 
@@ -346,6 +362,7 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
                 **_step_result_base(step, i, step_start, step_end, 0, "error", step_error),
             })
             scenario_status = "error"
+            logs.info(f"[步骤 {i}] 完成: error", step_index=i)
 
     # RUN-019: 后置 SQL 执行（无论成功失败）
     if config.post_sql:
@@ -356,10 +373,12 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
                 variables,
             )
 
-    # RUN-016: 场景整体 status（已在上方循环中维护 scenario_status）
-    # RUN-017: summary 断言统计
     end_time = datetime.now(timezone.utc)
     duration_ms = int((end_time - start_time).total_seconds() * 1000)
+    logs.info(f"场景执行完毕: {scenario_status} ({duration_ms}ms)")
+
+    # RUN-016: 场景整体 status（已在上方循环中维护 scenario_status）
+    # RUN-017: summary 断言统计
     passed_steps = sum(1 for s in steps_result if s["status"] == "passed")
     failed_steps = sum(1 for s in steps_result if s["status"] == "failed")
     error_steps = sum(1 for s in steps_result if s["status"] == "error")
@@ -414,7 +433,7 @@ def run_case(case: CaseModel, data_driven_vars: dict[str, Any] | None = None) ->
         "steps": steps_result,
         "data_driven": None,
         "variables": pool.snapshot(),
-        "logs": [],
+        "logs": logs.to_list(),
         "error": None,
     }
     return ExecutionResult.model_validate(result_dict)
