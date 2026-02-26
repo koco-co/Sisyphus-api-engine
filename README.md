@@ -1,93 +1,135 @@
-# sisyphus-api-engine
+# Sisyphus-api-engine
 
-YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供**核心执行器**能力。
+[![Python](https://img.shields.io/badge/python-3.12%2B-brightgreen)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/status-core--engine--beta-blue)](./CHANGELOG.md)
 
-当前仓库是面向 Python 3.12+ 的「轻量核心版」，围绕 YAML → Pydantic 模型 → 场景运行器 → JSON 输出这一主链路进行重构与简化。
+YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供 **核心执行器** 能力。  
+当前仓库是面向 Python 3.12+ 的「轻量核心版」，聚焦：
 
----
+- YAML 用例 → Pydantic 数据模型
+- 场景运行器（Runner）
+- HTTP 请求执行
+- JSON 结果输出（对齐内部输出规范）
 
-## 1. 技术栈与约束
-
-- Python: **3.12+**（推荐 3.14）
-- 包管理器: **uv**
-- 代码风格: Google Python Style，**全中文注释**
-- 代码质量: **Ruff**（格式化 + 静态检查）、**Pyright**（类型检查）
-- 测试框架: **pytest**
-
-约束与需求文档保持一致，详细见 `docs/Sisyphus-api-engine需求文档.md` 与 `docs/开发任务清单.md`。
-
----
-
-## 2. 项目结构
-
-```text
-Sisyphus-api-engine/
-├── .sisyphus/              # 统一环境配置（.sisyphus/config.yaml）
-├── apirun/                 # 主 Python 包
-│   ├── __init__.py         # 导出 __version__、核心对外接口（预留）
-│   ├── cli.py              # CLI 入口 (sisyphus 命令)
-│   ├── core/               # 核心数据模型 & 场景运行器
-│   │   ├── models.py       # CaseModel / Config / StepDefinition 等
-│   │   └── runner.py       # 场景运行器：加载 YAML + 顺序执行步骤
-│   ├── parser/             # YAML 解析器（预留）
-│   ├── executor/           # 执行器
-│   │   └── request.py      # HTTP 请求执行器（requests）
-│   ├── validation/         # 断言引擎（预留）
-│   ├── extractor/          # 变量提取器（预留）
-│   ├── data_driven/        # 数据驱动（预留）
-│   ├── result/             # 结果收集与输出（预留）
-│   ├── websocket/          # WebSocket 推送（预留）
-│   └── utils/              # 内置函数与变量渲染
-├── docs/                   # 需求文档 / 输入输出协议 / 开发任务清单
-├── tests/
-│   ├── unit/               # Python 单元测试
-│   └── yaml/               # YAML 用例（通过 CLI 执行）
-├── CHANGELOG.md
-├── pyproject.toml
-├── pypi_publish.sh         # PyPI 发布脚本
-└── uv.lock                 # uv 生成的锁文件
-```
+> 完整功能版（含 Mock、WebSocket、多格式报告等）请参考已发布的 PyPI 包  
+> [Sisyphus-api-engine](https://pypi.org/project/Sisyphus-api-engine/)。
 
 ---
 
-## 3. 安装与环境
+## 目录
 
-### 3.1 使用 uv（推荐）
+- [Sisyphus-api-engine](#sisyphus-api-engine)
+  - [目录](#目录)
+  - [简介](#简介)
+  - [特性概览](#特性概览)
+  - [技术栈与约束](#技术栈与约束)
+  - [安装](#安装)
+    - [使用 uv（推荐）](#使用-uv推荐)
+    - [使用 pip](#使用-pip)
+  - [快速开始](#快速开始)
+    - [编写最小 YAML 用例](#编写最小-yaml-用例)
+    - [通过 CLI 执行](#通过-cli-执行)
+  - [配置管理（.sisyphus）](#配置管理sisyphus)
+  - [项目结构](#项目结构)
+  - [运行与调试](#运行与调试)
+    - [单元测试](#单元测试)
+    - [代码质量与类型检查](#代码质量与类型检查)
+  - [版本与发布策略](#版本与发布策略)
+  - [开发规范](#开发规范)
+  - [关联文档](#关联文档)
+  - [许可证](#许可证)
+
+---
+
+## 简介
+
+`Sisyphus-api-engine` 是 Sisyphus-X 自动化测试管理平台的 **核心执行器**：
+
+- 解析 YAML 格式的接口测试用例
+- 按步骤执行 HTTP 请求
+- 组合变量系统与模板渲染
+- 输出标准化 JSON 结果给平台消费
+
+本仓库对应的是「核心执行器重构线」，优先保证核心链路稳定：
+
+> YAML → Pydantic 模型 → 场景运行器 → HTTP 请求 → JSON 输出
+
+高级特性（数据库、数据驱动、断言引擎、WebSocket 推送等）会按照内部开发任务清单逐步补齐。
+
+---
+
+## 特性概览
+
+- **YAML 驱动**：用例以 YAML 描述，结构清晰、易读易维护
+- **强类型模型**：基于 Pydantic v2 构建核心数据模型，保证输入合法性
+- **变量系统**：
+  - 内置函数（随机串、时间戳等），见 `apirun/utils/functions.py`
+  - 递归模板渲染，见 `apirun/utils/variables.py`
+- **HTTP 请求执行**：
+  - 基于 `requests`，支持常见 HTTP 方法
+  - 支持 base_url + 相对路径拼接
+  - 支持 URL / headers / params / body 的变量渲染
+- **JSON 输出**：
+  - 执行结果统一输出为 JSON
+  - 输出结构与内部《JSON 输出规范》文档对齐（逐步完善中）
+
+---
+
+## 技术栈与约束
+
+- **语言**：Python **3.12+**
+- **包管理器**：`uv`
+- **代码风格**：Google Python Style，**注释统一使用中文**
+- **静态检查**：`Ruff` + `Pyright`
+- **测试框架**：`pytest`
+- **构建系统**：`hatchling`（由 `pyproject.toml` 管理）
+
+详细技术约束与架构说明参见：
+
+- `docs/Sisyphus-api-engine需求文档.md`
+- `docs/开发任务清单.md`
+
+---
+
+## 安装
+
+### 使用 uv（推荐）
 
 ```bash
-# 创建虚拟环境（Python 3.12+）
+# 1. 创建虚拟环境（Python 3.12+）
 uv venv -p 3.12 .venv
-source .venv/bin/activate  # macOS/Linux
+source .venv/bin/activate  # macOS / Linux
 
-# 同步依赖
+# 2. 安装依赖
 uv sync
 
-# 开发模式安装（包含 dev 依赖）
+# 或开发模式安装（包含 dev 依赖）
 uv pip install -e ".[dev]"
 ```
 
-### 3.2 使用 pip
+### 使用 pip
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
+source .venv/bin/activate  # macOS / Linux
 
 pip install -e ".[dev]"
 ```
 
-> 提示：`pyproject.toml` 中 `requires-python = ">=3.12"`，低版本 Python 不受支持。
+> `pyproject.toml` 中 `requires-python = ">=3.12"`，低于 3.12 的 Python 版本不支持。
 
 ---
 
-## 4. 快速开始（当前能力）
+## 快速开始
 
-> 当前核心能力：**YAML 输入模型 + 变量系统 + HTTP 请求执行 + JSON 输出**。  
-> 数据库 / WebSocket / 多格式报告等高级能力按开发任务清单逐步补齐。
+> 当前核心能力为 **HTTP 请求 + JSON 输出**，高级特性按任务清单逐步实现。
 
-### 4.1 编写最小 YAML 用例
+### 编写最小 YAML 用例
+
+示例：`tests/yaml/simple_get.yaml`（可自行创建）：
 
 ```yaml
-# tests/yaml/simple_get.yaml
 config:
   name: "简单 GET 示例"
   environment:
@@ -102,95 +144,155 @@ teststeps:
       url: "/get"
 ```
 
-### 4.2 通过 CLI 执行
+### 通过 CLI 执行
 
 ```bash
-# 执行单个用例
+# 执行单个 YAML 用例，并输出 JSON
 sisyphus --case tests/yaml/simple_get.yaml -O json
 
 # 批量执行目录下所有 YAML 用例
 sisyphus --cases tests/yaml/ -O json
 ```
 
-引擎会按照 `docs/Sisyphus-api-engine JSON 输出规范.md` 定义的结构返回 JSON（当前实现为最小可用结构，后续会向规范靠拢）。
+> CLI 的参数设计与完整引擎版本保持一致，详细说明见 `apirun/cli.py` 以及需求文档中「CLI 命令行接口」章节。
 
 ---
 
-## 5. 开发与测试
+## 配置管理（.sisyphus）
 
-### 5.1 开发工作流
+项目根目录下的 `.sisyphus/config.yaml` 用于统一环境配置：
+
+```yaml
+profiles:
+  dev:
+    base_url: "http://dev.example.com"
+    variables:
+      api_key: "dev-key-please-change"
+
+  prod:
+    base_url: "https://api.example.com"
+    variables:
+      api_key: "prod-key-please-change"
+
+active_profile: "dev"
+
+variables:
+  common_headers:
+    User-Agent: "sisyphus-api-engine/0.2.0"
+```
+
+- 用例中可通过 `config.profiles.{profile}.base_url` 访问环境配置
+- `active_profile` 控制默认环境
+- `variables` 下可定义公共变量/头信息
+
+---
+
+## 项目结构
+
+```text
+Sisyphus-api-engine/
+├── .sisyphus/              # 统一环境配置
+│   └── config.yaml
+├── apirun/                 # 主 Python 包
+│   ├── __init__.py         # 导出 __version__ / 公共 API（预留）
+│   ├── cli.py              # CLI 入口 (sisyphus)
+│   ├── core/
+│   │   ├── models.py       # CaseModel / Config / StepDefinition 等
+│   │   └── runner.py       # 场景运行器
+│   ├── executor/
+│   │   └── request.py      # HTTP 请求执行器
+│   ├── utils/
+│   │   ├── functions.py    # 内置函数
+│   │   └── variables.py    # 变量渲染引擎
+│   ├── parser/             # YAML 解析（预留）
+│   ├── validation/         # 断言引擎（预留）
+│   ├── extractor/          # 变量提取器（预留）
+│   ├── data_driven/        # 数据驱动（预留）
+│   ├── result/             # 结果模型与导出（预留）
+│   └── websocket/          # WebSocket 推送（预留）
+├── docs/                   # 需求 & 规范 & 任务清单
+├── tests/
+│   ├── unit/               # Python 单元测试（pytest）
+│   └── yaml/               # YAML 集成用例（通过 CLI 执行）
+├── CHANGELOG.md
+├── LICENSE
+├── MANIFEST.in
+├── pyproject.toml
+├── pypi_publish.sh         # PyPI 发布脚本
+└── uv.lock
+```
+
+---
+
+## 运行与调试
+
+### 单元测试
 
 ```bash
-# 1. 安装依赖
-uv sync
-
-# 2. 运行单元测试
+# 运行所有单元测试
 uv run python -m pytest tests/unit -v
+```
 
-# 3. 代码格式化 & 静态检查
+### 代码质量与类型检查
+
+```bash
+# 代码格式化（Ruff）
 uv run ruff format .
+
+# 静态检查（Ruff）
 uv run ruff check .
 
-# 4. 类型检查（Pyright）
+# 类型检查（Pyright）
 uv run pyright
 ```
 
-> 建议开启 `pre-commit`：
->
-> ```bash
-> pre-commit install
-> ```
-
-### 5.2 YAML 用例回归
+> 推荐安装 `pre-commit` 钩子（已在 `.pre-commit-config.yaml` 中配置）：
 
 ```bash
-# 执行内置 YAML 回归用例
-sisyphus --cases tests/yaml/
+pre-commit install
 ```
 
 ---
 
-## 6. 需求与任务跟踪
+## 版本与发布策略
+
+> 当前仓库版本号仅针对「核心执行器重构线」，与历史完整引擎版本解耦。
+
+- **内部版本（本仓库）**
+  - 当前版本：`0.2.0`
+  - 初始版本：`0.1.0`（从 Sisyphus-X 主项目中拆分）
+  - 版本变更记录：见 `CHANGELOG.md`
+- **PyPI 已发布版本（完整引擎）**
+  - 包名：`Sisyphus-api-engine`
+  - 最新稳定版：`2.1.0`
+  - 页面：<https://pypi.org/project/Sisyphus-api-engine/>
+
+未来规划：
+
+- 先在本仓库完成核心执行器的重构与简化
+- 与需求文档和任务清单对齐后，再规划下一代主线版本（例如 3.x）
+
+---
+
+## 开发规范
+
+- 代码风格：Google Python Style
+- 注释：统一使用中文，解释「意图」而非「语法」
+- 类型：尽量补全类型注解，保持 Pyright 通过
+- 测试：新增/修改功能时应补充或更新 `tests/unit` 与 `tests/yaml` 中的用例
+- 提交信息：建议使用前缀（如 `feat:`, `fix:`, `chore:`, `docs:`, `refactor:` 等）
+
+---
+
+## 关联文档
 
 - 需求规格说明：`docs/Sisyphus-api-engine需求文档.md`
 - YAML 输入规范：`docs/Sisyphus-api-engine YAML 输入规范.md`
 - JSON 输出规范：`docs/Sisyphus-api-engine JSON 输出规范.md`
 - 开发任务清单：`docs/开发任务清单.md`
 
-`docs/开发任务清单.md` 中维护了详细的功能项与完成度统计（当前整体约 37%），README 仅做高层概览。
-
 ---
 
-## 7. 版本与发布策略
+## 许可证
 
-### 7.1 本仓库（核心执行器重构线）
-
-- 当前内部版本：**0.2.0**
-- 初始版本：0.1.0（从 Sisyphus-X 主项目中拆分）
-- 版本变更记录：详见 `CHANGELOG.md`
-
-当前版本尚处于核心能力搭建阶段，主要面向 **Sisyphus-X 平台内部集成与验证**，不直接对应已发布的 PyPI 版本。
-
-### 7.2 已发布 PyPI 包（历史稳定版）
-
-- PyPI 包名：`Sisyphus-api-engine`
-- 最新稳定版本：**2.1.0**
-- PyPI 页面：`https://pypi.org/project/Sisyphus-api-engine/`
-
-2.x 系列为「完整功能版」引擎，当前仓库则是面向未来 3.x 的**核心执行器重构线**。两者的功能覆盖范围不同，请以各自版本的 README 与 CHANGELOG 为准。
-
----
-
-## 8. 贡献指南（简要）
-
-1. Fork 仓库并创建特性分支：
-
-   ```bash
-   git checkout -b feature/my-feature
-   ```
-
-2. 按「开发与测试」章节运行格式化、检查与测试。
-3. 提交代码并创建 Pull Request，说明变更点与对应的需求/任务编号（如 `MDL-001`、`RUN-006`）。
-
-更详细的贡献规范后续会补充到 `docs/开发指南.md` 中。
-
+本项目基于 [MIT License](LICENSE) 开源。欢迎在遵守协议的前提下自由使用、修改和分发。
