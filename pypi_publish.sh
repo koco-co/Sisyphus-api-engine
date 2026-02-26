@@ -104,9 +104,13 @@ else
 fi
 echo ""
 
-# 构建包
+# 构建包（优先用 uv 以使用项目环境中的 build）
 echo -e "${YELLOW}🔨 构建发布包...${NC}"
-"$PYTHON_CMD" -m build
+if command -v uv &> /dev/null; then
+    uv run python -m build
+else
+    "$PYTHON_CMD" -m build
+fi
 echo -e "${GREEN}✅ 构建完成${NC}"
 echo ""
 
