@@ -1,0 +1,18 @@
+# 示例 1：最简 GET 请求 + status_code 断言
+# 运行: sisyphus --case examples/01_simple_get.yaml -O text
+config:
+  name: "简单 GET 示例"
+  project_id: "examples"
+  scenario_id: "simple-get"
+
+teststeps:
+  - name: "请求 httpbin/get"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "https://httpbin.org/get"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

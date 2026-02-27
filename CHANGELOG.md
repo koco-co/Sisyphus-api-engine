@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.1] - 2026-02-27
+
+### 新增
+
+- 报告：Allure 结果文件生成（RPT-008～010），步骤与断言映射；HTML 自包含报告（RPT-011～012）。
+- CLI：`-O allure` / `-O html` 集成，支持 `--allure-dir`、`--html-dir`（CLI-013～014）。
+- WebSocket：EventPublisher 协议与 NoOp/WsPublisher 实现，runner 可选注入（WS-001～004）。
+- 发布准备：CHANGELOG 维护、LICENSE(MIT)、版本与 pyproject 同步、examples 示例用例（PUB-001～005）。
+
+### 变更
+
+- 无破坏性变更。
+
 ## [2.2.0] - 2026-02-26
 
 ### 变更

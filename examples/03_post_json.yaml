@@ -1,0 +1,25 @@
+# 示例 3：POST JSON 与 JSON 断言
+# 运行: sisyphus --case examples/03_post_json.yaml -O text
+config:
+  name: "POST JSON 示例"
+  project_id: "examples"
+  scenario_id: "post-json"
+
+teststeps:
+  - name: "POST JSON 到 httpbin/post"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "POST"
+      url: "https://httpbin.org/post"
+      json:
+        name: "sisyphus"
+        version: "2.2"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+      - target: "json"
+        expression: "$.json.name"
+        comparator: "eq"
+        expected: "sisyphus"

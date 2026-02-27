@@ -1,0 +1,20 @@
+# 示例 2：带查询参数与变量
+# 运行: sisyphus --case examples/02_get_with_query.yaml -O text
+config:
+  name: "带查询参数的 GET"
+  project_id: "examples"
+  scenario_id: "get-query"
+  variables:
+    q: "hello"
+
+teststeps:
+  - name: "GET 带 query"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "https://httpbin.org/get?key={{q}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
