@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.2] - 2026-02-27
+
+### 新增
+
+- HTTP 执行器：`RequestStepParams.files` 支持 MinIO 路径，自动通过 HTTP 下载为临时文件并作为 multipart 上传（REQ-018）。
+- CLI：在 `-O json` 模式下，针对 YAML 解析与校验等引擎级错误输出符合《JSON 输出规范》的 `status=error` 顶层结构，复用 `to_json_engine_error`（ERR-004, RPT-004）。
+
+### 变更
+
+- 错误处理：`apirun.core.runner.load_case` 统一委托 `parser.yaml_parser.parse_yaml`，对外始终抛出 `EngineError`，测试用例同步对齐错误码断言。
+- 发布脚本：`pypi_publish.sh` 新增 `PYPI_REPOSITORY` / `PYPI_REPOSITORY_URL` 支持，可方便地将构建包发布到 TestPyPI 进行流程验证，并在 README 中补充了发布流程示例（PUB-002）。
+
 ## [2.2.1] - 2026-02-27
 
 ### 新增
