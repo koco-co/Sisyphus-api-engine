@@ -329,3 +329,38 @@ git push origin v2.2.2
 ## 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。欢迎在遵守协议的前提下自由使用、修改和分发。
+
+## 📖 开发者快速开始
+
+### 方式一：克隆项目
+
+```bash
+# 1. 克隆并安装
+git clone https://github.com/koco-co/Sisyphus-api-engine.git
+cd Sisyphus-api-engine
+uv venv .venv
+source .venv/bin/activate
+uv sync
+
+# 2. 运行测试（两种方式任选）
+
+# 方式 A：Python 模块方式（推荐）
+python -m apirun.cli --cases tests/yaml/ -O text
+
+# 方式 B：使用修复脚本后使用命令
+cat > .venv/bin/sisyphus-api-engine << 'SCRIPT'
+#!/bin/bash
+export PYTHONPATH="$(pwd):${PYTHONPATH}"
+exec "$(dirname "$0")/python3" -m apirun.cli "$@"
+SCRIPT
+chmod +x .venv/bin/sisyphus-api-engine
+sisyphus-api-engine --cases tests/yaml/ -O text
+```
+
+### 方式二：PyPI 安装
+
+```bash
+uv pip install sisyphus-api-engine
+sisyphus-api-engine --cases tests/yaml/ -O text
+```
+

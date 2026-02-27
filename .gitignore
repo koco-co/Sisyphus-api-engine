@@ -1,20 +1,25 @@
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+.Python
 
 # 虚拟环境
 .venv/
 venv/
 env/
+ENV/
 
 # 编辑器 / IDE
-# .vscode/
+.vscode/
 .idea/
 *.code-workspace
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
 # 构建产物
 build/
@@ -26,11 +31,14 @@ dist/
 .coverage
 .coverage.*
 htmlcov/
+.tox/
 
 # Ruff / Pyright / 其他缓存
 .ruff_cache/
 .pyright/
 .mypy_cache/
+.dmypy.json
+dmypy.json
 .cache/
 
 # 日志
@@ -47,3 +55,5 @@ html-out/
 *.swo
 *~
 
+# 自动修复脚本（本地使用）
+post-sync.sh
