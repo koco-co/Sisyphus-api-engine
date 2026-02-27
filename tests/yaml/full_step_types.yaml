@@ -32,7 +32,7 @@ teststeps:
       - name: "first_user_id"
         type: "json"
         source_variable: "last_response"
-        expression: "$.data.items[0].id"
+        expression: "$.data[0].id"
         scope: "global"
 
   - name: "数据库验证用户记录"

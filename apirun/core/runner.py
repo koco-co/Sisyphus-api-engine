@@ -171,6 +171,9 @@ def run_case(
                 if out.get("error"):
                     step_status = "failed"
                 else:
+                    # 自动将 last_response 存储到变量池，供后续 extract/assertion 步骤使用
+                    pool.set("last_response", out, scope="global")
+
                     # RUN-013: 内联 extract
                     if step.extract:
                         ex_results = run_extract_batch(step.extract, out, variables, db_rows=None)
