@@ -155,16 +155,26 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 echo ""
 
-# 发布到 PyPI
+# 发布到 PyPI（或 TestPyPI）
 echo -e "${YELLOW}📤 发布到 PyPI...${NC}"
+
+# 可选仓库配置：
+# - 设置 PYPI_REPOSITORY=testpypi 使用 ~/.pypirc 中的 testpypi 配置
+# - 或设置 PYPI_REPOSITORY_URL=https://test.pypi.org/legacy/ 直接指定仓库地址
+REPO_ARGS=()
+if [ -n "$PYPI_REPOSITORY_URL" ]; then
+    REPO_ARGS+=(--repository-url "$PYPI_REPOSITORY_URL")
+elif [ -n "$PYPI_REPOSITORY" ]; then
+    REPO_ARGS+=(--repository "$PYPI_REPOSITORY")
+fi
 
 # 检查 token（使用 python -m twine 避免 PATH 中无 twine 时失败）
 if [ -n "$PYPI_API_TOKEN" ]; then
     echo -e "${GREEN}✅ 使用环境变量中的 token${NC}"
-    "$PYTHON_CMD" -m twine upload dist/* --username __token__ --password "$PYPI_API_TOKEN"
+    "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/* --username __token__ --password "$PYPI_API_TOKEN"
 elif [ -f ~/.pypirc ]; then
     echo -e "${GREEN}✅ 使用 ~/.pypirc 配置${NC}"
-    "$PYTHON_CMD" -m twine upload dist/*
+    "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/*
 else
     echo -e "${RED}❌ 错误: 未找到 PyPI token${NC}"
     echo ""
