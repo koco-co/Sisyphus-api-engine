@@ -1,6 +1,6 @@
 [project]
 name = "sisyphus-api-engine"
-version = "2.2.0"
+version = "2.2.2"
 description = "Sisyphus-X 接口自动化核心执行器 - YAML 驱动的 API 测试引擎"
 readme = "README.md"
 requires-python = ">=3.12"

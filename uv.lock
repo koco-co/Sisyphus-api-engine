@@ -662,7 +662,7 @@ wheels = [
 
 [[package]]
 name = "sisyphus-api-engine"
-version = "2.2.0"
+version = "2.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
