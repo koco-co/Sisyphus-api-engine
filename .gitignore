@@ -54,6 +54,3 @@ html-out/
 *.swp
 *.swo
 *~
-
-# 自动修复脚本（本地使用）
-post-sync.sh

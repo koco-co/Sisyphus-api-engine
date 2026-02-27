@@ -1,11 +1,17 @@
 {
   "cSpell.words": [
+    "addopts",
     "apirun",
+    "isort",
+    "psycopg",
     "pydantic",
+    "pymysql",
     "pypi",
     "pypirc",
     "pyproject",
     "pytest",
+    "pyyaml",
+    "testpaths",
     "testpypi",
     "teststeps"
   ]
