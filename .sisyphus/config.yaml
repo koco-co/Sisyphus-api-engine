@@ -1,6 +1,6 @@
 profiles:
   dev:
-    base_url: "http://dev.example.com"
+    base_url: "http://localhost:8888"
     variables:
       api_key: "dev-key-please-change"
 
@@ -8,6 +8,12 @@ profiles:
     base_url: "https://api.example.com"
     variables:
       api_key: "prod-key-please-change"
+
+  # 原始配置（用于真实环境测试）
+  dev-remote:
+    base_url: "http://dev.example.com"
+    variables:
+      api_key: "dev-key-please-change"
 
 active_profile: "dev"
 
