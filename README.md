@@ -148,10 +148,10 @@ teststeps:
 
 ```bash
 # 执行单个 YAML 用例，并输出 JSON
-sisyphus --case tests/yaml/simple_get.yaml -O json
+sisyphus-api-engine --case tests/yaml/simple_get.yaml -O json
 
 # 批量执行目录下所有 YAML 用例
-sisyphus --cases tests/yaml/ -O json
+sisyphus-api-engine --cases tests/yaml/ -O json
 ```
 
 > CLI 的参数设计与完整引擎版本保持一致，详细说明见 `apirun/cli.py` 以及需求文档中「CLI 命令行接口」章节。
