@@ -9,7 +9,7 @@ from typing import Any
 import click  # type: ignore[reportMissingImports]
 import yaml
 
-from apirun.core.models import EnvironmentConfig
+from apirun.core.models import CaseModel, EnvironmentConfig
 from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.allure_reporter import generate as generate_allure
@@ -34,7 +34,7 @@ def _find_sisyphus_config(start: Path) -> Path | None:
 
 
 def _load_active_profile_environment() -> EnvironmentConfig | None:
-    """加载 active_profile 对应环境配置，失败时降级为 None。"""
+    """加载 active_profile 公共配置，失败时降级为 None。"""
     config_path = _find_sisyphus_config(Path.cwd())
     if config_path is None:
         return None
@@ -56,15 +56,40 @@ def _load_active_profile_environment() -> EnvironmentConfig | None:
         return None
 
     base_url = profile_data.get("base_url")
-    variables = profile_data.get("variables")
+    root_variables = raw.get("variables")
+    profile_variables = profile_data.get("variables")
     if not isinstance(base_url, str) or not base_url.strip():
         return None
-    if variables is None:
-        variables = {}
-    if not isinstance(variables, dict):
+    if root_variables is None:
+        root_variables = {}
+    if profile_variables is None:
+        profile_variables = {}
+    if not isinstance(root_variables, dict) or not isinstance(profile_variables, dict):
         return None
 
-    return EnvironmentConfig(name=active, base_url=base_url, variables=variables)
+    merged_variables = {**root_variables, **profile_variables}
+    return EnvironmentConfig(name=active, base_url=base_url, variables=merged_variables)
+
+
+def _merge_case_with_fallback_config(
+    case_model: CaseModel,
+    fallback_environment: EnvironmentConfig | None,
+) -> None:
+    """将全局配置合并到用例配置（用例优先，保持向后兼容）。"""
+    if fallback_environment is None:
+        return
+
+    config = case_model.config
+
+    # 兼容旧链路：YAML 未配置 environment 时注入 active_profile。
+    if config.environment is None:
+        config.environment = fallback_environment.model_copy(deep=True)
+    else:
+        # 兼容新规则：同名变量用例覆盖全局变量。
+        config.environment.variables = {
+            **(fallback_environment.variables or {}),
+            **(config.environment.variables or {}),
+        }
 
 
 def _run_single_case(
@@ -77,8 +102,7 @@ def _run_single_case(
 ) -> dict[str, Any]:
     """执行单个 YAML 用例并返回结果 dict（引擎异常时抛出）。"""
     case_model = load_case(path)
-    if case_model.config.environment is None and fallback_environment is not None:
-        case_model.config.environment = fallback_environment
+    _merge_case_with_fallback_config(case_model, fallback_environment)
     exec_result = run_case(case_model, verbose=verbose)
     result: dict[str, Any] = exec_result.model_dump()
 
