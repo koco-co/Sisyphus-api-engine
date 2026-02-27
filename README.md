@@ -28,6 +28,7 @@ YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供 **核心
     - [使用 uv（推荐）](#使用-uv推荐)
     - [使用 pip](#使用-pip)
   - [快速开始](#快速开始)
+    - [前置准备：安装项目](#前置准备安装项目)
     - [编写最小 YAML 用例](#编写最小-yaml-用例)
     - [通过 CLI 执行](#通过-cli-执行)
   - [配置管理（.sisyphus）](#配置管理sisyphus)
@@ -126,6 +127,25 @@ pip install -e ".[dev]"
 ## 快速开始
 
 > 当前核心能力为 **HTTP 请求 + JSON 输出**，高级特性按任务清单逐步实现。
+
+### 前置准备：安装项目
+
+**方式一：克隆项目（适合开发者）**
+
+```bash
+# 1. 克隆并安装
+git clone https://github.com/koco-co/Sisyphus-api-engine.git
+cd Sisyphus-api-engine
+uv venv -p 3.12 .venv
+source .venv/bin/activate
+uv sync
+```
+
+**方式二：PyPI 安装（适合使用者）**
+
+```bash
+uv pip install sisyphus-api-engine
+```
 
 ### 编写最小 YAML 用例
 
@@ -346,38 +366,3 @@ git push origin v2.2.2
 ## 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。欢迎在遵守协议的前提下自由使用、修改和分发。
-
-## 📖 开发者快速开始
-
-### 方式一：克隆项目
-
-```bash
-# 1. 克隆并安装
-git clone https://github.com/koco-co/Sisyphus-api-engine.git
-cd Sisyphus-api-engine
-uv venv .venv
-source .venv/bin/activate
-uv sync
-
-# 2. 运行测试（两种方式任选）
-
-# 方式 A：Python 模块方式（推荐）
-python -m apirun.cli --cases tests/yaml/ -O text
-
-# 方式 B：使用修复脚本后使用命令
-cat > .venv/bin/sisyphus-api-engine << 'SCRIPT'
-#!/bin/bash
-export PYTHONPATH="$(pwd):${PYTHONPATH}"
-exec "$(dirname "$0")/python3" -m apirun.cli "$@"
-SCRIPT
-chmod +x .venv/bin/sisyphus-api-engine
-sisyphus-api-engine --cases tests/yaml/ -O text
-```
-
-### 方式二：PyPI 安装
-
-```bash
-uv pip install sisyphus-api-engine
-sisyphus-api-engine --cases tests/yaml/ -O text
-```
-
