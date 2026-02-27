@@ -1,5 +1,7 @@
 """CLI 入口点 - sisyphus 命令"""
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 from typing import Any
@@ -10,7 +12,7 @@ from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.allure_reporter import generate as generate_allure
 from apirun.result.html_reporter import generate as generate_html
-from apirun.result.json_reporter import to_json
+from apirun.result.json_reporter import to_json, to_json_engine_error
 from apirun.result.text_reporter import render as render_text
 
 
@@ -22,15 +24,7 @@ def _run_single_case(
     html_dir: str | None = None,
 ) -> dict[str, Any]:
     """执行单个 YAML 用例并返回结果 dict（引擎异常时抛出）。"""
-    try:
-        case_model = load_case(path)
-    except (FileNotFoundError, ValueError) as e:
-        click.echo(str(e), err=True)
-        raise
-    except EngineError as e:
-        click.echo(str(e.message), err=True)
-        raise
-
+    case_model = load_case(path)
     exec_result = run_case(case_model, verbose=verbose)
     result: dict[str, Any] = exec_result.model_dump()
 
@@ -120,9 +114,38 @@ def main(
                     html_dir=html_dir,
                 )
                 results.append(result)
-            except Exception:  # noqa: BLE001
+            except EngineError as e:
                 has_error = True
-                # 错误已经在 _run_single_case 中输出, 继续执行其他用例
+                if output_format == "json":
+                    # 批量模式下仍返回结构化 JSON 错误对象
+                    err_json = to_json_engine_error(
+                        execution_id="",
+                        scenario_id="",
+                        scenario_name="",
+                        project_id="",
+                        code=e.code,
+                        message=e.message,
+                        detail=e.detail,
+                    )
+                    results.append(__import__("json").loads(err_json))
+                else:
+                    click.echo(e.message, err=True)
+                continue
+            except Exception as e:  # noqa: BLE001
+                has_error = True
+                if output_format == "json":
+                    err_json = to_json_engine_error(
+                        execution_id="",
+                        scenario_id="",
+                        scenario_name="",
+                        project_id="",
+                        code="ENGINE_INTERNAL_ERROR",
+                        message=str(e),
+                        detail=None,
+                    )
+                    results.append(__import__("json").loads(err_json))
+                else:
+                    click.echo(str(e), err=True)
                 continue
 
         if output_format == "json":
@@ -143,9 +166,50 @@ def main(
             allure_dir=allure_dir,
             html_dir=html_dir,
         )
-    except (FileNotFoundError, ValueError, EngineError):
+    except EngineError as e:
+        if output_format == "json":
+            err_json = to_json_engine_error(
+                execution_id="",
+                scenario_id="",
+                scenario_name="",
+                project_id="",
+                code=e.code,
+                message=e.message,
+                detail=e.detail,
+            )
+            click.echo(err_json)
+        else:
+            click.echo(e.message, err=True)
         sys.exit(1)
-    except Exception:  # noqa: BLE001
+    except (FileNotFoundError, ValueError) as e:
+        if output_format == "json":
+            err_json = to_json_engine_error(
+                execution_id="",
+                scenario_id="",
+                scenario_name="",
+                project_id="",
+                code="ENGINE_INTERNAL_ERROR",
+                message=str(e),
+                detail=None,
+            )
+            click.echo(err_json)
+        else:
+            click.echo(str(e), err=True)
+        sys.exit(1)
+    except Exception as e:  # noqa: BLE001
+        if output_format == "json":
+            err_json = to_json_engine_error(
+                execution_id="",
+                scenario_id="",
+                scenario_name="",
+                project_id="",
+                code="ENGINE_INTERNAL_ERROR",
+                message=str(e),
+                detail=None,
+            )
+            click.echo(err_json)
+        else:
+            click.echo(str(e), err=True)
         sys.exit(1)
 
     if output_format == "json":
