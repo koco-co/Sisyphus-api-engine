@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any
 
 import click  # type: ignore[reportMissingImports]
+import yaml
+
+from apirun.core.models import EnvironmentConfig
 from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.allure_reporter import generate as generate_allure
@@ -21,15 +24,61 @@ echo = getattr(click, "echo")
 Choice = getattr(click, "Choice")
 
 
+def _find_sisyphus_config(start: Path) -> Path | None:
+    """从当前目录向上查找 .sisyphus/config.yaml。"""
+    for candidate in (start, *start.parents):
+        config_path = candidate / ".sisyphus" / "config.yaml"
+        if config_path.exists() and config_path.is_file():
+            return config_path
+    return None
+
+
+def _load_active_profile_environment() -> EnvironmentConfig | None:
+    """加载 active_profile 对应环境配置，失败时降级为 None。"""
+    config_path = _find_sisyphus_config(Path.cwd())
+    if config_path is None:
+        return None
+
+    try:
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    except Exception:  # noqa: BLE001
+        return None
+
+    if not isinstance(raw, dict):
+        return None
+    active = raw.get("active_profile")
+    profiles = raw.get("profiles")
+    if not isinstance(active, str) or not isinstance(profiles, dict):
+        return None
+
+    profile_data = profiles.get(active)
+    if not isinstance(profile_data, dict):
+        return None
+
+    base_url = profile_data.get("base_url")
+    variables = profile_data.get("variables")
+    if not isinstance(base_url, str) or not base_url.strip():
+        return None
+    if variables is None:
+        variables = {}
+    if not isinstance(variables, dict):
+        return None
+
+    return EnvironmentConfig(name=active, base_url=base_url, variables=variables)
+
+
 def _run_single_case(
     path: str,
     output_format: str,
     verbose: bool = False,
     allure_dir: str | None = None,
     html_dir: str | None = None,
+    fallback_environment: EnvironmentConfig | None = None,
 ) -> dict[str, Any]:
     """执行单个 YAML 用例并返回结果 dict（引擎异常时抛出）。"""
     case_model = load_case(path)
+    if case_model.config.environment is None and fallback_environment is not None:
+        case_model.config.environment = fallback_environment
     exec_result = run_case(case_model, verbose=verbose)
     result: dict[str, Any] = exec_result.model_dump()
 
@@ -86,6 +135,7 @@ def main(
     if not case and not cases:
         echo("必须指定 --case 或 --cases 之一", err=True)
         sys.exit(1)
+    fallback_environment = _load_active_profile_environment()
 
     # 批量执行模式: sisyphus --cases tests/
     if cases:
@@ -117,6 +167,7 @@ def main(
                     verbose=verbose,
                     allure_dir=allure_dir,
                     html_dir=html_dir,
+                    fallback_environment=fallback_environment,
                 )
                 results.append(result)
             except EngineError as e:
@@ -170,6 +221,7 @@ def main(
             verbose=verbose,
             allure_dir=allure_dir,
             html_dir=html_dir,
+            fallback_environment=fallback_environment,
         )
     except EngineError as e:
         if output_format == "json":
