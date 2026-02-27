@@ -65,8 +65,8 @@ def run_case(
         publisher = _NoOp()
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
     config: Config = case.config
-    base_url = ""
-    if config.environment:
+    base_url = (config.base_url or "").strip()
+    if not base_url and config.environment:
         base_url = config.environment.base_url or ""
 
     # 数据驱动：无 data_driven_vars 且 case 配置了 ddts 或 csv_datasource 时执行多轮（RUN-020～RUN-023）
@@ -497,7 +497,7 @@ def run_case(
     if config.environment:
         environment = {
             "name": config.environment.name,
-            "base_url": config.environment.base_url,
+            "base_url": base_url or config.environment.base_url,
             "variables": config.environment.variables or {},
         }
 
