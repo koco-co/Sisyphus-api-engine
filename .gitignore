@@ -37,6 +37,11 @@ htmlcov/
 logs/
 *.log
 
+# 报告输出目录
+allure-results/
+html-report/
+html-out/
+
 # 本地临时文件
 *.swp
 *.swo
