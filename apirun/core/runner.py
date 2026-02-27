@@ -5,15 +5,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
-from pydantic import ValidationError
-
 from apirun.core.models import CaseModel, Config, DbParams, ExtractRule, StepDefinition
 from apirun.data_driven.driver import get_parameter_sets, run_data_driven
 from apirun.executor.custom import execute_custom_step_safe
 from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
+from apirun.parser.yaml_parser import parse_yaml
 from apirun.result.log_collector import LogCollector
 from apirun.result.models import ExecutionResult
 from apirun.utils.variable_pool import VariablePool
@@ -21,18 +19,8 @@ from apirun.validation.validator import run_assertion
 
 
 def load_case(yaml_path: str | Path) -> CaseModel:
-    """加载并校验 YAML 用例"""
-    path = Path(yaml_path)
-    if not path.exists():
-        raise FileNotFoundError(f"YAML 文件不存在: {yaml_path}")
-    raw = path.read_text(encoding="utf-8")
-    data = yaml.safe_load(raw)
-    if not data:
-        raise ValueError("YAML 内容为空")
-    try:
-        return CaseModel.model_validate(data)
-    except ValidationError as e:
-        raise ValueError(f"YAML 结构校验失败: {e}") from e
+    """加载并校验 YAML 用例（向后兼容旧入口，内部委托给 parse_yaml）。"""
+    return parse_yaml(yaml_path)
 
 
 def _step_result_base(
