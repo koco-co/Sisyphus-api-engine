@@ -14,8 +14,9 @@ import random
 import string
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 
 def fn_random(n: int) -> str:
@@ -43,7 +44,7 @@ def fn_timestamp_ms() -> int:
 
 def fn_datetime(fmt: str) -> str:
     """格式化当前时间, 使用给定的 strftime 格式字符串。"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime(fmt)
 
 
@@ -54,4 +55,3 @@ BUILTIN_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "timestamp_ms": fn_timestamp_ms,
     "datetime": fn_datetime,
 }
-

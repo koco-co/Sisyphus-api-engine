@@ -33,7 +33,9 @@ def execute_request_step(
     # 渲染其余请求参数
     headers = render_template(params.headers, variables)
     query_params = render_template(params.params, variables)
-    json_body = render_template(params.json_body, variables) if params.json_body is not None else None
+    json_body = (
+        render_template(params.json_body, variables) if params.json_body is not None else None
+    )
     data = render_template(params.data, variables) if params.data is not None else None
     files = render_template(params.files, variables) if params.files is not None else None
     cookies = render_template(params.cookies, variables)

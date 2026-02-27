@@ -68,10 +68,7 @@ class RequestStepParams(BaseModel):
     @model_validator(mode="after")
     def check_body_mutually_exclusive(self) -> "RequestStepParams":
         """json / data / files 三者最多只能填一个。"""
-        set_count = sum(
-            _body_field_set(getattr(self, f))
-            for f in ("json_body", "data", "files")
-        )
+        set_count = sum(_body_field_set(getattr(self, f)) for f in ("json_body", "data", "files"))
         if set_count > 1:
             raise ValueError("request 中 json、data、files 三者互斥，最多只能填写一个")
         return self

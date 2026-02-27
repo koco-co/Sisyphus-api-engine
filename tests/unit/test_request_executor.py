@@ -48,4 +48,3 @@ def test_execute_request_step_renders_variables_in_url(monkeypatch):
     assert called["url"] == "https://api.example.com/users/123"
     assert result["status_code"] == 200
     assert result["body"] == "ok"
-

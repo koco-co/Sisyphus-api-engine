@@ -232,18 +232,55 @@ def test_request_step_params_json_data_files_mutually_exclusive():
 
 def test_case_model_csv_datasource_and_ddts_exclusive():
     """MDL-016: config.csv_datasource 与 ddts 不能同时配置。"""
-    CaseModel.model_validate({
-        "config": {"name": "n", "project_id": "p", "scenario_id": "s", "csv_datasource": "data.csv"},
-        "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
-    })
-    CaseModel.model_validate({
-        "config": {"name": "n", "project_id": "p", "scenario_id": "s"},
-        "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
-        "ddts": {"name": "d", "parameters": [{"x": 1}]},
-    })
-    with pytest.raises(ValidationError, match="互斥"):
-        CaseModel.model_validate({
-            "config": {"name": "n", "project_id": "p", "scenario_id": "s", "csv_datasource": "data.csv"},
-            "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
+    CaseModel.model_validate(
+        {
+            "config": {
+                "name": "n",
+                "project_id": "p",
+                "scenario_id": "s",
+                "csv_datasource": "data.csv",
+            },
+            "teststeps": [
+                {
+                    "name": "s",
+                    "keyword_type": "request",
+                    "keyword_name": "r",
+                    "request": {"url": "/"},
+                }
+            ],
+        }
+    )
+    CaseModel.model_validate(
+        {
+            "config": {"name": "n", "project_id": "p", "scenario_id": "s"},
+            "teststeps": [
+                {
+                    "name": "s",
+                    "keyword_type": "request",
+                    "keyword_name": "r",
+                    "request": {"url": "/"},
+                }
+            ],
             "ddts": {"name": "d", "parameters": [{"x": 1}]},
-        })
+        }
+    )
+    with pytest.raises(ValidationError, match="互斥"):
+        CaseModel.model_validate(
+            {
+                "config": {
+                    "name": "n",
+                    "project_id": "p",
+                    "scenario_id": "s",
+                    "csv_datasource": "data.csv",
+                },
+                "teststeps": [
+                    {
+                        "name": "s",
+                        "keyword_type": "request",
+                        "keyword_name": "r",
+                        "request": {"url": "/"},
+                    }
+                ],
+                "ddts": {"name": "d", "parameters": [{"x": 1}]},
+            }
+        )

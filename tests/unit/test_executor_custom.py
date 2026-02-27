@@ -1,11 +1,8 @@
 """自定义关键字执行器单元测试（CST-001～CST-007）"""
 
-import pytest
-
-from apirun.core.models import CustomParams, ExtractRule
+from apirun.core.models import CustomParams
 from apirun.executor.custom import (
     KEYWORD_REGISTRY,
-    execute_custom_step,
     execute_custom_step_safe,
     register_keyword,
 )

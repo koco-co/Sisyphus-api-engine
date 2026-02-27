@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,11 +41,13 @@ def _step_to_allure_step(step: dict[str, Any], step_uuid_prefix: str) -> dict[st
     assertion_results = step.get("assertion_results") or []
     if assertion_results:
         att_uuid = f"{step_uuid_prefix}-assertions"
-        attachments.append({
-            "name": "断言结果",
-            "source": f"{att_uuid}.json",
-            "type": "application/json",
-        })
+        attachments.append(
+            {
+                "name": "断言结果",
+                "source": f"{att_uuid}.json",
+                "type": "application/json",
+            }
+        )
         # 调用方需写入同名 JSON 文件到目录
 
     return {
@@ -91,7 +93,9 @@ def generate(
         assertion_results = step.get("assertion_results") or []
         if assertion_results:
             att_uuid = f"{step_prefix}-assertions"
-            step_attachments.append((att_uuid, json.dumps(assertion_results, ensure_ascii=False, indent=2)))
+            step_attachments.append(
+                (att_uuid, json.dumps(assertion_results, ensure_ascii=False, indent=2))
+            )
             # allure_step 里已有 attachments 引用 att_uuid.json
         steps_allure.append(allure_step)
 

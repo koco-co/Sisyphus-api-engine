@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from apirun.errors import CSV_FILE_NOT_FOUND, CSV_PARSE_ERROR, EngineError
+from apirun.errors import CSV_FILE_NOT_FOUND, EngineError
 from apirun.parser.csv_parser import parse_csv
 
 

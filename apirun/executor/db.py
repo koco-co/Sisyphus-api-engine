@@ -31,7 +31,9 @@ def _resolve_datasource(
     return cfg
 
 
-def _execute_mysql(conn_config: dict[str, Any], sql_rendered: str) -> tuple[list[str], list[dict[str, Any]]]:
+def _execute_mysql(
+    conn_config: dict[str, Any], sql_rendered: str
+) -> tuple[list[str], list[dict[str, Any]]]:
     """MySQL 查询，返回 (columns, rows)。"""
     import pymysql
 
@@ -56,7 +58,9 @@ def _execute_mysql(conn_config: dict[str, Any], sql_rendered: str) -> tuple[list
         conn.close()
 
 
-def _execute_postgres(conn_config: dict[str, Any], sql_rendered: str) -> tuple[list[str], list[dict[str, Any]]]:
+def _execute_postgres(
+    conn_config: dict[str, Any], sql_rendered: str
+) -> tuple[list[str], list[dict[str, Any]]]:
     """PostgreSQL 查询，返回 (columns, rows)。"""
     import psycopg2
     from psycopg2.extras import RealDictCursor
@@ -129,7 +133,11 @@ def execute_db_step(
         empty_detail["execution_time"] = elapsed_ms
         # 连接阶段异常多为 DB_CONNECTION_ERROR，执行阶段为 DB_QUERY_ERROR
         code = DB_QUERY_ERROR
-        if "connect" in str(e).lower() or "connection" in str(e).lower() or "refused" in str(e).lower():
+        if (
+            "connect" in str(e).lower()
+            or "connection" in str(e).lower()
+            or "refused" in str(e).lower()
+        ):
             code = DB_CONNECTION_ERROR
         return {
             "db_detail": empty_detail,

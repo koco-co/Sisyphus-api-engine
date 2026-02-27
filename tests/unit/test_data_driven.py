@@ -15,10 +15,13 @@ def case_with_ddts():
         teststeps=[
             StepDefinition(name="s1", keyword_type="request", keyword_name="http", request=None),
         ],
-        ddts=Ddts(name="登录数据集", parameters=[
-            {"user": "a", "expected": 200},
-            {"user": "b", "expected": 200},
-        ]),
+        ddts=Ddts(
+            name="登录数据集",
+            parameters=[
+                {"user": "a", "expected": 200},
+                {"user": "b", "expected": 200},
+            ],
+        ),
     )
 
 
@@ -34,6 +37,7 @@ def test_get_parameter_sets_yaml_inline(case_with_ddts):
 
 def test_run_data_driven_returns_result(case_with_ddts):
     """run_data_driven 返回 DataDrivenResult 与首轮 ExecutionResult（DDT-005～DDT-007）"""
+
     def fake_run(case: CaseModel, params: dict):
         return ExecutionResult(
             execution_id="e1",

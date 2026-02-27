@@ -3,7 +3,7 @@
 import pytest
 
 from apirun import errors as err_module
-from apirun.errors import EngineError, FILE_NOT_FOUND, REQUEST_TIMEOUT, YAML_PARSE_ERROR
+from apirun.errors import FILE_NOT_FOUND, YAML_PARSE_ERROR, EngineError
 
 
 def test_engine_error_attributes():

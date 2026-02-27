@@ -1,7 +1,8 @@
 """断言比较器 — 17 种比较逻辑（VLD-001～VLD-017）"""
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # 类型匹配合法值
 TYPE_NAMES = ("int", "str", "list", "dict", "bool", "null")

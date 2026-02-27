@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from apirun.result.models import (
     AssertionResult,
     DataDrivenResult,
@@ -62,7 +60,14 @@ def test_assertion_result_and_extract_result():
         target="json", expression="$.code", comparator="eq", expected=0, actual=0, status="passed"
     )
     assert ar.status == "passed"
-    er = ExtractResult(name="token", type="json", expression="$.data.token", scope="global", value="x", status="success")
+    er = ExtractResult(
+        name="token",
+        type="json",
+        expression="$.data.token",
+        scope="global",
+        value="x",
+        status="success",
+    )
     assert er.model_dump()["name"] == "token"
 
 
@@ -98,7 +103,9 @@ def test_log_entry():
 def test_data_driven_run_and_result():
     """DataDrivenRun / DataDrivenResult 可序列化"""
     run = DataDrivenRun(run_index=0, parameters={"a": 1}, status="passed", duration=100)
-    ddr = DataDrivenResult(enabled=True, source="yaml_inline", total_runs=1, passed_runs=1, runs=[run])
+    ddr = DataDrivenResult(
+        enabled=True, source="yaml_inline", total_runs=1, passed_runs=1, runs=[run]
+    )
     assert ddr.model_dump()["total_runs"] == 1
 
 

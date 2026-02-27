@@ -1,11 +1,9 @@
 """数据库执行器单元测试（DB-001～DB-011 / TST-028）"""
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from apirun.core.models import DbParams
-from apirun.errors import DB_DATASOURCE_NOT_FOUND, EngineError
+from apirun.errors import DB_DATASOURCE_NOT_FOUND
 from apirun.executor.db import execute_db_step, execute_db_step_safe
 
 
@@ -46,7 +44,14 @@ def test_sql_variable_replacement():
     """SQL 中 {{变量}} 替换（DB-004）"""
     params = DbParams(datasource="db_main", sql="SELECT {{id}} AS id")
     variables = {
-        "db_main": {"host": "localhost", "port": 3306, "user": "u", "password": "p", "database": "d", "driver": "mysql"},
+        "db_main": {
+            "host": "localhost",
+            "port": 3306,
+            "user": "u",
+            "password": "p",
+            "database": "d",
+            "driver": "mysql",
+        },
         "id": 42,
     }
     with patch("apirun.executor.db._execute_mysql") as m:
@@ -60,7 +65,14 @@ def test_db_detail_structure():
     """返回 db_detail 结构（DB-006）"""
     params = DbParams(datasource="db_main", sql="SELECT 1")
     variables = {
-        "db_main": {"host": "h", "port": 3306, "user": "u", "password": "p", "database": "d", "driver": "mysql"},
+        "db_main": {
+            "host": "h",
+            "port": 3306,
+            "user": "u",
+            "password": "p",
+            "database": "d",
+            "driver": "mysql",
+        },
     }
     with patch("apirun.executor.db._execute_mysql") as m:
         m.return_value = (["a", "b"], [{"a": 1, "b": 2}])

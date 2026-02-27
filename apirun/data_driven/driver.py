@@ -1,11 +1,12 @@
 """数据驱动执行器 — YAML 内联 / CSV 文件，每轮注入变量并执行（DDT-001～DDT-008）"""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from apirun.core.models import CaseModel
 from apirun.parser.csv_parser import parse_csv
-from apirun.result.models import DataDrivenResult, DataDrivenRun, ExecutionResult, ExecutionSummary
+from apirun.result.models import DataDrivenResult, DataDrivenRun, ExecutionResult
 
 
 def get_parameter_sets(case: CaseModel) -> tuple[bool, str, str, list[dict[str, Any]]]:

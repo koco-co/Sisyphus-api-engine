@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from apirun.core.models import CaseModel, Config, RequestStepParams, StepDefinition
 from apirun.core.runner import load_case, run_case
 
 

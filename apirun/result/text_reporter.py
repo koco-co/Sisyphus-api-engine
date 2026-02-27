@@ -22,7 +22,9 @@ def render(
     summary = result.get("summary") or {}
     steps = result.get("steps") or []
 
-    status_style = "green" if status == "passed" else ("red" if status in ("failed", "error") else "yellow")
+    status_style = (
+        "green" if status == "passed" else ("red" if status in ("failed", "error") else "yellow")
+    )
     header = f"[bold]{scenario_name}[/bold]  [{status_style}]{status}[/]  ({duration}ms)"
     console.print(Panel(header, title="场景执行", border_style="blue"))
 
@@ -52,10 +54,12 @@ def render(
         console.print()
         for s in steps:
             if s.get("request_detail"):
-                console.print(Panel(
-                    f"[bold]步骤 {s.get('step_index')}[/bold] {s.get('name')}\n"
-                    f"请求: {s.get('request_detail', {}).get('method')} {s.get('request_detail', {}).get('url')}\n"
-                    f"响应状态: {s.get('response_detail', {}).get('status_code')}",
-                    title="请求详情",
-                    border_style="dim",
-                ))
+                console.print(
+                    Panel(
+                        f"[bold]步骤 {s.get('step_index')}[/bold] {s.get('name')}\n"
+                        f"请求: {s.get('request_detail', {}).get('method')} {s.get('request_detail', {}).get('url')}\n"
+                        f"响应状态: {s.get('response_detail', {}).get('status_code')}",
+                        title="请求详情",
+                        border_style="dim",
+                    )
+                )

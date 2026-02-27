@@ -10,7 +10,7 @@ from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.allure_reporter import generate as generate_allure
 from apirun.result.html_reporter import generate as generate_html
-from apirun.result.json_reporter import to_json, to_json_engine_error
+from apirun.result.json_reporter import to_json
 from apirun.result.text_reporter import render as render_text
 
 
@@ -113,8 +113,11 @@ def main(
         for path in yaml_files:
             try:
                 result = _run_single_case(
-                    str(path), output_format, verbose=verbose,
-                    allure_dir=allure_dir, html_dir=html_dir,
+                    str(path),
+                    output_format,
+                    verbose=verbose,
+                    allure_dir=allure_dir,
+                    html_dir=html_dir,
                 )
                 results.append(result)
             except Exception:  # noqa: BLE001
@@ -134,8 +137,11 @@ def main(
     path = case or ""
     try:
         result = _run_single_case(
-            path, output_format, verbose=verbose,
-            allure_dir=allure_dir, html_dir=html_dir,
+            path,
+            output_format,
+            verbose=verbose,
+            allure_dir=allure_dir,
+            html_dir=html_dir,
         )
     except (FileNotFoundError, ValueError, EngineError):
         sys.exit(1)

@@ -1,11 +1,11 @@
 """事件发布器 — 场景/步骤开始与完成事件推送（WS-001～WS-003）"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class EventPublisher(Protocol):
@@ -67,6 +67,7 @@ class WsPublisher:
         }
         try:
             import json as _json
+
             # 可选依赖：仅当安装了 websocket-client 时实际发送
             try:
                 import websocket

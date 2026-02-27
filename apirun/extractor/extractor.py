@@ -119,7 +119,4 @@ def run_extract_batch(
     db_rows: list[dict[str, Any]] | None = None,
 ) -> list[ExtractResult]:
     """批量执行提取规则，返回按规则顺序的 ExtractResult 列表。"""
-    return [
-        run_extract(r, response, variables, db_rows)
-        for r in rules
-    ]
+    return [run_extract(r, response, variables, db_rows) for r in rules]

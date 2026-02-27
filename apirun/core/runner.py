@@ -1,7 +1,7 @@
 """场景执行器 - 解析 YAML、按序执行步骤、生成 JSON 输出"""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ from apirun.executor.db import execute_db_step_safe
 from apirun.executor.request import execute_request_step
 from apirun.extractor.extractor import run_extract_batch
 from apirun.result.log_collector import LogCollector
-from apirun.result.models import DataDrivenResult, ExecutionResult, ExecutionSummary
+from apirun.result.models import ExecutionResult
 from apirun.utils.variable_pool import VariablePool
 from apirun.validation.validator import run_assertion
 
@@ -72,6 +72,7 @@ def run_case(
 ) -> ExecutionResult:
     """执行用例，返回 ExecutionResult 模型。支持数据驱动、日志收集与可选事件发布器（WS-004）。"""
     from apirun.websocket.publisher import NoOpPublisher as _NoOp
+
     if publisher is None:
         publisher = _NoOp()
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
@@ -109,7 +110,7 @@ def run_case(
     try:
         publisher.emit(
             "scenario_start",
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             data={"execution_id": execution_id, "scenario_name": config.name},
         )
     except Exception:
@@ -123,7 +124,7 @@ def run_case(
                 variables,
             )
 
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
     steps_result: list[dict[str, Any]] = []
     total_assertions = 0
     passed_assertions = 0
@@ -135,7 +136,7 @@ def run_case(
     scenario_status = "passed"
 
     for i, step in enumerate(case.teststeps):
-        step_start = datetime.now(timezone.utc)
+        step_start = datetime.now(UTC)
         step_status = "passed"
         step_error: dict[str, Any] | None = None
         assertion_results: list[dict[str, Any]] | None = None
@@ -151,7 +152,7 @@ def run_case(
                 pass
             if not step.enabled:
                 # RUN-008: enabled=false 时生成 skipped StepResult
-                step_end = datetime.now(timezone.utc)
+                step_end = datetime.now(UTC)
                 logs.info(f"[步骤 {i}] 完成: skipped", step_index=i)
                 try:
                     publisher.emit("step_done", step_index=i, status="skipped")
@@ -166,8 +167,14 @@ def run_case(
                 # request 步骤
                 total_requests += 1
                 variables = pool.as_dict()
-                req_url = (base_url.rstrip("/") + "/" + step.request.url.lstrip("/")) if base_url and not step.request.url.startswith(("http://", "https://")) else step.request.url
-                logs.debug(f"[步骤 {i}] 发送 {step.request.method or 'GET'} 请求 → {req_url}", step_index=i)
+                req_url = (
+                    (base_url.rstrip("/") + "/" + step.request.url.lstrip("/"))
+                    if base_url and not step.request.url.startswith(("http://", "https://"))
+                    else step.request.url
+                )
+                logs.debug(
+                    f"[步骤 {i}] 发送 {step.request.method or 'GET'} 请求 → {req_url}", step_index=i
+                )
                 out = execute_request_step(step.request, base_url, variables)
                 rt = out.get("response_time") or 0
                 response_times.append(rt)
@@ -178,9 +185,7 @@ def run_case(
                 else:
                     # RUN-013: 内联 extract
                     if step.extract:
-                        ex_results = run_extract_batch(
-                            step.extract, out, variables, db_rows=None
-                        )
+                        ex_results = run_extract_batch(step.extract, out, variables, db_rows=None)
                         extract_results = [r.model_dump() for r in ex_results]
                         total_extractions += len(ex_results)
                         for er in ex_results:
@@ -232,16 +237,18 @@ def run_case(
                     "response_time": out.get("response_time", 0),
                     "cookies": out.get("cookies", {}),
                 }
-                step_end = datetime.now(timezone.utc)
-                steps_result.append({
-                    **_step_result_base(
-                        step, i, step_start, step_end, rt, step_status, out.get("error")
-                    ),
-                    "request_detail": request_detail,
-                    "response_detail": response_detail,
-                    "assertion_results": assertion_results,
-                    "extract_results": extract_results,
-                })
+                step_end = datetime.now(UTC)
+                steps_result.append(
+                    {
+                        **_step_result_base(
+                            step, i, step_start, step_end, rt, step_status, out.get("error")
+                        ),
+                        "request_detail": request_detail,
+                        "response_detail": response_detail,
+                        "assertion_results": assertion_results,
+                        "extract_results": extract_results,
+                    }
+                )
 
             elif step.keyword_type == "assertion" and step.assertion:
                 # RUN-009: 独立断言步骤
@@ -268,18 +275,18 @@ def run_case(
                     failed_assertions += 1
                     step_status = "failed"
                 assertion_results = [ar.model_dump()]
-                step_end = datetime.now(timezone.utc)
-                steps_result.append({
-                    **_step_result_base(step, i, step_start, step_end, 0, step_status, None),
-                    "assertion_results": assertion_results,
-                })
+                step_end = datetime.now(UTC)
+                steps_result.append(
+                    {
+                        **_step_result_base(step, i, step_start, step_end, 0, step_status, None),
+                        "assertion_results": assertion_results,
+                    }
+                )
 
             elif step.keyword_type == "extract" and step.extract:
                 # RUN-010: 独立提取步骤
                 variables = pool.as_dict()
-                ex_results = run_extract_batch(
-                    step.extract, last_response, variables, db_rows=None
-                )
+                ex_results = run_extract_batch(step.extract, last_response, variables, db_rows=None)
                 extract_results = [r.model_dump() for r in ex_results]
                 total_extractions += len(ex_results)
                 any_failed = any(r.status == "failed" for r in ex_results)
@@ -288,11 +295,13 @@ def run_case(
                 for er in ex_results:
                     if er.status == "success" and er.value is not None:
                         pool.set(er.name, er.value, scope=er.scope)
-                step_end = datetime.now(timezone.utc)
-                steps_result.append({
-                    **_step_result_base(step, i, step_start, step_end, 0, step_status, None),
-                    "extract_results": extract_results,
-                })
+                step_end = datetime.now(UTC)
+                steps_result.append(
+                    {
+                        **_step_result_base(step, i, step_start, step_end, 0, step_status, None),
+                        "extract_results": extract_results,
+                    }
+                )
 
             elif step.keyword_type == "db" and step.db:
                 # RUN-011: db 步骤（DB-001～DB-011）
@@ -347,14 +356,22 @@ def run_case(
                                 failed_assertions += 1
                                 step_status = "failed"
                         assertion_results = ar_list
-                step_end = datetime.now(timezone.utc)
+                step_end = datetime.now(UTC)
                 duration_db = (db_detail or {}).get("execution_time", 0)
-                steps_result.append({
-                    **_step_result_base(step, i, step_start, step_end, duration_db, step_status, step_error),
-                    "db_detail": db_detail,
-                    "extract_results": extract_results if step.db.extract and not step_error else None,
-                    "assertion_results": assertion_results if step.db.validate and not step_error else None,
-                })
+                steps_result.append(
+                    {
+                        **_step_result_base(
+                            step, i, step_start, step_end, duration_db, step_status, step_error
+                        ),
+                        "db_detail": db_detail,
+                        "extract_results": extract_results
+                        if step.db.extract and not step_error
+                        else None,
+                        "assertion_results": assertion_results
+                        if step.db.validate and not step_error
+                        else None,
+                    }
+                )
 
             elif step.keyword_type == "custom" and step.custom:
                 # RUN-012: custom 步骤（CST-001～CST-007）
@@ -385,17 +402,21 @@ def run_case(
                         for er in ex_results:
                             if er.status == "success" and er.value is not None:
                                 pool.set(er.name, er.value, scope=er.scope)
-                step_end = datetime.now(timezone.utc)
-                steps_result.append({
-                    **_step_result_base(
-                        step, i, step_start, step_end, duration_custom, step_status, step_error
-                    ),
-                    "custom_detail": custom_detail,
-                    "extract_results": extract_results if step.custom.extract and not step_error else None,
-                })
+                step_end = datetime.now(UTC)
+                steps_result.append(
+                    {
+                        **_step_result_base(
+                            step, i, step_start, step_end, duration_custom, step_status, step_error
+                        ),
+                        "custom_detail": custom_detail,
+                        "extract_results": extract_results
+                        if step.custom.extract and not step_error
+                        else None,
+                    }
+                )
 
             else:
-                step_end = datetime.now(timezone.utc)
+                step_end = datetime.now(UTC)
                 steps_result.append(
                     _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
                 )
@@ -410,15 +431,17 @@ def run_case(
 
         except Exception as e:
             # RUN-015: 步骤异常捕获，status=error，不中断后续
-            step_end = datetime.now(timezone.utc)
+            step_end = datetime.now(UTC)
             step_error = {
                 "code": "ENGINE_INTERNAL_ERROR",
                 "message": str(e),
                 "detail": None,
             }
-            steps_result.append({
-                **_step_result_base(step, i, step_start, step_end, 0, "error", step_error),
-            })
+            steps_result.append(
+                {
+                    **_step_result_base(step, i, step_start, step_end, 0, "error", step_error),
+                }
+            )
             scenario_status = "error"
             logs.info(f"[步骤 {i}] 完成: error", step_index=i)
             try:
@@ -435,7 +458,7 @@ def run_case(
                 variables,
             )
 
-    end_time = datetime.now(timezone.utc)
+    end_time = datetime.now(UTC)
     duration_ms = int((end_time - start_time).total_seconds() * 1000)
     logs.info(f"场景执行完毕: {scenario_status} ({duration_ms}ms)")
     try:
@@ -454,8 +477,7 @@ def run_case(
     error_steps = sum(1 for s in steps_result if s["status"] == "error")
     skipped_steps = sum(1 for s in steps_result if s["status"] == "skipped")
     pass_rate = (
-        round((passed_assertions / total_assertions * 100), 1)
-        if total_assertions else 100.0
+        round((passed_assertions / total_assertions * 100), 1) if total_assertions else 100.0
     )
     avg_rt = int(sum(response_times) / len(response_times)) if response_times else 0
     max_rt = max(response_times) if response_times else 0

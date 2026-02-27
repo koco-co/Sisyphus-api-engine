@@ -26,9 +26,7 @@ def test_fn_random_length_and_charset():
 
 def test_fn_random_uuid_format():
     value = fn_random_uuid()
-    assert re.fullmatch(
-        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value
-    )
+    assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value)
 
 
 def test_timestamp_monotonic():
@@ -119,4 +117,3 @@ def test_variable_takes_precedence_over_global_func():
         assert out == "from_var"
     finally:
         GLOBAL_PARAM_FUNCTIONS.pop("foo", None)
-

@@ -9,9 +9,20 @@ def test_render_text_minimal_result():
         "scenario_name": "测试场景",
         "status": "passed",
         "duration": 100,
-        "summary": {"total_steps": 1, "passed_steps": 1, "total_assertions": 1, "passed_assertions": 1},
+        "summary": {
+            "total_steps": 1,
+            "passed_steps": 1,
+            "total_assertions": 1,
+            "passed_assertions": 1,
+        },
         "steps": [
-            {"step_index": 0, "name": "请求", "keyword_type": "request", "status": "passed", "duration": 50},
+            {
+                "step_index": 0,
+                "name": "请求",
+                "keyword_type": "request",
+                "status": "passed",
+                "duration": 50,
+            },
         ],
     }
     render(result)
@@ -24,7 +35,12 @@ def test_render_text_verbose():
         "scenario_name": "场景",
         "status": "failed",
         "duration": 0,
-        "summary": {"total_steps": 1, "passed_steps": 0, "total_assertions": 0, "passed_assertions": 0},
+        "summary": {
+            "total_steps": 1,
+            "passed_steps": 0,
+            "total_assertions": 0,
+            "passed_assertions": 0,
+        },
         "steps": [
             {
                 "step_index": 0,

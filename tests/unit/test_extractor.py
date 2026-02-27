@@ -1,14 +1,16 @@
 """变量提取器单元测试（EXT-001～EXT-009 / TST-027）"""
 
-import pytest
-
 from apirun.core.models import ExtractRule
 from apirun.extractor.extractor import run_extract, run_extract_batch
 
 
 def test_extract_json():
     """type=json JSONPath 提取（EXT-001）"""
-    resp = {"body": {"code": 0, "data": {"id": "user-1", "token": "t1"}}, "headers": {}, "cookies": {}}
+    resp = {
+        "body": {"code": 0, "data": {"id": "user-1", "token": "t1"}},
+        "headers": {},
+        "cookies": {},
+    }
     rule = ExtractRule(name="user_id", type="json", expression="$.data.id", scope="global")
     r = run_extract(rule, response=resp)
     assert r.status == "success"
@@ -108,7 +110,9 @@ def test_source_variable():
 def test_db_result_type():
     """type=db_result 从 rows JSONPath 提取（EXT-010）"""
     db_rows = [{"id": 1, "email": "a@b.com"}, {"id": 2, "email": "b@b.com"}]
-    rule = ExtractRule(name="first_email", type="db_result", expression="$[0].email", scope="global")
+    rule = ExtractRule(
+        name="first_email", type="db_result", expression="$[0].email", scope="global"
+    )
     r = run_extract(rule, variables={}, db_rows=db_rows)
     assert r.status == "success"
     assert r.value == "a@b.com"

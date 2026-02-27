@@ -9,7 +9,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from apirun.utils.functions import BUILTIN_FUNCTIONS
 
@@ -127,4 +128,3 @@ def render_template(template: Any, variables: dict[str, Any] | None = None) -> A
     """
     variables = variables or {}
     return render_value(template, variables)
-

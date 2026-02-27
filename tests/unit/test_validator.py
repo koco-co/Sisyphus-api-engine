@@ -1,7 +1,5 @@
 """断言验证器单元测试（VLD-018～VLD-026 / TST-026）"""
 
-import pytest
-
 from apirun.result.models import AssertionResult
 from apirun.validation.validator import run_assertion
 

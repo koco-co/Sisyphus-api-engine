@@ -7,12 +7,7 @@ from typing import Any
 
 
 def _escape(s: str) -> str:
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 def _status_class(status: str) -> str:
@@ -47,7 +42,7 @@ def generate(result: dict[str, Any], output_dir: str | Path) -> str:
         dur = s.get("duration") or 0
         sc = _status_class(st)
         steps_rows.append(
-            f'<tr><td>{s.get("step_index", 0)}</td><td>{name}</td><td>{ktype}</td>'
+            f"<tr><td>{s.get('step_index', 0)}</td><td>{name}</td><td>{ktype}</td>"
             f'<td class="{sc}">{st}</td><td>{dur} ms</td></tr>'
         )
     steps_table = "\n".join(steps_rows)
@@ -59,8 +54,7 @@ def generate(result: dict[str, Any], output_dir: str | Path) -> str:
         if s.get("request_detail"):
             req = s["request_detail"]
             parts.append(
-                "<strong>请求</strong>: "
-                + _escape(f"{req.get('method', '')} {req.get('url', '')}")
+                "<strong>请求</strong>: " + _escape(f"{req.get('method', '')} {req.get('url', '')}")
             )
         if s.get("response_detail"):
             resp = s["response_detail"]
@@ -76,15 +70,21 @@ def generate(result: dict[str, Any], output_dir: str | Path) -> str:
         if s.get("assertion_results"):
             ar_list = s["assertion_results"]
             ar_rows = [
-                f'<tr><td>{_escape(str(a.get("target")))}</td><td>{_escape(str(a.get("comparator")))}</td>'
-                f'<td>{_escape(str(a.get("actual")))}</td><td>{_escape(str(a.get("expected")))}</td>'
+                f"<tr><td>{_escape(str(a.get('target')))}</td><td>{_escape(str(a.get('comparator')))}</td>"
+                f"<td>{_escape(str(a.get('actual')))}</td><td>{_escape(str(a.get('expected')))}</td>"
                 f'<td class="{_status_class(a.get("status") or "failed")}">{a.get("status")}</td></tr>'
                 for a in ar_list
             ]
-            parts.append("<strong>断言</strong>: <table><tr><th>target</th><th>comparator</th><th>actual</th><th>expected</th><th>status</th></tr>" + "".join(ar_rows) + "</table>")
+            parts.append(
+                "<strong>断言</strong>: <table><tr><th>target</th><th>comparator</th><th>actual</th><th>expected</th><th>status</th></tr>"
+                + "".join(ar_rows)
+                + "</table>"
+            )
         if parts:
             details_sections.append(
-                f'<div class="step-detail"><h4>步骤 {i}: {_escape(s.get("name") or "")}</h4>' + "".join(parts) + "</div>"
+                f'<div class="step-detail"><h4>步骤 {i}: {_escape(s.get("name") or "")}</h4>'
+                + "".join(parts)
+                + "</div>"
             )
     details_html = "\n".join(details_sections)
 
@@ -132,7 +132,9 @@ th {{ background: #f0f0f0; }}
 </html>
 """
     # 文件名带时间戳避免覆盖
-    safe_name = "".join(c if c.isalnum() or c in " -_" else "_" for c in (result.get("scenario_name") or "report"))
+    safe_name = "".join(
+        c if c.isalnum() or c in " -_" else "_" for c in (result.get("scenario_name") or "report")
+    )
     filename = f"{safe_name.strip() or 'report'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
     out_path = output_dir / filename
     out_path.write_text(html, encoding="utf-8")

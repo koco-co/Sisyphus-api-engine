@@ -1,14 +1,15 @@
 """断言比较器单元测试（VLD-001～VLD-017 / TST-025）"""
 
-import pytest
-
 from apirun.validation.comparators import (
+    COMPARATORS,
     compare,
     compare_contains,
     compare_endswith,
     compare_eq,
     compare_gt,
     compare_gte,
+    compare_is_not_null,
+    compare_is_null,
     compare_length_eq,
     compare_length_gt,
     compare_length_lt,
@@ -19,9 +20,6 @@ from apirun.validation.comparators import (
     compare_not_contains,
     compare_startswith,
     compare_type_match,
-    compare_is_null,
-    compare_is_not_null,
-    COMPARATORS,
 )
 
 
