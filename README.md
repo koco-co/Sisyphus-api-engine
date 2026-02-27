@@ -279,7 +279,10 @@ pre-commit install
 
 # 2. 更新 CHANGELOG.md / README.md / docs/开发任务清单.md
 
-# 3. 设置 PyPI 凭据（正式仓库）
+# 3. 安装发布工具（可选，脚本会自动检测并安装）
+uv pip install -e ".[publish]"
+
+# 4. 设置 PyPI 凭据（正式仓库）
 export PYPI_API_TOKEN="your-token-here"
 
 # 如需使用 TestPyPI 验证发布流程，可设置：
@@ -287,7 +290,7 @@ export PYPI_API_TOKEN="your-token-here"
 # 或：
 # export PYPI_REPOSITORY_URL="https://test.pypi.org/legacy/"
 
-# 4. 运行发布脚本（会自动运行测试、构建并上传）
+# 5. 运行发布脚本（会自动运行测试、构建并上传）
 ./pypi_publish.sh
 ```
 
