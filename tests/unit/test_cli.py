@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import json
-from click.testing import CliRunner
+from click.testing import CliRunner  # type: ignore[reportMissingImports]
 
 from apirun.cli import main
 
