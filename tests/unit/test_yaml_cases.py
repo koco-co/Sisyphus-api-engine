@@ -29,6 +29,7 @@ def _yaml_dir() -> Path:
     [
         "simple_get.yaml",
         "multi_step_e2e.yaml",
+        "case_level_base_url.yaml",
         "data_driven_inline.yaml",
         "data_driven_csv.yaml",
         "variable_extraction.yaml",
@@ -50,3 +51,11 @@ def test_each_yaml_loads_and_parses(yaml_name: str):
     result = run_case(case)
     assert result.scenario_name == case.config.name
     assert len(result.steps) == len(case.teststeps)
+
+
+def test_case_level_base_url_yaml_parses_with_direct_config():
+    """YML-010: 支持在 config 下直接声明 base_url。"""
+    yaml_path = _yaml_dir() / "case_level_base_url.yaml"
+    data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    case = CaseModel.model_validate(data)
+    assert case.config.base_url == "http://localhost:8888"

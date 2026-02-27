@@ -1,0 +1,20 @@
+# YML-010: 仅用例级 config.base_url 配置
+config:
+  name: "仅 case.base_url"
+  project_id: "p1"
+  scenario_id: "case-base-url"
+  base_url: "http://localhost:8888"
+  variables:
+    expected_status: 200
+
+teststeps:
+  - name: "GET 健康检查"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/health"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: "{{expected_status}}"

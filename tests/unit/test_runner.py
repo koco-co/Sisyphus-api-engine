@@ -101,3 +101,92 @@ def test_run_case_json_serializable(minimal_case_path):
     assert len(s) > 0
     back = json.loads(s)
     assert back["scenario_name"] == result.scenario_name
+
+
+def test_run_case_prefers_config_base_url_over_environment(monkeypatch):
+    """当两者同时存在时，config.base_url 应优先于 environment.base_url。"""
+    yaml_content = """
+config:
+  name: "base_url 优先级"
+  project_id: "proj-001"
+  scenario_id: "scen-001"
+  base_url: "https://api.from.config"
+  environment:
+    name: "dev"
+    base_url: "https://api.from.environment"
+teststeps:
+  - name: "GET 请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/ping"
+"""
+    case_path = _minimal_yaml(yaml_content)
+
+    def _fake_execute_request_step(request, base_url, variables):  # noqa: ANN001
+        assert base_url == "https://api.from.config"
+        return {
+            "status_code": 200,
+            "headers": {},
+            "body": {"ok": True},
+            "body_size": 2,
+            "response_time": 1,
+            "cookies": {},
+            "error": None,
+        }
+
+    monkeypatch.setattr("apirun.core.runner.execute_request_step", _fake_execute_request_step)
+
+    try:
+        case = load_case(case_path)
+        result = run_case(case)
+        step = result.steps[0]
+        assert step.request_detail is not None
+        assert step.request_detail.url == "https://api.from.config/ping"
+    finally:
+        case_path.unlink(missing_ok=True)
+
+
+def test_run_case_falls_back_to_environment_base_url(monkeypatch):
+    """未设置 config.base_url 时，应回退到 environment.base_url。"""
+    yaml_content = """
+config:
+  name: "base_url 回退"
+  project_id: "proj-001"
+  scenario_id: "scen-001"
+  environment:
+    name: "dev"
+    base_url: "https://api.from.environment"
+teststeps:
+  - name: "GET 请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/ping"
+"""
+    case_path = _minimal_yaml(yaml_content)
+
+    def _fake_execute_request_step(request, base_url, variables):  # noqa: ANN001
+        assert base_url == "https://api.from.environment"
+        return {
+            "status_code": 200,
+            "headers": {},
+            "body": {"ok": True},
+            "body_size": 2,
+            "response_time": 1,
+            "cookies": {},
+            "error": None,
+        }
+
+    monkeypatch.setattr("apirun.core.runner.execute_request_step", _fake_execute_request_step)
+
+    try:
+        case = load_case(case_path)
+        result = run_case(case)
+        step = result.steps[0]
+        assert step.request_detail is not None
+        assert step.request_detail.url == "https://api.from.environment/ping"
+    finally:
+        case_path.unlink(missing_ok=True)
