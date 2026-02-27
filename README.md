@@ -36,6 +36,7 @@ YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供 **核心
     - [单元测试](#单元测试)
     - [代码质量与类型检查](#代码质量与类型检查)
   - [版本与发布策略](#版本与发布策略)
+    - [发布流程（PyPI）](#发布流程pypi)
   - [开发规范](#开发规范)
   - [关联文档](#关联文档)
   - [许可证](#许可证)
@@ -147,15 +148,31 @@ teststeps:
 
 ### 通过 CLI 执行
 
-```bash
-# 执行单个 YAML 用例，并输出 JSON
-sisyphus-api-engine --case tests/yaml/simple_get.yaml -O json
+**本地开发（推荐使用 Python 模块方式）：**
 
-# 批量执行目录下所有 YAML 用例
+```bash
+# 激活虚拟环境后执行
+source .venv/bin/activate
+
+# 执行单个用例
+python -m apirun.cli --case tests/yaml/simple_get.yaml -O json
+
+# 批量执行用例
+python -m apirun.cli --cases tests/yaml/ -O json
+```
+
+**PyPI 安装后使用命令方式：**
+
+```bash
+# 安装
+uv pip install sisyphus-api-engine
+
+# 直接使用命令
+sisyphus-api-engine --case tests/yaml/simple_get.yaml -O json
 sisyphus-api-engine --cases tests/yaml/ -O json
 ```
 
-> CLI 的参数设计与完整引擎版本保持一致，详细说明见 `apirun/cli.py` 以及需求文档中「CLI 命令行接口」章节。
+> 注意：本地开发时推荐使用 `python -m apirun.cli` 方式，这是 Python 官方推荐的做法（PEP 338）。PyPI 安装后可直接使用 `sisyphus-api-engine` 命令。
 
 ---
 
