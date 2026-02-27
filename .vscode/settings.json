@@ -6,6 +6,7 @@
     "pypirc",
     "pyproject",
     "pytest",
+    "testpypi",
     "teststeps"
   ]
 }
