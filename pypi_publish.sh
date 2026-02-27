@@ -34,8 +34,9 @@ echo -e "${BLUE}   版本: ${VERSION}${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# 选择 Python 命令（python / python3）
+# 选择 Python 命令（python / python3），并检测 uv
 PYTHON_CMD=""
+HAS_UV=0
 echo -e "${YELLOW}⏳ 检查必要工具...${NC}"
 if command -v python &> /dev/null; then
     PYTHON_CMD="python"
@@ -46,9 +47,18 @@ else
     exit 1
 fi
 
-if ! command -v twine &> /dev/null; then
-    echo -e "${YELLOW}⚠️  警告: 未找到 twine，正在安装...${NC}"
-    "$PYTHON_CMD" -m pip install twine
+if command -v uv &> /dev/null; then
+    HAS_UV=1
+fi
+
+# 使用 uv 管理虚拟环境与发布依赖（优先）
+if [ "$HAS_UV" -eq 1 ]; then
+    echo -e "${YELLOW}🧪 检测到 uv，将使用 uv 管理虚拟环境与发布依赖...${NC}"
+    # 安装/升级构建与发布依赖到项目环境
+    uv pip install --upgrade build twine >/dev/null 2>&1
+else
+    echo -e "${YELLOW}⚠️  未检测到 uv，使用系统 Python 安装发布依赖(build, twine)...${NC}"
+    "$PYTHON_CMD" -m pip install --upgrade build twine
 fi
 
 echo -e "${GREEN}✅ 工具检查完成${NC}"
@@ -65,12 +75,12 @@ echo ""
 # 运行测试（优先用 uv 跑项目环境，否则用当前 Python -m pytest）
 echo -e "${YELLOW}🧪 运行测试...${NC}"
 if [ -d "tests" ]; then
-    if command -v uv &> /dev/null; then
-        UV_PYTEST="uv run python -m pytest tests/ -v --tb=short"
+    if [ "$HAS_UV" -eq 1 ]; then
+        TEST_CMD="uv run python -m pytest tests/ -v --tb=short"
     else
-        UV_PYTEST="$PYTHON_CMD -m pytest tests/ -v --tb=short"
+        TEST_CMD="$PYTHON_CMD -m pytest tests/ -v --tb=short"
     fi
-    if $UV_PYTEST; then
+    if $TEST_CMD; then
         echo -e "${GREEN}✅ 测试通过${NC}"
     else
         echo -e "${RED}❌ 测试失败，取消发布${NC}"
@@ -120,7 +130,7 @@ echo ""
 
 # 构建包（优先用 uv 以使用项目环境中的 build）
 echo -e "${YELLOW}🔨 构建发布包...${NC}"
-if command -v uv &> /dev/null; then
+if [ "$HAS_UV" -eq 1 ]; then
     uv run python -m build
 else
     "$PYTHON_CMD" -m build
@@ -168,13 +178,21 @@ elif [ -n "$PYPI_REPOSITORY" ]; then
     REPO_ARGS+=(--repository "$PYPI_REPOSITORY")
 fi
 
-# 检查 token（使用 python -m twine 避免 PATH 中无 twine 时失败）
+# 检查 token（使用 python -m twine / uv run python -m twine 避免 PATH 中无 twine 时失败）
 if [ -n "$PYPI_API_TOKEN" ]; then
     echo -e "${GREEN}✅ 使用环境变量中的 token${NC}"
-    "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/* --username __token__ --password "$PYPI_API_TOKEN"
+    if [ "$HAS_UV" -eq 1 ]; then
+        uv run python -m twine upload "${REPO_ARGS[@]}" dist/* --username __token__ --password "$PYPI_API_TOKEN"
+    else
+        "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/* --username __token__ --password "$PYPI_API_TOKEN"
+    fi
 elif [ -f ~/.pypirc ]; then
     echo -e "${GREEN}✅ 使用 ~/.pypirc 配置${NC}"
-    "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/*
+    if [ "$HAS_UV" -eq 1 ]; then
+        uv run python -m twine upload "${REPO_ARGS[@]}" dist/*
+    else
+        "$PYTHON_CMD" -m twine upload "${REPO_ARGS[@]}" dist/*
+    fi
 else
     echo -e "${RED}❌ 错误: 未找到 PyPI token${NC}"
     echo ""
