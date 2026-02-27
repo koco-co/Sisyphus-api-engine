@@ -1,0 +1,25 @@
+# YML-009: 前置/后置 SQL
+config:
+  name: "前后置 SQL"
+  project_id: "p1"
+  scenario_id: "sql"
+  pre_sql:
+    datasource: "db_main"
+    statements:
+      - "SELECT 1"
+  post_sql:
+    datasource: "db_main"
+    statements:
+      - "SELECT 1"
+
+teststeps:
+  - name: "请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/health"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

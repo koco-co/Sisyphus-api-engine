@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from apirun.core.models import (
     AssertionParams,
@@ -216,3 +217,33 @@ def test_load_case_missing_config():
             load_case(path)
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+def test_request_step_params_json_data_files_mutually_exclusive():
+    """MDL-015: json / data / files 三者互斥，最多填一个。"""
+    RequestStepParams(method="GET", url="/api", json_body={"a": 1})
+    RequestStepParams(method="POST", url="/api", data={"b": "2"})
+    RequestStepParams(method="POST", url="/api", files={"f": "path"})
+    with pytest.raises(ValidationError, match="互斥"):
+        RequestStepParams(method="POST", url="/api", json_body={"a": 1}, data={"b": "2"})
+    with pytest.raises(ValidationError, match="互斥"):
+        RequestStepParams(method="POST", url="/api", json_body={"a": 1}, files={"f": "x"})
+
+
+def test_case_model_csv_datasource_and_ddts_exclusive():
+    """MDL-016: config.csv_datasource 与 ddts 不能同时配置。"""
+    CaseModel.model_validate({
+        "config": {"name": "n", "project_id": "p", "scenario_id": "s", "csv_datasource": "data.csv"},
+        "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
+    })
+    CaseModel.model_validate({
+        "config": {"name": "n", "project_id": "p", "scenario_id": "s"},
+        "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
+        "ddts": {"name": "d", "parameters": [{"x": 1}]},
+    })
+    with pytest.raises(ValidationError, match="互斥"):
+        CaseModel.model_validate({
+            "config": {"name": "n", "project_id": "p", "scenario_id": "s", "csv_datasource": "data.csv"},
+            "teststeps": [{"name": "s", "keyword_type": "request", "keyword_name": "r", "request": {"url": "/"}}],
+            "ddts": {"name": "d", "parameters": [{"x": 1}]},
+        })

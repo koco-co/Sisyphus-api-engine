@@ -1,0 +1,17 @@
+# YML-002: 最简 GET 请求 + status_code 断言
+config:
+  name: "最简 GET"
+  project_id: "p1"
+  scenario_id: "s1"
+
+teststeps:
+  - name: "GET 用户列表"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/v1/users"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

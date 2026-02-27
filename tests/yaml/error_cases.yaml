@@ -1,0 +1,19 @@
+# YML-008: 触发错误码场景（如 KEYWORD_NOT_FOUND、变量未找到等）
+config:
+  name: "错误场景"
+  project_id: "p1"
+  scenario_id: "err"
+
+teststeps:
+  - name: "未注册的自定义关键字"
+    keyword_type: "custom"
+    keyword_name: "nonexistent_keyword"
+    custom:
+      parameters: {}
+  - name: "依赖上步变量（上步 error 时可能未定义）"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/{{possibly_missing}}"
+    enabled: true

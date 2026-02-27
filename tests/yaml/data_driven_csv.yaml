@@ -1,0 +1,18 @@
+# YML-005: CSV 文件数据驱动
+config:
+  name: "CSV 数据驱动"
+  project_id: "p1"
+  scenario_id: "csv-ddt"
+  csv_datasource: "tests/yaml/data.csv"
+
+teststeps:
+  - name: "请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/items/{{id}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

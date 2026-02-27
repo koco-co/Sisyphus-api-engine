@@ -5,7 +5,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class EnvironmentConfig(BaseModel):
@@ -39,8 +39,17 @@ class Config(BaseModel):
     csv_datasource: str | None = None
 
 
+def _body_field_set(v: Any) -> bool:
+    """是否有有效 body 字段：非 None 且（非 dict/list 或非空）。"""
+    if v is None:
+        return False
+    if isinstance(v, (dict, list)) and len(v) == 0:
+        return False
+    return True
+
+
 class RequestStepParams(BaseModel):
-    """teststeps[].request"""
+    """teststeps[].request — json / data / files 三者互斥（MDL-015）。"""
 
     model_config = {"populate_by_name": True}
 
@@ -55,6 +64,17 @@ class RequestStepParams(BaseModel):
     timeout: int = 30
     allow_redirects: bool = True
     verify: bool = True
+
+    @model_validator(mode="after")
+    def check_body_mutually_exclusive(self) -> "RequestStepParams":
+        """json / data / files 三者最多只能填一个。"""
+        set_count = sum(
+            _body_field_set(getattr(self, f))
+            for f in ("json_body", "data", "files")
+        )
+        if set_count > 1:
+            raise ValueError("request 中 json、data、files 三者互斥，最多只能填写一个")
+        return self
 
 
 class ExtractRule(BaseModel):
@@ -154,8 +174,15 @@ class Ddts(BaseModel):
 
 
 class CaseModel(BaseModel):
-    """YAML 顶层结构"""
+    """YAML 顶层结构 — config.csv_datasource 与 ddts 互斥（MDL-016）。"""
 
     config: Config
     teststeps: list[StepDefinition]
     ddts: Ddts | None = None
+
+    @model_validator(mode="after")
+    def check_csv_datasource_and_ddts_exclusive(self) -> "CaseModel":
+        """csv_datasource 与 ddts 不能同时配置。"""
+        if self.config.csv_datasource and (self.ddts and self.ddts.parameters):
+            raise ValueError("config.csv_datasource 与 ddts 互斥，不能同时配置")
+        return self

@@ -1,0 +1,34 @@
+# YML-006: 变量提取 + 跨步骤引用
+config:
+  name: "变量提取"
+  project_id: "p1"
+  scenario_id: "extract"
+  variables:
+    base: "v1"
+
+teststeps:
+  - name: "获取列表"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/{{base}}/users"
+    extract:
+      - name: "first_id"
+        type: "json"
+        expression: "$.data[0].id"
+        scope: "global"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+  - name: "用提取的变量请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/{{base}}/users/{{first_id}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

@@ -86,8 +86,8 @@ def run_case(
         if enabled and param_list:
             ddr, first_result = run_data_driven(
                 case,
-                lambda params: run_case(
-                    case, data_driven_vars=params, verbose=verbose, publisher=publisher
+                lambda c, params: run_case(
+                    c, data_driven_vars=params, verbose=verbose, publisher=publisher
                 ),
             )
             if first_result is not None:

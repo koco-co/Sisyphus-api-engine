@@ -1,0 +1,29 @@
+# YML-007: 多种比较器断言（子集示例）
+config:
+  name: "比较器覆盖"
+  project_id: "p1"
+  scenario_id: "cmp"
+
+teststeps:
+  - name: "请求"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/status"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+      - target: "json"
+        expression: "$.code"
+        comparator: "gte"
+        expected: 0
+      - target: "json"
+        expression: "$.message"
+        comparator: "contains"
+        expected: "OK"
+      - target: "json"
+        expression: "$.active"
+        comparator: "type_match"
+        expected: "bool"

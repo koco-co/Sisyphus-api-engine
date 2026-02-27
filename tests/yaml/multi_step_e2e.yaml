@@ -1,0 +1,50 @@
+# YML-003: 注册→登录→查看信息→数据库验证（多步骤 E2E 结构）
+config:
+  name: "多步骤 E2E"
+  project_id: "p1"
+  scenario_id: "e2e"
+
+teststeps:
+  - name: "注册"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "POST"
+      url: "/api/register"
+      json:
+        email: "test@example.com"
+        password: "{{random(8)}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 201
+  - name: "登录"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "POST"
+      url: "/api/login"
+      json:
+        email: "test@example.com"
+        password: "***"
+    extract:
+      - name: "token"
+        type: "json"
+        expression: "$.token"
+        scope: "global"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+  - name: "查看信息"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/me"
+      headers:
+        Authorization: "Bearer {{token}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200

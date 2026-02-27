@@ -1,0 +1,23 @@
+# YML-004: ddts 内联数据驱动
+config:
+  name: "内联数据驱动"
+  project_id: "p1"
+  scenario_id: "ddt"
+
+teststeps:
+  - name: "使用数据驱动变量"
+    keyword_type: "request"
+    keyword_name: "http_request"
+    request:
+      method: "GET"
+      url: "/api/users?email={{user_email}}"
+    validate:
+      - target: "status_code"
+        comparator: "eq"
+        expected: 200
+
+ddts:
+  name: "用户邮箱"
+  parameters:
+    - user_email: "a@example.com"
+    - user_email: "b@example.com"
