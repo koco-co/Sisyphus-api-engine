@@ -1,12 +1,40 @@
 """HTTP 请求执行器 - 发送请求并返回响应与耗时。"""
 
+from __future__ import annotations
+
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
 
 from apirun.core.models import RequestStepParams
+from apirun.utils.minio_client import download_to_temp
 from apirun.utils.variables import render_template
+
+
+def _prepare_files(files: Any) -> tuple[Any, list[Path], list[Any]]:
+    """预处理 files 参数，支持 MinIO 路径自动下载为临时文件。"""
+    if files is None:
+        return None, [], []
+
+    temp_paths: list[Path] = []
+    file_handles: list[Any] = []
+
+    if isinstance(files, dict):
+        prepared: dict[str, Any] = {}
+        for field, value in files.items():
+            if isinstance(value, str):
+                temp_path = download_to_temp(value)
+                temp_paths.append(temp_path)
+                fh = temp_path.open("rb")
+                file_handles.append(fh)
+                prepared[field] = (temp_path.name, fh)
+            else:
+                prepared[field] = value
+        return prepared, temp_paths, file_handles
+
+    return files, temp_paths, file_handles
 
 
 def execute_request_step(
@@ -37,12 +65,16 @@ def execute_request_step(
         render_template(params.json_body, variables) if params.json_body is not None else None
     )
     data = render_template(params.data, variables) if params.data is not None else None
-    files = render_template(params.files, variables) if params.files is not None else None
+    files_raw = render_template(params.files, variables) if params.files is not None else None
     cookies = render_template(params.cookies, variables)
 
     method = (params.method or "GET").upper()
     start = time.perf_counter()
+    temp_paths: list[Path] = []
+    file_handles: list[Any] = []
     try:
+        files, temp_paths, file_handles = _prepare_files(files_raw)
+
         resp = requests.request(
             method=method,
             url=url,
@@ -103,3 +135,15 @@ def execute_request_step(
             "cookies": {},
             "error": {"code": "REQUEST_CONNECTION_ERROR", "message": str(e), "detail": None},
         }
+    finally:
+        for fh in file_handles:
+            try:
+                fh.close()
+            except Exception:
+                pass
+        for path in temp_paths:
+            try:
+                path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
