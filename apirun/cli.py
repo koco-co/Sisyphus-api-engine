@@ -6,14 +6,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import click
-
+import click  # type: ignore[reportMissingImports]
 from apirun.core.runner import load_case, run_case
 from apirun.errors import EngineError
 from apirun.result.allure_reporter import generate as generate_allure
 from apirun.result.html_reporter import generate as generate_html
 from apirun.result.json_reporter import to_json, to_json_engine_error
 from apirun.result.text_reporter import render as render_text
+
+# 为避免类型检查器对 click 动态属性报错，这里通过 getattr 创建别名。
+command = getattr(click, "command")
+option = getattr(click, "option")
+echo = getattr(click, "echo")
+Choice = getattr(click, "Choice")
 
 
 def _run_single_case(
@@ -43,28 +48,28 @@ def _run_single_case(
     return result
 
 
-@click.command()
-@click.option(
+@command()
+@option(
     "--case",
     required=False,
     help="单个 YAML 测试用例文件路径",
 )
-@click.option(
+@option(
     "--cases",
     required=False,
     help="YAML 用例目录路径, 批量执行该目录下所有用例 (*.yaml, *.yml, 递归)",
 )
-@click.option(
+@option(
     "-O",
     "--output-format",
     "output_format",
-    type=click.Choice(["text", "json", "allure", "html"]),
+    type=Choice(["text", "json", "allure", "html"]),
     default="text",
     help="输出格式: text(默认) / json / allure / html",
 )
-@click.option("--allure-dir", default=None, help="Allure 报告输出目录")
-@click.option("--html-dir", default=None, help="HTML 报告输出目录")
-@click.option("-v", "--verbose", is_flag=True, help="详细输出模式")
+@option("--allure-dir", default=None, help="Allure 报告输出目录")
+@option("--html-dir", default=None, help="HTML 报告输出目录")
+@option("-v", "--verbose", is_flag=True, help="详细输出模式")
 def main(
     case: str | None,
     cases: str | None,
@@ -79,14 +84,14 @@ def main(
     - --cases:  批量执行目录下所有 YAML 用例 (递归)
     """
     if not case and not cases:
-        click.echo("必须指定 --case 或 --cases 之一", err=True)
+        echo("必须指定 --case 或 --cases 之一", err=True)
         sys.exit(1)
 
     # 批量执行模式: sisyphus --cases tests/
     if cases:
         base = Path(cases)
         if not base.exists() or not base.is_dir():
-            click.echo(f"目录不存在或不是目录: {base}", err=True)
+            echo(f"目录不存在或不是目录: {base}", err=True)
             sys.exit(1)
 
         yaml_files = sorted(
@@ -95,7 +100,7 @@ def main(
         )
 
         if not yaml_files:
-            click.echo(
+            echo(
                 f"目录 {base} 下未找到 YAML 用例 (*.yaml, *.yml)",
                 err=True,
             )
@@ -129,7 +134,7 @@ def main(
                     )
                     results.append(__import__("json").loads(err_json))
                 else:
-                    click.echo(e.message, err=True)
+                    echo(e.message, err=True)
                 continue
             except Exception as e:  # noqa: BLE001
                 has_error = True
@@ -145,11 +150,11 @@ def main(
                     )
                     results.append(__import__("json").loads(err_json))
                 else:
-                    click.echo(str(e), err=True)
+                    echo(str(e), err=True)
                 continue
 
         if output_format == "json":
-            click.echo(to_json(results, ensure_ascii=False, indent=2))
+            echo(to_json(results, ensure_ascii=False, indent=2))
 
         # CLI-015: 断言失败(status=failed)时 exit 0，仅引擎异常时 exit 1
         if has_error:
@@ -177,9 +182,9 @@ def main(
                 message=e.message,
                 detail=e.detail,
             )
-            click.echo(err_json)
+            echo(err_json)
         else:
-            click.echo(e.message, err=True)
+            echo(e.message, err=True)
         sys.exit(1)
     except (FileNotFoundError, ValueError) as e:
         if output_format == "json":
@@ -192,9 +197,9 @@ def main(
                 message=str(e),
                 detail=None,
             )
-            click.echo(err_json)
+            echo(err_json)
         else:
-            click.echo(str(e), err=True)
+            echo(str(e), err=True)
         sys.exit(1)
     except Exception as e:  # noqa: BLE001
         if output_format == "json":
@@ -207,13 +212,13 @@ def main(
                 message=str(e),
                 detail=None,
             )
-            click.echo(err_json)
+            echo(err_json)
         else:
-            click.echo(str(e), err=True)
+            echo(str(e), err=True)
         sys.exit(1)
 
     if output_format == "json":
-        click.echo(to_json(result, ensure_ascii=False, indent=2))
+        echo(to_json(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
