@@ -3,9 +3,16 @@
 本模块只负责描述 YAML → Python 的数据结构, 不包含执行逻辑。
 """
 
+import warnings
+
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# 抑制 Pydantic v2 关于 'validate' 字段名的 UserWarning
+# 'validate' 是 YAML 规范中的标准字段名，覆盖 Pydantic v1 遗留的 validate() 方法
+# 功能完全正常，仅抑制警告以避免干扰
+warnings.filterwarnings("ignore", message=".*shadows an attribute.*", category=UserWarning)
 
 
 class EnvironmentConfig(BaseModel):
@@ -127,6 +134,8 @@ class DbValidateRule(BaseModel):
 class DbParams(BaseModel):
     """数据库操作参数 - teststeps[].db。"""
 
+    model_config = ConfigDict(protected_namespaces=())
+
     datasource: str
     sql: str
     extract: list[DbExtractRule] | None = None
@@ -142,6 +151,8 @@ class CustomParams(BaseModel):
 
 class StepDefinition(BaseModel):
     """单条测试步骤定义。"""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     name: str
     keyword_type: str  # request / assertion / extract / db / custom
