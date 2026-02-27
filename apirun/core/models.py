@@ -39,6 +39,7 @@ class Config(BaseModel):
     scenario_id: str = ""
     priority: str = "P2"
     tags: list[str] = Field(default_factory=list)
+    base_url: str | None = None
     environment: EnvironmentConfig | None = None
     variables: dict[str, Any] = Field(default_factory=dict)
     pre_sql: PrePostSql | None = None
