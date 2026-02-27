@@ -19,6 +19,7 @@ dependencies = [
 
 [project.scripts]
 sisyphus = "apirun.cli:main"
+sisyphus-api-engine = "apirun.cli:main"
 
 [project.optional-dependencies]
 dev = [
