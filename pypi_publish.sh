@@ -4,7 +4,7 @@
 # 使用方法:
 #   1. 设置 PyPI token 环境变量:
 #      export PYPI_API_TOKEN="your-token-here"
-#   2. 运行脚本: ./publish.sh
+#   2. 运行脚本: ./pypi_publish.sh
 #
 # 或者使用 ~/.pypirc 配置文件
 
