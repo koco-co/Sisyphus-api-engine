@@ -12,6 +12,7 @@
 - [1. 概述](#1-概述)
 - [2. 顶层结构](#2-顶层结构)
 - [3. config — 场景配置](#3-config--场景配置)
+  - [3.1 双来源公共配置](#31-双来源公共配置)
 - [4. teststeps — 测试步骤](#4-teststeps--测试步骤)
   - [4.1 发送请求 (request)](#41-发送请求-request)
   - [4.2 断言 (assertion)](#42-断言-assertion)
@@ -115,11 +116,30 @@ config:
 | `scenario_id` | String (UUID) | ✅ 必填 | 场景唯一 ID，平台生成时自动填入 |
 | `priority` | String (Enum) | ❌ 选填 | 优先级：`P0` / `P1` / `P2` / `P3`，默认 `P2` |
 | `tags` | Array\<String\> | ❌ 选填 | 标签列表 |
+| `base_url` | String (URL) | ❌ 选填 | 用例级公共前缀 URL。与全局配置同名字段保持一致 |
 | `environment` | Object | ❌ 选填 | 运行环境配置，见 § 3.2 |
 | `variables` | Object (Dict) | ❌ 选填 | 场景级变量定义，Key-Value 形式 |
 | `pre_sql` | Object | ❌ 选填 | 前置 SQL 配置，见 § 3.3 |
 | `post_sql` | Object | ❌ 选填 | 后置 SQL 配置，见 § 3.3 |
 | `csv_datasource` | String | ❌ 选填 | CSV 数据驱动文件路径（与 `ddts` 字段二选一） |
+
+### 3.1 双来源公共配置
+
+引擎同时支持两类公共配置来源：
+
+1. **全局来源**：`.sisyphus/config.yaml`（`active_profile.base_url` 与 `variables`）
+2. **用例来源**：YAML 的 `config.base_url` / `config.variables` / `config.environment.*`
+
+推荐按以下场景使用：
+
+- 仅使用引擎本地执行：优先维护 `.sisyphus/config.yaml`
+- 对接 Sisyphus-X 平台（YAML 自动生成）：优先在用例内写 `config.base_url` 等同名公共参数
+
+合并与优先级规则：
+
+- 请求 URL 前缀：`config.base_url` > `config.environment.base_url` > `.sisyphus active_profile.base_url`
+- 变量合并：同名键 **用例 YAML 覆盖全局**
+- 兼容性：历史 `config.environment.base_url` 写法继续可用
 
 ### 3.2 environment 字段定义
 
@@ -209,7 +229,7 @@ config:
 | 字段 | 类型 | 是否必填 | 说明 |
 |------|------|----------|------|
 | `method` | String (Enum) | ✅ 必填 | HTTP 方法：`GET` / `POST` / `PUT` / `DELETE` / `PATCH` / `HEAD` / `OPTIONS` |
-| `url` | String | ✅ 必填 | 请求 URL（相对路径或完整 URL）。若配置了 `environment.base_url`，可使用相对路径 |
+| `url` | String | ✅ 必填 | 请求 URL（相对路径或完整 URL）。若配置了 `config.base_url` 或 `environment.base_url`，可使用相对路径 |
 | `headers` | Object (Dict) | ❌ 选填 | 请求头，Key-Value 形式 |
 | `params` | Object (Dict) | ❌ 选填 | URL 查询参数（Query String），Key-Value 形式 |
 | `json` | Object / Array | ❌ 选填 | JSON 请求体，与 `data` / `files` 互斥 |
@@ -499,6 +519,14 @@ invalid_email,异常用户,40001
 | 4 | 环境变量 | `config.environment.variables` 中定义的变量 |
 | 5 | 全局参数函数 | 系统设置中注册的全局参数工具函数 |
 
+### 6.1.1 配置来源优先级（base_url）
+
+当三个来源同时存在时，请求前缀优先级如下：
+
+1. `config.base_url`
+2. `config.environment.base_url`
+3. `.sisyphus/config.yaml` 的 `profiles.{active_profile}.base_url`
+
 ### 6.2 内置函数
 
 | 函数 | 说明 | 示例 |
@@ -732,6 +760,7 @@ ddts:
 | 场景 ID | `config.scenario_id` | String (UUID) | ✅ |
 | 优先级 | `config.priority` | Enum | ❌ |
 | 标签 | `config.tags` | Array\<String\> | ❌ |
+| 用例前缀 URL | `config.base_url` | String (URL) | ❌ |
 | 环境名称 | `config.environment.name` | String | ❌ |
 | 前置 URL | `config.environment.base_url` | String (URL) | ❌ |
 | 环境变量 | `config.environment.variables` | Dict | ❌ |

@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.2.4] - 2026-02-28
+
+### 变更
+
+- 公共配置支持双来源：在保持 `.sisyphus/config.yaml` `active_profile` 自动注入的同时，新增用例级 `config.base_url` 识别能力，并约定同名冲突时用例 YAML 优先。
+- 配置合并增强：`active_profile.variables` 与根级 `variables` 先合并后注入；当用例已声明 `config.environment.variables` 时，按“全局先、用例覆盖”合并。
+- 运行器读取路径统一：`run_case` 优先使用 `config.base_url`，未提供时回退到 `config.environment.base_url`，确保旧用例兼容。
+
+### 测试
+
+- 新增 CLI 单元测试，覆盖“仅全局配置生效”“仅用例配置生效”“冲突时用例优先”“旧 environment 写法兼容”。
+- 新增 runner 单元测试，覆盖 `config.base_url` 与 `environment.base_url` 的优先级与回退逻辑。
+- 新增 YAML 场景 `tests/yaml/case_level_base_url.yaml`，覆盖平台侧“仅 case 级公共配置”模式。
+
+### 文档
+
+- 更新 YAML 输入规范文档，补充双来源公共配置、`config.base_url` 字段定义与优先级说明。
+
 ## [2.2.3] - 2026-02-27
 
 ### 修复

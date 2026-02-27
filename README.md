@@ -134,9 +134,9 @@ pip install -e ".[dev]"
 ```yaml
 config:
   name: "简单 GET 示例"
-  environment:
-    name: "dev"
-    base_url: "https://httpbin.org"
+  base_url: "https://httpbin.org"
+  variables:
+    api_key: "demo-key"
 
 teststeps:
   - name: "GET /get"
@@ -199,9 +199,24 @@ variables:
     User-Agent: "sisyphus-api-engine/0.2.0"
 ```
 
-- 用例中可通过 `config.profiles.{profile}.base_url` 访问环境配置
-- `active_profile` 控制默认环境
-- `variables` 下可定义公共变量/头信息
+- 支持双来源公共配置：
+  - 全局来源：`.sisyphus/config.yaml` 的 `active_profile`（`base_url` + `variables`）
+  - 用例来源：`config.base_url` / `config.variables` / `config.environment.*`
+- 同名冲突时用例 YAML 优先（例如 `config.base_url` 优先于全局 `base_url`）
+- 向后兼容旧写法：`config.environment.base_url` 仍然可用
+
+平台对接（Sisyphus-X 自动生成 YAML）推荐直接输出：
+
+```yaml
+config:
+  name: "平台生成场景"
+  base_url: "https://api.test.example.com"
+  variables:
+    tenant_id: "t-001"
+```
+
+对应请求 URL 的前缀优先级为：
+`config.base_url` > `config.environment.base_url` > `.sisyphus/config.yaml`。
 
 ---
 
