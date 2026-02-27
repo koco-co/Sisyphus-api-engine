@@ -19,6 +19,12 @@ from apirun.core.models import (
     StepDefinition,
     ValidateRule,
 )
+from apirun.errors import (
+    FILE_NOT_FOUND,
+    YAML_PARSE_ERROR,
+    YAML_VALIDATION_ERROR,
+    EngineError,
+)
 
 
 def test_request_step_params_default():
@@ -182,15 +188,16 @@ def test_case_model_parse_full_types_from_dict():
 
 
 def test_load_case_file_not_found():
-    """load_case 文件不存在应抛 FileNotFoundError"""
+    """load_case 文件不存在应抛 EngineError(FILE_NOT_FOUND)"""
     from apirun.core.runner import load_case
 
-    with pytest.raises(FileNotFoundError, match="YAML 文件不存在"):
+    with pytest.raises(EngineError) as exc_info:
         load_case("/nonexistent/path.yaml")
+    assert exc_info.value.code == FILE_NOT_FOUND
 
 
 def test_load_case_invalid_yaml():
-    """load_case 无效 YAML 应抛 ValueError"""
+    """load_case 无效 YAML 应抛 EngineError(YAML_PARSE_ERROR / YAML_VALIDATION_ERROR)"""
     from apirun.core.runner import load_case
 
     with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as f:
@@ -198,14 +205,15 @@ def test_load_case_invalid_yaml():
         f.flush()
         path = f.name
     try:
-        with pytest.raises((ValueError, yaml.YAMLError)):
+        with pytest.raises(EngineError) as exc_info:
             load_case(path)
+        assert exc_info.value.code in {YAML_PARSE_ERROR, YAML_VALIDATION_ERROR}
     finally:
         Path(path).unlink(missing_ok=True)
 
 
 def test_load_case_missing_config():
-    """load_case 缺少 config 应校验失败"""
+    """load_case 缺少 config 应校验失败，抛 EngineError(YAML_VALIDATION_ERROR)"""
     from apirun.core.runner import load_case
 
     with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as f:
@@ -213,8 +221,9 @@ def test_load_case_missing_config():
         f.flush()
         path = f.name
     try:
-        with pytest.raises(ValueError, match="YAML 结构校验失败"):
+        with pytest.raises(EngineError) as exc_info:
             load_case(path)
+        assert exc_info.value.code == YAML_VALIDATION_ERROR
     finally:
         Path(path).unlink(missing_ok=True)
 
