@@ -70,6 +70,7 @@ YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供 **核心
   - 基于 `requests`，支持常见 HTTP 方法
   - 支持 base_url + 相对路径拼接
   - 支持 URL / headers / params / body 的变量渲染
+  - 支持 `files` 字段引用 MinIO 路径，自动下载为临时文件后上传
 - **JSON 输出**：
   - 执行结果统一输出为 JSON
   - 输出结构与内部《JSON 输出规范》文档对齐（逐步完善中）
@@ -259,13 +260,42 @@ pre-commit install
 > 当前仓库版本号仅针对「核心执行器重构线」，与历史完整引擎版本解耦。
 
 - **内部版本（本仓库）**
-  - 当前版本：`2.2.0`
+  - 当前版本：`2.2.2`
   - 历史内部版本：`0.1.0` / `0.2.0`（未作为独立 PyPI 版本发布）
   - 版本变更记录：见 `CHANGELOG.md`
 - **PyPI 已发布版本（完整引擎）**
   - 包名：`Sisyphus-api-engine`
-  - 最新稳定版：`2.2.0`
+  - 最新稳定版：`2.2.2`
   - 页面：<https://pypi.org/project/Sisyphus-api-engine/>
+
+### 发布流程（PyPI）
+
+推荐使用项目自带的 `pypi_publish.sh` 脚本发布新版本：
+
+```bash
+# 1. 确认版本号已更新为目标版本（例如 2.2.2）
+#    - pyproject.toml [project].version
+#    - apirun/__init__.py 中 __version__
+
+# 2. 更新 CHANGELOG.md / README.md / docs/开发任务清单.md
+
+# 3. 设置 PyPI 凭据（正式仓库）
+export PYPI_API_TOKEN="your-token-here"
+
+# 如需使用 TestPyPI 验证发布流程，可设置：
+# export PYPI_REPOSITORY=testpypi
+# 或：
+# export PYPI_REPOSITORY_URL="https://test.pypi.org/legacy/"
+
+# 4. 运行发布脚本（会自动运行测试、构建并上传）
+./pypi_publish.sh
+```
+
+脚本会在发布成功后创建 `v<version>` Git 标签（例如 `v2.2.2`），根据提示手动执行：
+
+```bash
+git push origin v2.2.2
+```
 
 未来规划：
 
