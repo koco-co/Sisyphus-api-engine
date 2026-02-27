@@ -68,8 +68,12 @@ def run_case(
     case: CaseModel,
     data_driven_vars: dict[str, Any] | None = None,
     verbose: bool = False,
+    publisher: Any = None,
 ) -> ExecutionResult:
-    """执行用例，返回 ExecutionResult 模型。支持数据驱动与日志收集（RUN-020～RUN-026）。"""
+    """执行用例，返回 ExecutionResult 模型。支持数据驱动、日志收集与可选事件发布器（WS-004）。"""
+    from apirun.websocket.publisher import NoOpPublisher as _NoOp
+    if publisher is None:
+        publisher = _NoOp()
     execution_id = f"exec-{uuid.uuid4().hex[:12]}"
     config: Config = case.config
     base_url = ""
@@ -82,7 +86,9 @@ def run_case(
         if enabled and param_list:
             ddr, first_result = run_data_driven(
                 case,
-                lambda params: run_case(case, data_driven_vars=params, verbose=verbose),
+                lambda params: run_case(
+                    case, data_driven_vars=params, verbose=verbose, publisher=publisher
+                ),
             )
             if first_result is not None:
                 d = first_result.model_dump()
@@ -100,6 +106,14 @@ def run_case(
 
     logs = LogCollector(verbose=verbose)
     logs.info(f"开始执行场景: {config.name}")
+    try:
+        publisher.emit(
+            "scenario_start",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            data={"execution_id": execution_id, "scenario_name": config.name},
+        )
+    except Exception:
+        pass
 
     # RUN-018: 前置 SQL 执行
     if config.pre_sql:
@@ -131,10 +145,18 @@ def run_case(
 
         try:
             logs.info(f"[步骤 {i}] 开始执行: {step.name}", step_index=i)
+            try:
+                publisher.emit("step_start", step_index=i, data={"name": step.name})
+            except Exception:
+                pass
             if not step.enabled:
                 # RUN-008: enabled=false 时生成 skipped StepResult
                 step_end = datetime.now(timezone.utc)
                 logs.info(f"[步骤 {i}] 完成: skipped", step_index=i)
+                try:
+                    publisher.emit("step_done", step_index=i, status="skipped")
+                except Exception:
+                    pass
                 steps_result.append(
                     _step_result_base(step, i, step_start, step_end, 0, "skipped", None)
                 )
@@ -379,6 +401,10 @@ def run_case(
                 )
 
             logs.info(f"[步骤 {i}] 完成: {step_status}", step_index=i)
+            try:
+                publisher.emit("step_done", step_index=i, status=step_status)
+            except Exception:
+                pass
             if step_status == "failed":
                 scenario_status = "failed"
 
@@ -395,6 +421,10 @@ def run_case(
             })
             scenario_status = "error"
             logs.info(f"[步骤 {i}] 完成: error", step_index=i)
+            try:
+                publisher.emit("step_done", step_index=i, status="error")
+            except Exception:
+                pass
 
     # RUN-019: 后置 SQL 执行（无论成功失败）
     if config.post_sql:
@@ -408,6 +438,14 @@ def run_case(
     end_time = datetime.now(timezone.utc)
     duration_ms = int((end_time - start_time).total_seconds() * 1000)
     logs.info(f"场景执行完毕: {scenario_status} ({duration_ms}ms)")
+    try:
+        publisher.emit(
+            "scenario_done",
+            timestamp=end_time.isoformat(),
+            data={"status": scenario_status, "duration_ms": duration_ms},
+        )
+    except Exception:
+        pass
 
     # RUN-016: 场景整体 status（已在上方循环中维护 scenario_status）
     # RUN-017: summary 断言统计
