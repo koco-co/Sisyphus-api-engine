@@ -80,8 +80,11 @@ JSON 输出（符合内部规范）
 | 模块           | 文件                         | 职责                                           |
 | -------------- | ---------------------------- | ---------------------------------------------- |
 | **数据模型**   | `apirun/core/models.py`      | 所有 YAML 结构的 Pydantic 模型定义             |
+| **安全防护**   | `apirun/security/`           | SQL防护、正则防护与日志安全脱敏                |
+| **配置管理**   | `apirun/config/`             | 引擎独立配置加载及统一管理                     |
 | **场景运行器** | `apirun/core/runner.py`      | `load_case()` 加载 YAML，`run_case()` 执行用例 |
 | **请求执行器** | `apirun/executor/request.py` | HTTP 请求发送与响应处理                        |
+| **增强容错**   | `apirun/utils/retry.py`      | 底层重试与超时控制机制                         |
 | **变量渲染**   | `apirun/utils/variables.py`  | `{{var}}` / `{{func()}}` 模板递归渲染          |
 | **内置函数**   | `apirun/utils/functions.py`  | `random()`, `timestamp()` 等模板函数           |
 | **CLI 入口**   | `apirun/cli.py`              | `sisyphus` 命令实现                            |

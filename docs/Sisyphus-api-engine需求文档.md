@@ -23,6 +23,8 @@
   - [3.8 WebSocket 实时推送 (apirun/websocket)](#38-websocket-实时推送-apirunwebsocket)
   - [3.9 CLI 命令行接口 (apirun/cli)](#39-cli-命令行接口-apiruncli)
   - [3.10 工具函数 (apirun/utils)](#310-工具函数-apirunutils)
+  - [3.11 安全与防护 (apirun/security)](#311-安全与防护-apirunsecurity)
+  - [3.12 健壮性机制 (Robustness)](#312-健壮性机制-robustness)
 - [4. 变量系统](#4-变量系统)
 - [5. 错误处理规范](#5-错误处理规范)
 - [6. 开发任务清单](#6-开发任务清单)
@@ -465,6 +467,31 @@ YAML 文件 → Parser(解析+校验) → CaseModel(数据模型) → Runner(编
 - [ ] FR-UTIL-007: `{{timestamp()}}` 返回当前时间戳（秒）
 - [ ] FR-UTIL-008: `{{timestamp_ms()}}` 返回当前时间戳（毫秒）
 - [ ] FR-UTIL-009: `{{datetime(fmt)}}` 返回格式化的当前时间
+
+---
+
+### 3.11 安全与防护 (apirun/security)
+
+**文件**: `apirun/security/`
+
+**功能需求**:
+
+- [x] FR-SEC-001: 提供 SQL 防注入机制 (`sql_validator.py`)，自动拦截针对数据库层的恶意 Payload 攻击
+- [x] FR-SEC-002: 提供正则表达的安全性检验 (`regex_validator.py`)，避免 ReDoS (正则表达式拒绝服务)
+- [x] FR-SEC-003: 大体积 Payload 防护 (`size_limiter.py`)，当响应体体积超过安全阈值自动截断或丢弃，保护引擎内存
+- [x] FR-SEC-004: 敏感日志自动脱敏功能 (`log_sanitizer.py`)，保障输出报告或日志信息内涉及如认证信息的安全
+
+---
+
+### 3.12 健壮性机制 (Robustness)
+
+**文件**: `apirun/utils/retry.py`、`apirun/utils/timeout.py` 等
+
+**功能需求**:
+
+- [x] FR-ROB-001: 请求容错重试，建立基础重试 (`retry.py`)，采用指数退避算法控制请求重做
+- [x] FR-ROB-002: 全局级发包超时 (`timeout.py`)，应对外部服务极慢带来的挂起或假死，保障引擎整体释放资源
+- [x] FR-ROB-003: 并发与多线程处理健壮性，引入相关压测模块支撑评估
 
 ---
 

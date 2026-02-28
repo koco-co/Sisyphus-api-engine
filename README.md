@@ -72,6 +72,9 @@ YAML 驱动的接口自动化测试引擎，为 Sisyphus-X 平台提供 **核心
   - 支持 base_url + 相对路径拼接
   - 支持 URL / headers / params / body 的变量渲染
   - 支持 `files` 字段引用 MinIO 路径，自动下载为临时文件后上传
+- **安全与健壮性 (Security & Robustness)**：
+  - **安全防护引擎**：内置 SQL 防注入拦截、正则安全机制 (防 ReDoS)、大体积 Payload 和日志内容脱敏处理机制
+  - **容错与重试控制**：各测试步骤支持基于指数退避的灵活重试和细粒度超时控制机制 
 - **JSON 输出**：
   - 执行结果统一输出为 JSON
   - 输出结构与内部《JSON 输出规范》文档对齐（逐步完善中）
@@ -264,6 +267,9 @@ Sisyphus-api-engine/
 ```bash
 # 运行所有单元测试
 uv run python -m pytest tests/unit -v
+
+# 运行性能基准与并发测试 (依赖 pytest-benchmark 和 pytest-xdist)
+uv run python -m pytest tests/performance -v -n auto
 ```
 
 ### 代码质量与类型检查
