@@ -1,0 +1,36 @@
+# Sisyphus API Engine 配置模板
+# 复制此文件为 config.yaml 并填入实际值
+
+profiles:
+  dev:
+    base_url: "http://localhost:8888"
+    variables:
+      # 使用环境变量避免明文存储敏感信息
+      api_key: "{{ env.API_KEY }}"
+
+  prod:
+    base_url: "https://api.example.com"
+    variables:
+      api_key: "{{ env.API_KEY }}"
+
+active_profile: "dev"
+
+variables:
+  common_headers:
+    User-Agent: "sisyphus-api-engine/2.2.2"
+
+# 执行器配置（可选）
+execution:
+  security:
+    max_response_size: 10485760  # 10MB
+    max_file_size: 52428800      # 50MB
+    enable_sql_validation: true
+
+  performance:
+    request_timeout: 30
+    db_pool_size: 5
+    max_workers: 4
+
+  logging:
+    level: "INFO"
+    file: null
