@@ -54,3 +54,14 @@ html-out/
 *.swp
 *.swo
 *~
+
+# 敏感配置文件
+.sisyphus/config.local.yaml
+.sisyphus/secrets.yaml
+.env.local
+
+# 测试和临时文件
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/

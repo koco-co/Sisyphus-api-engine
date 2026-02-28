@@ -28,6 +28,8 @@ dev = [
     "pyright>=1.1.390",
     "pytest>=8.0.0",
     "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-benchmark>=5.0.0",
     "pre-commit>=4.0.0",
 ]
 publish = [
@@ -65,6 +67,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = ["-v", "--strict-markers", "-ra"]
+# 并发测试配置（可选）:
+# 使用 -nauto 自动使用所有 CPU 核心
+# 使用 -n4 指定 4 个 worker
+# 示例: uv run pytest -nauto tests/unit
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
