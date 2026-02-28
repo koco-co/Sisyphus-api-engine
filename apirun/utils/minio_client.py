@@ -27,7 +27,6 @@ import requests
 
 from apirun.errors import ENGINE_INTERNAL_ERROR, EngineError
 
-
 _ENV_ENDPOINT_KEYS: Final[list[str]] = ["MINIO_ENDPOINT", "SISYPHUS_MINIO_ENDPOINT"]
 
 
@@ -107,4 +106,3 @@ def download_to_temp(minio_path: str) -> Path:
         tmp.close()
 
     return Path(tmp.name)
-

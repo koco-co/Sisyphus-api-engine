@@ -4,7 +4,6 @@
 """
 
 import warnings
-
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator

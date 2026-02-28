@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,8 @@ from apirun.result.allure_reporter import generate as generate_allure
 from apirun.result.html_reporter import generate as generate_html
 from apirun.result.json_reporter import to_json, to_json_engine_error
 from apirun.result.text_reporter import render as render_text
+
+logger = logging.getLogger("sisyphus")
 
 # 为避免类型检查器对 click 动态属性报错，这里通过 getattr 创建别名。
 command = getattr(click, "command")
@@ -41,7 +44,9 @@ def _load_active_profile_environment() -> EnvironmentConfig | None:
 
     try:
         raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    except Exception:  # noqa: BLE001
+    except (OSError, yaml.YAMLError) as e:
+        # 配置文件读取或解析失败，返回 None 使用默认配置
+        logger.debug(f"配置文件读取失败: {e}")
         return None
 
     if not isinstance(raw, dict):
@@ -211,7 +216,8 @@ def main(
                 else:
                     echo(e.message, err=True)
                 continue
-            except Exception as e:  # noqa: BLE001
+            except (OSError, ValueError, TypeError) as e:
+                # 捕获文件操作、数据转换等预期错误
                 has_error = True
                 if output_format == "json":
                     err_json = to_json_engine_error(
@@ -225,7 +231,25 @@ def main(
                     )
                     results.append(__import__("json").loads(err_json))
                 else:
-                    echo(str(e), err=True)
+                    echo(f"执行失败: {e}", err=True)
+                continue
+            except Exception as e:  # noqa: BLE001 保留作为最后的保障
+                # 未预期的错误，记录日志后继续
+                logger.error(f"未预期的错误: {e}", exc_info=True)
+                has_error = True
+                if output_format == "json":
+                    err_json = to_json_engine_error(
+                        execution_id="",
+                        scenario_id="",
+                        scenario_name="",
+                        project_id="",
+                        code="ENGINE_INTERNAL_ERROR",
+                        message=str(e),
+                        detail=None,
+                    )
+                    results.append(__import__("json").loads(err_json))
+                else:
+                    echo(f"未知错误: {e}", err=True)
                 continue
 
         if output_format == "json":
@@ -277,7 +301,8 @@ def main(
         else:
             echo(str(e), err=True)
         sys.exit(1)
-    except Exception as e:  # noqa: BLE001
+    except (OSError, ValueError, TypeError) as e:
+        # 捕获文件操作、数据转换等预期错误
         if output_format == "json":
             err_json = to_json_engine_error(
                 execution_id="",
@@ -290,7 +315,24 @@ def main(
             )
             echo(err_json)
         else:
-            echo(str(e), err=True)
+            echo(f"执行失败: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:  # noqa: BLE001 保留作为最后的保障
+        # 未预期的错误，记录日志后退出
+        logger.error(f"未预期的错误: {e}", exc_info=True)
+        if output_format == "json":
+            err_json = to_json_engine_error(
+                execution_id="",
+                scenario_id="",
+                scenario_name="",
+                project_id="",
+                code="ENGINE_INTERNAL_ERROR",
+                message=str(e),
+                detail=None,
+            )
+            echo(err_json)
+        else:
+            echo(f"未知错误: {e}", err=True)
         sys.exit(1)
 
     if output_format == "json":
