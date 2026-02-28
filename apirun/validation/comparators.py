@@ -1,8 +1,13 @@
 """断言比较器 — 17 种比较逻辑（VLD-001～VLD-017）"""
 
+import logging
 import re
 from collections.abc import Callable
 from typing import Any
+
+from apirun.security import regex_validator
+
+logger = logging.getLogger("sisyphus")
 
 # 类型匹配合法值
 TYPE_NAMES = ("int", "str", "list", "dict", "bool", "null")
@@ -99,12 +104,26 @@ def compare_endswith(actual: Any, expected: Any) -> bool:
 
 
 def compare_matches(actual: Any, expected: Any) -> bool:
-    """正则匹配（VLD-011）"""
+    """正则匹配（VLD-011）- 带 ReDoS 防护"""
     if actual is None or expected is None:
         return False
+
+    pattern = str(expected)
+
+    # ReDoS 安全验证
     try:
-        return re.search(str(expected), _ensure_str(actual)) is not None
-    except re.error:
+        regex_validator.validate(pattern)
+    except Exception as e:
+        logger.warning(f"正则表达式验证失败: {pattern}, 错误: {e}")
+        return False
+
+    try:
+        return re.search(pattern, _ensure_str(actual)) is not None
+    except re.error as e:
+        logger.debug(f"正则匹配失败: pattern={pattern}, 错误: {e}")
+        return False
+    except Exception:
+        logger.error(f"正则匹配发生未预期错误: pattern={pattern}", exc_info=True)
         return False
 
 

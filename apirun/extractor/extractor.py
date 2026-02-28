@@ -1,11 +1,14 @@
 """变量提取器 — 从响应/数据库结果中按规则提取变量，返回 ExtractResult（EXT-001～EXT-010）"""
 
+import logging
 from typing import Any
 
 from jsonpath_ng import parse as jsonpath_parse
 
 from apirun.core.models import ExtractRule
 from apirun.result.models import ExtractResult
+
+logger = logging.getLogger("sisyphus")
 
 
 def _extract_json(body: Any, expression: str) -> Any:
@@ -20,7 +23,11 @@ def _extract_json(body: Any, expression: str) -> Any:
         if len(matches) == 1:
             return matches[0].value
         return [m.value for m in matches]
+    except (AttributeError, ValueError, TypeError) as e:
+        logger.debug(f"JSONPath 提取失败: expression={expression}, 错误: {e}")
+        return None
     except Exception:
+        logger.error(f"JSONPath 提取发生未预期错误: expression={expression}", exc_info=True)
         return None
 
 

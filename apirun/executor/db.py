@@ -11,6 +11,7 @@ from apirun.errors import (
     EngineError,
 )
 from apirun.result.models import DbDetail
+from apirun.security import sql_validator
 from apirun.utils.variables import render_template
 
 
@@ -104,6 +105,16 @@ def execute_db_step(
     sql_rendered = render_template(params.sql, variables)
     if not isinstance(sql_rendered, str):
         sql_rendered = str(sql_rendered)
+
+    # SQL 安全验证（防止注入攻击）
+    try:
+        sql_validator.validate(sql_rendered)
+    except EngineError as e:
+        return {
+            "db_detail": None,
+            "rows": [],
+            "error": e.to_dict(),
+        }
 
     driver = (conn_config.get("driver") or "mysql").lower()
     start = time.perf_counter()

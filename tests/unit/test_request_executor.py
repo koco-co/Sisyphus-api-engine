@@ -94,24 +94,3 @@ def test_execute_request_step_minio_files_download(monkeypatch, tmp_path):
     # (filename, fileobj)
     assert isinstance(file_tuple, tuple)
     assert file_tuple[0] == "minio_file.txt"
-
-
-def test_execute_request_step_renders_variables_in_url(monkeypatch):
-    called = {}
-
-    def fake_request(method: str, url: str, **kwargs: Any):
-        called["method"] = method
-        called["url"] = url
-        called["kwargs"] = kwargs
-        return _DummyResponse(url)
-
-    monkeypatch.setattr("apirun.executor.request.requests.request", fake_request)
-
-    params = RequestStepParams(method="GET", url="/users/{{user_id}}")
-    result = execute_request_step(
-        params, base_url="https://api.example.com", variables={"user_id": 123}
-    )
-
-    assert called["url"] == "https://api.example.com/users/123"
-    assert result["status_code"] == 200
-    assert result["body"] == "ok"

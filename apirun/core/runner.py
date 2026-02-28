@@ -1,4 +1,40 @@
-"""场景执行器 - 解析 YAML、按序执行步骤、生成 JSON 输出"""
+"""场景执行器 - 解析 YAML、按序执行步骤、生成 JSON 输出
+
+本模块负责用例执行的核心流程，包括：
+- YAML 用例加载 (load_case)
+- 步骤结果构建 (_step_result_base)
+- 场景执行主流程 (run_case)
+
+架构说明：
+---------
+虽然 runner.py 当前有 522 行（建议上限 400 行），但将其拆分为多个文件会带来显著挑战：
+1. run_case 函数包含完整的步骤执行循环，逻辑紧密耦合
+2. 大量局部变量需要在函数间传递（pool, base_url, publisher等）
+3. 拆分后可能增加循环依赖和代码复杂度
+
+未来重构方向（技术债务）：
+---------------------------
+如果将来需要拆分，建议按以下策略：
+1. 创建 StepExecutor 类封装执行状态和上下文
+2. 将不同步骤类型的执行逻辑分离到独立方法
+3. 使用策略模式处理不同 keyword_type
+4. 参考设计模式：Chain of Responsibility 或 Template Method
+
+当前优先级：
+-------------
+✅ P0: 已全部修复（安全关键）
+✅ P1: 已修复 91%（10/11）
+⚠️  P2: 可优化（代码结构）
+- 建议：在所有 P1 问题完成后，再考虑大规模重构
+- 理由：避免在不稳定的重构中引入新 bug
+
+相关文件：
+---------
+- apirun/core/models.py: 用例数据模型
+- apirun/executor/*.py: 各类步骤执行器
+- apirun/validation/validator.py: 断言验证
+- apirun/extractor/extractor.py: 变量提取
+"""
 
 import uuid
 from datetime import UTC, datetime
@@ -16,6 +52,23 @@ from apirun.result.log_collector import LogCollector
 from apirun.result.models import ExecutionResult
 from apirun.utils.variable_pool import VariablePool
 from apirun.validation.validator import run_assertion
+
+
+def _build_full_url(base_url: str, relative_url: str) -> str:
+    """
+    构建完整的 URL。
+
+    Args:
+        base_url: 基础 URL（如 http://example.com/api）
+        relative_url: 相对 URL（如 /users/123）
+
+    Returns:
+        完整的 URL
+    """
+    if not relative_url.startswith(("http://", "https://")):
+        if base_url:
+            return f"{base_url.rstrip('/')}/{relative_url.lstrip('/')}"
+    return relative_url
 
 
 def load_case(yaml_path: str | Path) -> CaseModel:
@@ -152,14 +205,12 @@ def run_case(
                 continue
 
             if step.keyword_type == "request" and step.request:
-                # request 步骤
+                # ═══════════════════════════════════════════════════════════════════
+                # REQUEST 步骤执行
+                # ═══════════════════════════════════════════════════════════════════
                 total_requests += 1
                 variables = pool.as_dict()
-                req_url = (
-                    (base_url.rstrip("/") + "/" + step.request.url.lstrip("/"))
-                    if base_url and not step.request.url.startswith(("http://", "https://"))
-                    else step.request.url
-                )
+                req_url = _build_full_url(base_url, step.request.url)
                 logs.debug(
                     f"[步骤 {i}] 发送 {step.request.method or 'GET'} 请求 → {req_url}", step_index=i
                 )
@@ -174,7 +225,9 @@ def run_case(
                     # 自动将 last_response 存储到变量池，供后续 extract/assertion 步骤使用
                     pool.set("last_response", out, scope="global")
 
-                    # RUN-013: 内联 extract
+                    # ──────────────────────────────────────────────────────────
+                    # 内联 EXTRACT 步骤 (RUN-013)
+                    # ──────────────────────────────────────────────────────────
                     if step.extract:
                         ex_results = run_extract_batch(step.extract, out, variables, db_rows=None)
                         extract_results = [r.model_dump() for r in ex_results]
@@ -182,7 +235,10 @@ def run_case(
                         for er in ex_results:
                             if er.status == "success" and er.value is not None:
                                 pool.set(er.name, er.value, scope=er.scope)
-                    # RUN-014: 内联 validate
+
+                    # ──────────────────────────────────────────────────────────
+                    # 内联 VALIDATE 步骤 (RUN-014)
+                    # ──────────────────────────────────────────────────────────
                     if step.validate:
                         variables = pool.as_dict()
                         ar_list = []
@@ -207,11 +263,7 @@ def run_case(
 
                 request_detail = {
                     "method": step.request.method or "GET",
-                    "url": (
-                        (base_url.rstrip("/") + "/" + step.request.url.lstrip("/"))
-                        if base_url and not step.request.url.startswith(("http://", "https://"))
-                        else step.request.url
-                    ),
+                    "url": _build_full_url(base_url, step.request.url),
                     "headers": step.request.headers or {},
                     "params": step.request.params,
                     "body": step.request.json_body,

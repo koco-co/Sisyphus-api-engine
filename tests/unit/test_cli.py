@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-import json
 from click.testing import CliRunner  # type: ignore[reportMissingImports]
 
 import apirun.cli as cli
@@ -51,10 +51,10 @@ def test_cli_injects_active_profile_environment_when_yaml_missing_env(monkeypatc
             (
                 "profiles:\n"
                 "  dev:\n"
-                "    base_url: \"https://api.injected.local\"\n"
+                '    base_url: "https://api.injected.local"\n'
                 "    variables:\n"
-                "      token: \"abc\"\n"
-                "active_profile: \"dev\"\n"
+                '      token: "abc"\n'
+                'active_profile: "dev"\n'
                 "variables:\n"
                 "  common_timeout: 30\n"
             ),
@@ -63,16 +63,16 @@ def test_cli_injects_active_profile_environment_when_yaml_missing_env(monkeypatc
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -109,28 +109,28 @@ def test_cli_keeps_yaml_environment_priority_over_sisyphus(monkeypatch):
             (
                 "profiles:\n"
                 "  dev:\n"
-                "    base_url: \"https://api.injected.local\"\n"
-                "active_profile: \"dev\"\n"
+                '    base_url: "https://api.injected.local"\n'
+                'active_profile: "dev"\n'
             ),
             encoding="utf-8",
         )
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
                 "  environment:\n"
-                "    name: \"yaml\"\n"
-                "    base_url: \"https://api.from.yaml\"\n"
+                '    name: "yaml"\n'
+                '    base_url: "https://api.from.yaml"\n'
                 "    variables: {}\n"
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -164,25 +164,25 @@ def test_cli_keeps_yaml_base_url_priority_over_sisyphus(monkeypatch):
             (
                 "profiles:\n"
                 "  dev:\n"
-                "    base_url: \"https://api.injected.local\"\n"
-                "active_profile: \"dev\"\n"
+                '    base_url: "https://api.injected.local"\n'
+                'active_profile: "dev"\n'
             ),
             encoding="utf-8",
         )
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
-                "  base_url: \"https://api.from.case\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
+                '  base_url: "https://api.from.case"\n'
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -203,7 +203,9 @@ def test_cli_uses_yaml_base_url_when_without_environment(monkeypatch):
 
     def _fake_run_case(case_model, verbose=False):  # noqa: ANN001, FBT002
         captured["base_url"] = case_model.config.base_url or ""
-        captured["env_name"] = case_model.config.environment.name if case_model.config.environment else ""
+        captured["env_name"] = (
+            case_model.config.environment.name if case_model.config.environment else ""
+        )
         return _DummyResult()
 
     monkeypatch.setattr(cli, "run_case", _fake_run_case)
@@ -213,17 +215,17 @@ def test_cli_uses_yaml_base_url_when_without_environment(monkeypatch):
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
-                "  base_url: \"https://api.from.case\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
+                '  base_url: "https://api.from.case"\n'
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -257,35 +259,35 @@ def test_cli_merges_global_and_yaml_environment_variables(monkeypatch):
             (
                 "profiles:\n"
                 "  dev:\n"
-                "    base_url: \"https://api.injected.local\"\n"
+                '    base_url: "https://api.injected.local"\n'
                 "    variables:\n"
-                "      token: \"from-profile\"\n"
-                "active_profile: \"dev\"\n"
+                '      token: "from-profile"\n'
+                'active_profile: "dev"\n'
                 "variables:\n"
                 "  common_header:\n"
-                "    User-Agent: \"ua-global\"\n"
+                '    User-Agent: "ua-global"\n'
             ),
             encoding="utf-8",
         )
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
                 "  environment:\n"
-                "    name: \"yaml\"\n"
-                "    base_url: \"https://api.from.yaml\"\n"
+                '    name: "yaml"\n'
+                '    base_url: "https://api.from.yaml"\n'
                 "    variables:\n"
-                "      token: \"from-yaml\"\n"
-                "      locale: \"zh-CN\"\n"
+                '      token: "from-yaml"\n'
+                '      locale: "zh-CN"\n'
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -321,16 +323,16 @@ def test_cli_ignores_invalid_sisyphus_config_without_crash(monkeypatch):
         Path("case.yaml").write_text(
             (
                 "config:\n"
-                "  name: \"case\"\n"
-                "  project_id: \"p1\"\n"
-                "  scenario_id: \"s1\"\n"
+                '  name: "case"\n'
+                '  project_id: "p1"\n'
+                '  scenario_id: "s1"\n'
                 "teststeps:\n"
-                "  - name: \"req\"\n"
-                "    keyword_type: \"request\"\n"
-                "    keyword_name: \"http_request\"\n"
+                '  - name: "req"\n'
+                '    keyword_type: "request"\n'
+                '    keyword_name: "http_request"\n'
                 "    request:\n"
-                "      method: \"GET\"\n"
-                "      url: \"/api/ping\"\n"
+                '      method: "GET"\n'
+                '      url: "/api/ping"\n'
             ),
             encoding="utf-8",
         )
@@ -338,4 +340,3 @@ def test_cli_ignores_invalid_sisyphus_config_without_crash(monkeypatch):
 
     assert result.exit_code == 0
     assert captured["environment"] is None
-

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,10 @@ import requests
 
 from apirun.core.models import RequestStepParams
 from apirun.utils.minio_client import download_to_temp
+from apirun.utils.retry import execute_with_retry
 from apirun.utils.variables import render_template
+
+logger = logging.getLogger("sisyphus")
 
 
 def _prepare_files(files: Any) -> tuple[Any, list[Path], list[Any]]:
@@ -75,7 +79,9 @@ def execute_request_step(
     try:
         files, temp_paths, file_handles = _prepare_files(files_raw)
 
-        resp = requests.request(
+        # 使用重试机制执行请求
+        resp = execute_with_retry(
+            requests.request,
             method=method,
             url=url,
             headers=headers,
@@ -136,14 +142,24 @@ def execute_request_step(
             "error": {"code": "REQUEST_CONNECTION_ERROR", "message": str(e), "detail": None},
         }
     finally:
+        # 清理文件句柄
         for fh in file_handles:
             try:
                 fh.close()
-            except Exception:
-                pass
+            except (OSError, ValueError) as e:
+                # 文件句柄关闭失败，记录警告但继续清理其他资源
+                logger.warning(f"文件句柄关闭失败: {e}")
+            except Exception as e:
+                # 未预期的错误，记录错误但继续
+                logger.error(f"文件句柄关闭时发生未预期错误: {e}", exc_info=True)
+
+        # 清理临时文件
         for path in temp_paths:
             try:
                 path.unlink(missing_ok=True)
-            except Exception:
-                pass
-
+            except OSError as e:
+                # 临时文件删除失败，记录警告
+                logger.warning(f"临时文件删除失败: {path}, 错误: {e}")
+            except Exception as e:
+                # 未预期的错误，记录错误
+                logger.error(f"临时文件清理时发生未预期错误: {e}", exc_info=True)

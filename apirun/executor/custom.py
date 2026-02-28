@@ -1,5 +1,6 @@
 """自定义关键字执行器 — 按 keyword_name 查找并执行，返回 custom_detail（CST-001～CST-007）"""
 
+import threading
 import time
 from typing import Any
 
@@ -10,12 +11,16 @@ from apirun.result.models import CustomDetail
 # 关键字注册表：keyword_name -> Keyword 子类
 KEYWORD_REGISTRY: dict[str, type] = {}
 
+# 线程锁，保护关键字注册表的并发访问
+_REGISTRY_LOCK = threading.RLock()
+
 
 def register_keyword(cls: type) -> type:
-    """注册 Keyword 子类，以其 name 为 key。"""
+    """注册 Keyword 子类，以其 name 为 key（线程安全）。"""
     name = getattr(cls, "name", None)
     if name:
-        KEYWORD_REGISTRY[name] = cls
+        with _REGISTRY_LOCK:
+            KEYWORD_REGISTRY[name] = cls
     return cls
 
 
@@ -35,7 +40,8 @@ def execute_custom_step(
     parameters_rendered = {k: render_template(v, variables) for k, v in parameters.items()}
     start = time.perf_counter()
     try:
-        klass = KEYWORD_REGISTRY.get(keyword_name)
+        with _REGISTRY_LOCK:
+            klass = KEYWORD_REGISTRY.get(keyword_name)
         if klass is None:
             raise EngineError(KEYWORD_NOT_FOUND, f"关键字未找到: {keyword_name}")
         instance = klass()
